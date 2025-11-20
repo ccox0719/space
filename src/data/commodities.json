@@ -1,0 +1,12 @@
+{
+  "commodities": [
+    { "id": "ore_aurite", "name": "Aurite Ore", "basePrice": 40, "tags": ["mineral", "industrial"], "legality": "legal", "category": "minerals" },
+    { "id": "ore_ironite", "name": "Ironite Ore", "basePrice": 10, "tags": ["mineral", "common"], "legality": "legal", "category": "minerals" },
+    { "id": "food_rations", "name": "Food Rations", "basePrice": 8, "tags": ["food", "basic"], "legality": "legal", "category": "food" },
+    { "id": "med_supplies", "name": "Medical Supplies", "basePrice": 30, "tags": ["medical"], "legality": "restricted", "category": "medical" },
+    { "id": "ai_cores", "name": "AI Cores", "basePrice": 120, "tags": ["high_tech", "illegal"], "legality": "illegal", "category": "tech" },
+    { "id": "luxury_spice", "name": "Luxury Spice", "basePrice": 60, "tags": ["luxury", "illegal"], "legality": "restricted", "category": "luxury" },
+    { "id": "scrap_components", "name": "Scrap Components", "basePrice": 15, "tags": ["salvage", "industrial"], "legality": "legal", "category": "salvage" },
+    { "id": "advanced_fuel", "name": "Advanced Fuel Cells", "basePrice": 55, "tags": ["fuel", "tech"], "legality": "legal", "category": "fuel" }
+  ]
+}

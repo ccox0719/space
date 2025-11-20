@@ -1,0 +1,460 @@
+{
+  "events": {
+    "globalWeights": {
+      "travel": 0.45,
+      "dock": 0.25,
+      "idle": 0.15,
+      "sleepCycle": 0.05,
+      "rare": 0.01
+    },
+
+    "categories": [
+      "travel",
+      "combat",
+      "market",
+      "mining",
+      "smuggling",
+      "piracy",
+      "law_enforcement",
+      "exploration",
+      "salvage",
+      "crew",
+      "ship",
+      "rare_story"
+    ],
+
+    "roleWeights": {
+      "trader": {
+        "market": 2.0,
+        "piracy": 1.3,
+        "law_enforcement": 1.0,
+        "combat": 0.7,
+        "exploration": 0.8,
+        "salvage": 0.9
+      },
+      "miner": {
+        "mining": 2.0,
+        "piracy": 1.4,
+        "combat": 0.9,
+        "exploration": 0.6,
+        "salvage": 1.3
+      },
+      "smuggler": {
+        "smuggling": 2.5,
+        "law_enforcement": 1.8,
+        "piracy": 1.3,
+        "market": 0.5,
+        "combat": 1.4
+      },
+      "pirate": {
+        "piracy": 2.3,
+        "law_enforcement": 1.8,
+        "combat": 1.6,
+        "trader": 1.4,
+        "salvage": 1.0
+      },
+      "bounty_hunter": {
+        "combat": 2.2,
+        "piracy": 1.2,
+        "exploration": 0.8,
+        "law_enforcement": 1.3
+      },
+      "navy": {
+        "law_enforcement": 2.2,
+        "combat": 1.6,
+        "piracy": 1.2,
+        "market": 0.7
+      },
+      "explorer": {
+        "exploration": 2.4,
+        "rare_story": 1.3,
+        "salvage": 1.0,
+        "mining": 0.8
+      },
+      "salvager": {
+        "salvage": 2.3,
+        "combat": 1.0,
+        "exploration": 0.9,
+        "piracy": 1.0
+      }
+    },
+
+    "eventPool": [
+      {
+        "id": "pirate_ambush",
+        "category": "piracy",
+        "description": "A pirate raider decloaks off your bow. They lock weapons and broadcast a demand for tribute.",
+        "requirements": {
+          "sectorDanger": "medium_or_high"
+        },
+        "choices": [
+          {
+            "id": "fight",
+            "text": "Fight the pirate ship.",
+            "tags": ["combat", "lawful_action"],
+            "outcomes": {
+              "success": {
+                "chance": 0.55,
+                "effects": {
+                  "damage": "medium",
+                  "loot": "small",
+                  "repChanges": {
+                    "navy": 1,
+                    "pirate": -2
+                  }
+                }
+              },
+              "failure": {
+                "chance": 0.45,
+                "effects": {
+                  "damage": "heavy",
+                  "cargoLossChance": 0.5
+                }
+              }
+            }
+          },
+          {
+            "id": "pay_tribute",
+            "text": "Pay tribute and avoid a fight.",
+            "tags": ["piracy"],
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {
+                  "credits": -250,
+                  "repChanges": {
+                    "pirate": 1,
+                    "merchant": -1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "attempt_escape",
+            "text": "Try to outrun the pirate.",
+            "requirements": { "enginePower": 2 },
+            "outcomes": {
+              "success": {
+                "chance": 0.5,
+                "effects": {
+                  "fuel": -2
+                }
+              },
+              "failure": {
+                "chance": 0.5,
+                "effects": {
+                  "damage": "light",
+                  "cargoLossChance": 0.2
+                }
+              }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "pirate_encounter_lane",
+        "category": "piracy",
+        "description": "A pirate raider drops out of FTL alongside your lane, weapons hot. They demand payment to 'ensure your continued safety.'",
+        "choices": [
+          {
+            "id": "pay_bribe",
+            "text": "Pay their bribe and hope they leave.",
+            "tags": ["piracy"],
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {
+                  "credits": -300,
+                  "repChanges": {
+                    "pirate": 1,
+                    "merchant": -1
+                  },
+                  "riskAdjust": {
+                    "pirateAttention": -10
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "attack_back",
+            "text": "Power up your weapons and attack.",
+            "tags": ["combat", "lawful_action"],
+            "outcomes": {
+              "success": {
+                "chance": 0.55,
+                "effects": {
+                  "combat": "forced",
+                  "repChanges": {
+                    "pirate": -2,
+                    "navy": 1
+                  },
+                  "riskAdjust": {
+                    "pirateAttention": -15
+                  }
+                }
+              },
+              "failure": {
+                "chance": 0.45,
+                "effects": {
+                  "combat": "forced",
+                  "flag": "enemy_advantage",
+                  "riskAdjust": {
+                    "pirateAttention": 5
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "alert_police",
+            "text": "Broadcast a distress call to local authorities (risky).",
+            "tags": ["lawful_action"],
+            "outcomes": {
+              "success": {
+                "chance": 0.5,
+                "effects": {
+                  "flag": "navy_intervention",
+                  "repChanges": {
+                    "navy": 2,
+                    "pirate": -1
+                  },
+                  "riskAdjust": {
+                    "pirateAttention": -20
+                  }
+                }
+              },
+              "failure": {
+                "chance": 0.5,
+                "effects": {
+                  "flag": "pirate_enraged",
+                  "repChanges": {
+                    "pirate": 1
+                  },
+                  "riskAdjust": {
+                    "pirateAttention": 10
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "run",
+            "text": "Push your engines and try to run.",
+            "tags": ["evasion", "flight"],
+            "outcomes": {
+              "success": { "chance": 1.0, "effects": {} }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "navy_inspection",
+        "category": "law_enforcement",
+        "description": "A Navy patrol hails your vessel for a routine inspection.",
+         "requirements": {
+           "sectorLaw": "medium_or_high"
+         },
+        "choices": [
+          {
+            "id": "comply",
+            "text": "Submit to the inspection.",
+            "tags": ["lawful_action"],
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {
+                  "repChanges": {
+                    "navy": 1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "bribe",
+            "text": "Attempt to bribe the officer.",
+            "tags": ["smuggling"],
+            "outcomes": {
+              "success": {
+                "chance": 0.45,
+                "effects": {
+                  "credits": -200,
+                  "repChanges": {
+                    "syndicate": 1
+                  }
+                }
+              },
+              "failure": {
+                "chance": 0.55,
+                "effects": {
+                  "repChanges": {
+                    "navy": -5
+                  },
+                  "flag": "wanted_status"
+                }
+              }
+            }
+          },
+          {
+            "id": "flee",
+            "text": "Attempt to flee the scene.",
+            "tags": ["piracy", "chaos_action"],
+            "outcomes": {
+              "success": {
+                "chance": 0.35,
+                "effects": {
+                  "fuel": -3,
+                  "repChanges": {
+                    "navy": -4
+                  }
+                }
+              },
+              "failure": {
+                "chance": 0.65,
+                "effects": {
+                  "damage": "medium",
+                  "combat": "forced"
+                }
+              }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "rich_asteroid_field",
+        "category": "mining",
+        "description": "Scanners pick up a dense asteroid field with high mineral readings.",
+        "choices": [
+          {
+            "id": "mine_safely",
+            "text": "Mine carefully, minimizing risk.",
+            "tags": ["mining_support"],
+            "outcomes": {
+              "success": {
+                "chance": 0.95,
+                "effects": {
+                  "minerals": "small",
+                  "repChanges": {
+                    "miner": 1
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "mine_aggressively",
+            "text": "Push your mining laser to the limit for maximum yield.",
+            "tags": ["mining_support"],
+            "outcomes": {
+              "success": {
+                "chance": 0.60,
+                "effects": {
+                  "minerals": "large"
+                }
+              },
+              "failure": {
+                "chance": 0.40,
+                "effects": {
+                  "damage": "medium",
+                  "pirateAttractionChance": 0.25
+                }
+              }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "black_market_signal",
+        "category": "smuggling",
+        "description": "You detect an encrypted signal offering a smuggler’s contract.",
+        "requirements": {
+          "syndicateRepMin": -10
+        },
+        "choices": [
+          {
+            "id": "accept",
+            "text": "Accept the clandestine job.",
+            "tags": ["smuggling"],
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {
+                  "mission_offer": "contraband_run"
+                }
+              }
+            }
+          },
+          {
+            "id": "ignore",
+            "text": "Ignore the signal.",
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {}
+              }
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "ancient_beacon",
+        "category": "rare_story",
+        "rarity": 0.003,
+        "description": "A faint alien beacon pulses across subspace, calling you closer.",
+        "choices": [
+          {
+            "id": "approach",
+            "text": "Move toward the beacon.",
+            "tags": ["exploration"],
+            "outcomes": {
+              "success": {
+                "chance": 0.6,
+                "effects": {
+                  "artifact": "unknown",
+                  "repChanges": {
+                    "researcher": 3
+                  }
+                }
+              },
+              "failure": {
+                "chance": 0.4,
+                "effects": {
+                  "damage": "medium"
+                }
+              }
+            }
+          },
+          {
+            "id": "mark_location",
+            "text": "Record the beacon’s coordinates for later.",
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {
+                  "log": "beacon_marked"
+                }
+              }
+            }
+          },
+          {
+            "id": "leave",
+            "text": "Leave the anomaly alone.",
+            "outcomes": {
+              "success": {
+                "chance": 1.0,
+                "effects": {}
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

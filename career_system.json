@@ -1,0 +1,319 @@
+{
+  "careers": [
+    {
+      "id": "trader",
+      "name": "Trader",
+      "description": "Buy low, sell high. Manipulate markets, move goods, and build commercial influence.",
+      "coreStats": {
+        "relevant": ["merchantSkill", "sensorStrength", "cargoSpace"],
+        "riskStats": ["evasion", "shieldStrength"]
+      },
+      "actions": [
+        "buy_goods",
+        "sell_goods",
+        "take_trade_contract",
+        "check_market_trends",
+        "negotiate_prices"
+      ],
+      "missions": [
+        {
+          "id": "contract_delivery",
+          "name": "Delivery Contract",
+          "description": "Deliver goods to another system within a time limit.",
+          "riskLevel": "low",
+          "baseReward": 350,
+          "reputationEffects": {
+            "merchant": 2,
+            "navy": 0,
+            "pirate": -1,
+            "syndicate": 0,
+            "miner": 0,
+            "researcher": 0
+          }
+        },
+        {
+          "id": "speculation_run",
+          "name": "Speculation Run",
+          "description": "Buy a trending commodity and sell it before the price crashes.",
+          "riskLevel": "medium",
+          "baseReward": 0,
+          "dynamicReward": "market_surge_multiplier"
+        }
+      ],
+      "illegal": false,
+      "alignment": "neutral"
+    },
+
+    {
+      "id": "miner",
+      "name": "Miner",
+      "description": "Extract resources from asteroids, gas giants, ruins, and anomalies.",
+      "coreStats": {
+        "relevant": ["miningYield", "enginePower", "sensorStrength"],
+        "riskStats": ["shieldStrength", "repairRate"]
+      },
+      "actions": [
+        "mine_asteroids",
+        "deploy_drones",
+        "harvest_gas",
+        "survey_rich_fields"
+      ],
+      "missions": [
+        {
+          "id": "mining_contract",
+          "name": "Mining Contract",
+          "description": "Mine specific minerals for a faction.",
+          "riskLevel": "low",
+          "baseReward": 200,
+          "reputationEffects": {
+            "merchant": 0,
+            "navy": 0,
+            "pirate": 0,
+            "syndicate": 0,
+            "miner": 3,
+            "researcher": 0
+          }
+        },
+        {
+          "id": "deep_core_mining",
+          "name": "Deep-Core Extraction",
+          "description": "Risky mining of rare minerals in a dangerous zone.",
+          "riskLevel": "high",
+          "baseReward": 700,
+          "dangerModifiers": ["radiation", "unstable_rocks"]
+        }
+      ],
+      "illegal": false,
+      "alignment": "neutral"
+    },
+
+    {
+      "id": "smuggler",
+      "name": "Smuggler",
+      "description": "Run illegal goods past law enforcement, use stealth, and make massive profit with high risk.",
+      "coreStats": {
+        "relevant": ["stealth", "evasion", "merchantSkill"],
+        "riskStats": ["shieldStrength", "morale"]
+      },
+      "actions": [
+        "run_blockade",
+        "bribe_official",
+        "hide_cargo",
+        "enter_black_market"
+      ],
+      "missions": [
+        {
+          "id": "contraband_run",
+          "name": "Contraband Run",
+          "description": "Deliver illegal goods to a black market.",
+          "riskLevel": "high",
+          "baseReward": 1200,
+          "reputationEffects": {
+            "merchant": -1,
+            "navy": -4,
+            "pirate": 3,
+            "syndicate": 4,
+            "miner": 0,
+            "researcher": 0
+          }
+        },
+        {
+          "id": "undercover_delivery",
+          "name": "Undercover Drop",
+          "description": "Deliver encrypted package to a Syndicate contact.",
+          "riskLevel": "medium",
+          "baseReward": 700
+        }
+      ],
+      "illegal": true,
+      "alignment": "chaos"
+    },
+
+    {
+      "id": "pirate",
+      "name": "Pirate",
+      "description": "Attack civilian ships, steal cargo, demand tribute, and carve out a violent life.",
+      "coreStats": {
+        "relevant": ["weaponDamage", "boardingSkill", "intimidation"],
+        "riskStats": ["hullIntegrity", "shieldStrength"]
+      },
+      "actions": [
+        "scan_for_targets",
+        "ambush_trader",
+        "board_ship",
+        "demand_tribute"
+      ],
+      "missions": [
+        {
+          "id": "raid_caravan",
+          "name": "Raid Supply Caravan",
+          "description": "Ambush a merchant convoy.",
+          "riskLevel": "high",
+          "baseReward": "loot_based",
+          "dangerModifiers": ["navy_response"]
+        },
+        {
+          "id": "intimidation_run",
+          "name": "Tribute Demand",
+          "description": "Force a small ship to surrender goods.",
+          "riskLevel": "low",
+          "baseReward": 150
+        }
+      ],
+      "illegal": true,
+      "alignment": "chaos"
+    },
+
+    {
+      "id": "bounty_hunter",
+      "name": "Bounty Hunter",
+      "description": "Hunt criminals, track fugitives, and bring targets in dead or alive.",
+      "coreStats": {
+        "relevant": ["weaponDamage", "sensorStrength", "enginePower"],
+        "riskStats": ["hullIntegrity", "repairRate"]
+      },
+      "actions": [
+        "check_bounty_board",
+        "track_target",
+        "engage_criminal",
+        "bring_in_target"
+      ],
+      "missions": [
+        {
+          "id": "low_value_bounty",
+          "name": "Low-Value Target",
+          "description": "Capture a small-time smuggler.",
+          "riskLevel": "low",
+          "baseReward": 200,
+          "reputationEffects": {
+            "navy": 2,
+            "merchant": 1,
+            "pirate": -2
+          }
+        },
+        {
+          "id": "high_value_fugitive",
+          "name": "High-Value Fugitive",
+          "description": "Track and eliminate a dangerous war criminal.",
+          "riskLevel": "very_high",
+          "baseReward": 1200,
+          "dangerModifiers": ["target_ship_upgrades", "escape_attempts"]
+        }
+      ],
+      "illegal": false,
+      "alignment": "law"
+    },
+
+    {
+      "id": "navy",
+      "name": "Navy Officer",
+      "description": "Serve the government, patrol borders, escort fleets, and uphold the law.",
+      "coreStats": {
+        "relevant": ["weaponDamage", "shieldStrength", "enginePower"],
+        "riskStats": ["hullIntegrity", "morale"]
+      },
+      "actions": [
+        "patrol_sector",
+        "inspect_ship",
+        "escort_convoy",
+        "fight_pirates"
+      ],
+      "missions": [
+        {
+          "id": "sector_patrol",
+          "name": "Sector Patrol",
+          "description": "Scan ships and enforce the law.",
+          "riskLevel": "medium",
+          "baseReward": 300,
+          "reputationEffects": {
+            "navy": 3,
+            "merchant": 1,
+            "pirate": -3
+          }
+        },
+        {
+          "id": "frontline_conflict",
+          "name": "Frontline Conflict",
+          "description": "Join a battle in a contested sector.",
+          "riskLevel": "very_high",
+          "baseReward": 800
+        }
+      ],
+      "illegal": false,
+      "alignment": "law"
+    },
+
+    {
+      "id": "explorer",
+      "name": "Explorer",
+      "description": "Chart the unknown, study anomalies, and uncover ancient ruins.",
+      "coreStats": {
+        "relevant": ["sensorStrength", "scienceSkill", "enginePower"],
+        "riskStats": ["hullIntegrity", "repairRate"]
+      },
+      "actions": [
+        "scan_anomaly",
+        "chart_sector",
+        "investigate_signal",
+        "study_ruin"
+      ],
+      "missions": [
+        {
+          "id": "scan_wormhole",
+          "name": "Wormhole Survey",
+          "description": "Analyze a newly opened wormhole.",
+          "riskLevel": "high",
+          "baseReward": 500,
+          "reputationEffects": {
+            "researcher": 4
+          }
+        },
+        {
+          "id": "ancient_ruin",
+          "name": "Ancient Ruin Dive",
+          "description": "Explore the remnants of a lost civilization.",
+          "riskLevel": "very_high",
+          "baseReward": 1000,
+          "rareFindChance": 0.2
+        }
+      ],
+      "illegal": false,
+      "alignment": "neutral"
+    },
+
+    {
+      "id": "salvager",
+      "name": "Salvager",
+      "description": "Scour the galaxy for derelicts, wrecks, and hidden tech.",
+      "coreStats": {
+        "relevant": ["tractorBeamPower", "sensorStrength", "repairRate"],
+        "riskStats": ["hullIntegrity"]
+      },
+      "actions": [
+        "scan_for_wrecks",
+        "board_derelict",
+        "salvage_components",
+        "tow_ship"
+      ],
+      "missions": [
+        {
+          "id": "wreck_salvage",
+          "name": "Wreck Salvage",
+          "description": "Strip components from a destroyed freighter.",
+          "riskLevel": "medium",
+          "baseReward": 350
+        },
+        {
+          "id": "derelict_flagship",
+          "name": "Derelict Flagship",
+          "description": "Explore a massive drifting warship.",
+          "riskLevel": "very_high",
+          "baseReward": 900,
+          "hazards": ["rogue_ai", "electrical_arcs", "unstable_hull"]
+        }
+      ],
+      "illegal": false,
+      "alignment": "neutral"
+    }
+  ]
+}
