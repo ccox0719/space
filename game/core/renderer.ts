@@ -308,6 +308,7 @@ export function render() {
             <button class="btn btn-primary" id="devGodMode">Toggle God Mode</button>
             <button class="btn btn-ghost" id="devPersistEvents">Save Event Cache</button>
             <button class="btn btn-ghost" id="devClearEvents">Clear Event Cache</button>
+            <button class="btn btn-ghost" id="devHardReset">Hard Reset Game</button>
           </div>
       </section>
     </div>
@@ -334,6 +335,7 @@ function wireDevPanel() {
   const navShip = document.getElementById("navShip");
   const btnPersistEvents = document.getElementById("devPersistEvents");
   const btnClearEvents = document.getElementById("devClearEvents");
+  const btnHardReset = document.getElementById("devHardReset");
   const sliderInputs = panel?.querySelectorAll<HTMLInputElement>("input[data-dev-path]");
 
   const togglePanel = () => {
@@ -410,6 +412,16 @@ function wireDevPanel() {
   btnClearEvents?.addEventListener("click", () => {
     clearEventCache();
     alert("Event cache cleared. Future loads use the bundled data.");
+  });
+
+  btnHardReset?.addEventListener("click", () => {
+    const confirmed = window.confirm(
+      "This will clear saved state (local+session storage) and reload the page. Continue?"
+    );
+    if (!confirmed) return;
+    window.localStorage?.clear();
+    window.sessionStorage?.clear();
+    window.location.reload();
   });
 
   if (!devHotkeyAttached) {
