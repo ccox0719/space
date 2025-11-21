@@ -11,7 +11,228 @@ import { ShipSelectScreen } from "../screens/ui_ship_select";
 import { WeaponSlotsScreen } from "../screens/ui_weapon_slots";
 import { WeaponSelectScreen } from "../screens/ui_weapon_select";
 import { MiningScreen } from "../screens/ui_mining";
-import { gameState } from "./state";
+import { GameOverScreen } from "../screens/ui_gameover";
+import { startCombat } from "../systems/combatSystem";
+import { startMiningSession } from "../systems/miningSystem";
+import {
+  devTune,
+  persistDevTune,
+  gameState,
+  DEFAULT_DEV_TUNE,
+  resetCombatTuning
+} from "./state";
+import { persistCurrentEvents, clearEventCache } from "../systems/eventSystem";
+
+type DevControl = {
+  path: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  formatter: (value: number) => string;
+};
+
+const DEV_CONTROL_SECTIONS: { title: string; controls: DevControl[] }[] = [
+  {
+    title: "Global",
+    controls: [
+      {
+        path: "combat.globalIncomeMultiplier",
+        label: "Global Income Multiplier",
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "combat.globalDangerMultiplier",
+        label: "Global Danger Multiplier",
+        min: 0,
+        max: 3,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      }
+    ]
+  },
+  {
+    title: "Travel & Encounters",
+    controls: [
+      {
+        path: "combat.encounterChancePerJump",
+        label: "Encounter Chance / Jump",
+        min: 0,
+        max: 200,
+        step: 5,
+        formatter: (value) => `${value.toFixed(0)}%`
+      },
+      {
+        path: "combat.pirateEncounterRateBase",
+        label: "Pirate Encounter Weight",
+        min: 0,
+        max: 100,
+        step: 1,
+        formatter: (value) => `${value.toFixed(0)}%`
+      },
+      {
+        path: "combat.nonPirateEventWeight",
+        label: "Non-Pirate Event Weight",
+        min: 0,
+        max: 3,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      }
+    ]
+  },
+  {
+    title: "Combat",
+    controls: [
+      {
+        path: "combat.enemyHpMultiplier",
+        label: "Enemy HP Multiplier",
+        min: 0.25,
+        max: 5,
+        step: 0.05,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "combat.enemyDamageMultiplier",
+        label: "Enemy Damage Multiplier",
+        min: 0.25,
+        max: 5,
+        step: 0.05,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "combat.creditsRewardMultiplier",
+        label: "Combat Credits Reward",
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      }
+    ]
+  },
+  {
+    title: "Economy",
+    controls: [
+      {
+        path: "miningYieldMultiplier",
+        label: "Mining Yield Multiplier",
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "tradeProfitMultiplier",
+        label: "Trade Profit Multiplier",
+        min: 0.1,
+        max: 3,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "contractPayoutMultiplier",
+        label: "Contract Payout Multiplier",
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      }
+    ]
+  },
+  {
+    title: "Debug",
+    controls: [
+      {
+        path: "combat.showEncounterDebug",
+        label: "Show Encounter Debug",
+        min: 0,
+        max: 1,
+        step: 1,
+        formatter: (value) => (value ? "On" : "Off")
+      }
+    ]
+  }
+];
+
+const DEV_CONTROL_MAP = DEV_CONTROL_SECTIONS.flatMap((section) => section.controls).reduce<
+  Record<string, DevControl>
+>((acc, control) => {
+  acc[control.path] = control;
+  return acc;
+}, {} as Record<string, DevControl>);
+
+function getDevValue(path: string): number {
+  const parts = path.split(".");
+  let current: any = devTune;
+  for (const part of parts) {
+    if (current == null) return 0;
+    current = current[part];
+  }
+  return typeof current === "number" ? current : 0;
+}
+
+function setDevValue(path: string, value: number): void {
+  const parts = path.split(".");
+  let current: any = devTune;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    current[part] = current[part] ?? {};
+    current = current[part];
+  }
+  current[parts[parts.length - 1]] = value;
+}
+
+declare global {
+  interface Window {
+    devCombat?: (enemyId?: string) => void;
+    devMining?: () => void;
+  }
+}
+
+window.devCombat = (enemyId: string = "pirate_cutter") => {
+  startCombat(enemyId);
+};
+
+window.devMining = () => {
+  startMiningSession(gameState, gameState.location.systemId);
+  navigation.go("mining");
+};
+
+function renderDevControlSections(): string {
+  return DEV_CONTROL_SECTIONS.map((section) => {
+    const controlsHtml = section.controls
+      .map(
+        (control) => `
+        <div class="dev-control">
+          <div class="dev-control__label">
+            <span>${control.label}</span>
+            <span class="dev-control__value" id="devValue-${control.path.replace(/\./g, "__")}">
+              ${control.formatter(getDevValue(control.path))}
+            </span>
+          </div>
+          <input
+            type="range"
+            data-dev-path="${control.path}"
+            min="${control.min}"
+            max="${control.max}"
+            step="${control.step}"
+            value="${getDevValue(control.path)}"
+          />
+        </div>
+      `
+      )
+      .join("");
+
+    return `
+      <section class="dev-section">
+        <h3>${section.title}</h3>
+        ${controlsHtml}
+      </section>
+    `;
+  }).join("");
+}
 
 export function render() {
   const app = document.getElementById("app");
@@ -56,21 +277,43 @@ export function render() {
     case "mining":
       html = MiningScreen();
       break;
+    case "gameover":
+      html = GameOverScreen();
+      break;
   }
+
+  const backButton =
+    navigation.current !== "main"
+      ? `
+        <div class="menu-back">
+          <button class="btn btn-ghost btn-small" onclick="nav('main')">Back</button>
+        </div>
+      `
+      : "";
 
   const devPanel = `
     <div id="devPanel" class="dev-panel hidden">
-      <h2>Developer Tools</h2>
-      <button class="btn btn-primary" id="devSpawnPirates">Spawn Pirate Encounter</button>
-      <button class="btn btn-primary" id="devTriggerMining">Trigger Mining Event</button>
-      <button class="btn btn-primary" id="devAddCredits">+1000 Credits</button>
-      <button class="btn btn-primary" id="devFillCargo">Fill Cargo</button>
-      <button class="btn btn-primary" id="devGodMode">Toggle God Mode</button>
-      <button class="btn btn-ghost" id="devClose">Close</button>
+      <div class="dev-panel-header">
+        <h2>Balance Control Panel</h2>
+        <button class="btn btn-ghost dev-close" id="devClose">Close</button>
+      </div>
+      ${renderDevControlSections()}
+      <section class="dev-section">
+        <h3>Quick Actions</h3>
+          <div class="dev-actions">
+            <button class="btn btn-primary" id="devSpawnPirates">Spawn Pirate Encounter</button>
+            <button class="btn btn-primary" id="devTriggerMining">Trigger Mining Event</button>
+            <button class="btn btn-primary" id="devAddCredits">+1000 Credits</button>
+            <button class="btn btn-primary" id="devFillCargo">Fill Cargo</button>
+            <button class="btn btn-primary" id="devGodMode">Toggle God Mode</button>
+            <button class="btn btn-ghost" id="devPersistEvents">Save Event Cache</button>
+            <button class="btn btn-ghost" id="devClearEvents">Clear Event Cache</button>
+          </div>
+      </section>
     </div>
   `;
 
-  app.innerHTML = `${html}${devPanel}`;
+  app.innerHTML = `${backButton}${html}${devPanel}`;
   wireDevPanel();
 }
 
@@ -89,11 +332,34 @@ function wireDevPanel() {
   const navTravel = document.getElementById("navTravel");
   const navMarket = document.getElementById("navMarket");
   const navShip = document.getElementById("navShip");
+  const btnPersistEvents = document.getElementById("devPersistEvents");
+  const btnClearEvents = document.getElementById("devClearEvents");
+  const sliderInputs = panel?.querySelectorAll<HTMLInputElement>("input[data-dev-path]");
 
   const togglePanel = () => {
     if (!panel) return;
     panel.classList.toggle("hidden");
   };
+
+  const updateValueLabel = (path: string) => {
+    const control = DEV_CONTROL_MAP[path];
+    const valueEl = document.getElementById(`devValue-${path.replace(/\./g, "__")}`);
+    if (control && valueEl) {
+      valueEl.textContent = control.formatter(getDevValue(path));
+    }
+  };
+
+  sliderInputs?.forEach((input) => {
+    const applySlider = () => {
+      const path = input.dataset.devPath;
+      if (!path) return;
+      const value = Number(input.value);
+      setDevValue(path, value);
+      persistDevTune();
+      updateValueLabel(path);
+    };
+    input.addEventListener("input", applySlider);
+  });
 
   navDev?.addEventListener("click", togglePanel);
   closeBtn?.addEventListener("click", () => panel?.classList.add("hidden"));
@@ -136,10 +402,23 @@ function wireDevPanel() {
     alert(`God Mode: ${devGodMode ? "On" : "Off"}`);
   });
 
+  btnPersistEvents?.addEventListener("click", () => {
+    persistCurrentEvents();
+    alert("Events cached locally. Future loads will honor this list.");
+  });
+
+  btnClearEvents?.addEventListener("click", () => {
+    clearEventCache();
+    alert("Event cache cleared. Future loads use the bundled data.");
+  });
+
   if (!devHotkeyAttached) {
     document.addEventListener("keydown", (e) => {
       if (e.key === "`") {
         togglePanel();
+      }
+      if (e.key === "Escape" && navigation.current !== "main") {
+        window.nav?.("main");
       }
     });
     devHotkeyAttached = true;

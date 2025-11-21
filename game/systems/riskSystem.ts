@@ -1,5 +1,6 @@
 import { content } from "../core/engine";
 import type { GameState } from "../core/state";
+import { devTune, getCombatTune } from "../core/state";
 import { getCargoValue, getBuySellPrices, getCommodityById } from "./economySystem";
 import { computeDayPressure } from "./difficultySystem";
 import { systemHasTag } from "./systemHelpers";
@@ -18,6 +19,7 @@ export function computePirateChance(ctx: PirateRiskContext): number {
   const { systemId, state, sessionFactor } = ctx;
   const system = content?.systems.find((s) => s.id === systemId);
   const security = system?.security ?? "medium";
+  const combatTune = getCombatTune();
 
   let baseRisk: number;
   switch (security) {
@@ -41,11 +43,16 @@ export function computePirateChance(ctx: PirateRiskContext): number {
   }
 
   const cargoValue = getCargoValue(state, systemId);
-  const cargoRisk = Math.min(0.15, cargoValue / 5000);
+  const cargoRisk = Math.min(0.15, cargoValue / 5000) * Math.max(0, combatTune.pirateCargoValueSensitivity ?? 1);
   const marginBonus = computeMarginBonus(state, systemId);
   const sessionRisk = sessionFactor * 0.03;
 
-  let chance = baseRisk + cargoRisk + sessionRisk + marginBonus;
+  const pirateBase = Math.max(0, Math.min(1, (combatTune.pirateEncounterRateBase ?? 0) / 100));
+  const legacyExtraPirate = Math.max(0, Math.min(1, ((devTune as any).pirateEncounterRate ?? 0) / 100));
+
+  const encounterScale = Math.max(0, (combatTune.encounterChancePerJump ?? 100) / 100);
+  const dangerMult = Math.max(0, combatTune.globalDangerMultiplier ?? 1);
+  let chance = (baseRisk + cargoRisk + sessionRisk + marginBonus + pirateBase + legacyExtraPirate) * dangerMult * encounterScale;
   return clampPirateChance(chance, state, systemId);
 }
 

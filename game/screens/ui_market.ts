@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import { getSystemById } from "../core/engine";
 import {
   buyCommodity,
@@ -11,15 +12,16 @@ import {
   MarketPriceQuote,
   sellCommodity,
   getActiveEventsForSystem,
-  getAllActiveMarketEvents,
   captureNeighborIntel,
   getNeighborIntel
 } from "../systems/economySystem";
+import { getActiveContracts } from "../systems/missionSystem";
+import { getActiveContracts } from "../systems/missionSystem";
 
 const TREND_ICONS: Record<MarketPriceQuote["trend"], string> = {
-  high: "🔺",
-  low: "🔻",
-  stable: "↔️"
+  high: "^",
+  low: "v",
+  stable: "-"
 };
 
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
@@ -72,32 +74,155 @@ export function MarketScreen(): string {
   }
 
   const cargoLoad = Object.values(gameState.ship.cargo || {}).reduce((sum, qty) => sum + qty, 0);
+  const cargoItems = Object.entries(gameState.ship.cargo || {})
+    .filter(([, qty]) => qty > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const contractTargets = new Map<string, { needed: number; deliverable: boolean }>();
+  getActiveContracts()
+    .filter((contract) => contract.status === "active")
+    .forEach((contract) => {
+      const deliverReq = contract.requirements?.deliver as
+        | { commodityId?: string; quantity?: number; systemId?: string }
+        | undefined;
+      if (!deliverReq?.commodityId) return;
+      const prev = contractTargets.get(deliverReq.commodityId) ?? {
+        needed: 0,
+        deliverable: false
+      };
+      const hasCargo = getCargoCount(deliverReq.commodityId) >= (deliverReq.quantity || 0);
+      const inSystem =
+        !deliverReq.systemId || deliverReq.systemId === gameState.location.systemId;
+      contractTargets.set(deliverReq.commodityId, {
+        needed: prev.needed + (deliverReq.quantity || 0),
+        deliverable: prev.deliverable || (inSystem && hasCargo)
+      });
+    });
+  const entries = commodities.map((commodity) => {
+    const quote = getBuySellPrices(system.id, commodity.id);
+    const tags = formatTags(commodity.tradeTags?.length ? commodity.tradeTags : commodity.tags);
+    const cargoQty = getCargoCount(commodity.id);
+    const metaLine = buildMetaLine(commodity, cargoQty);
+    const maxBuyable = computeMaxBuyable(quote.buy, cargoLoad, commodity.id);
+    return {
+      commodity,
+      quote,
+      tags,
+      cargoQty,
+      metaLine,
+      maxBuyable,
+      profit: quote.sell - quote.buy
+    };
+  });
+  const bestTradeId =
+    entries.reduce(
+      (best, entry) => (entry.profit > best.value ? { id: entry.commodity.id, value: entry.profit } : best),
+      { id: entries[0]?.commodity.id ?? "", value: Number.NEGATIVE_INFINITY }
+    ).id;
 
-  const rows = commodities
-    .map((commodity) => {
-      const quote = getBuySellPrices(system.id, commodity.id);
-      const tags = formatTags(commodity.tradeTags?.length ? commodity.tradeTags : commodity.tags);
+  const cards = entries
+    .map(({ commodity, quote, tags, cargoQty, metaLine, maxBuyable }) => {
       const buyDisabled = canBuy(system.id, commodity.id, 1) ? "" : " disabled";
       const sellDisabled = canSell(system.id, commodity.id, 1) ? "" : " disabled";
-      const cargoQty = getCargoCount(commodity.id);
-      const maxBuyable = computeMaxBuyable(quote.buy, cargoLoad, commodity.id);
-      const metaLine = buildMetaLine(commodity, cargoQty);
+      const contractInfo = contractTargets.get(commodity.id);
+      const highlightClasses: string[] = [];
+      if (commodity.id === bestTradeId) highlightClasses.push("market-card--highlight");
+      if (contractInfo) {
+        highlightClasses.push(
+          contractInfo.deliverable
+            ? "market-card--contract-ready"
+            : "market-card--contract-target"
+        );
+      }
+      const highlightClass = highlightClasses.length ? ` ${highlightClasses.join(" ")}` : "";
+      const contractPill = contractInfo
+        ? `<span class="contract-pill${contractInfo.deliverable ? " ready" : ""}">${
+            contractInfo.deliverable ? "Deliver now" : "Needed"
+          }</span>`
+        : "";
       return `
-        <div class="panel-card">
-          <p class="label">${tags || "Local goods"}</p>
-          <p class="value-inline"><strong>${commodity.name}</strong></p>
-          <p class="muted">Buy ${quote.buy} cr · Sell ${quote.sell} cr · ${TREND_ICONS[quote.trend]} ${quote.trend}</p>
-          <div class="muted">${metaLine}</div>
-          <div class="app-actions">
+        <article class="market-card${highlightClass}">
+          <div class="market-card__header">
+            <strong>${commodity.name}</strong>
+            <div>
+              <span class="muted">${tags || "Local goods"}</span>
+              ${contractPill}
+            </div>
+          </div>
+          <div class="market-card__prices">
+            <span>BUY: ${quote.buy} cr</span>
+            <span>SELL: ${quote.sell} cr</span>
+            <span class="market-card__trend">${TREND_ICONS[quote.trend]} ${quote.trend}</span>
+          </div>
+          <div class="market-card__meta">
+            <span>Held ${cargoQty}</span>
+            <span>${metaLine}</span>
+          </div>
+          <div class="market-card__actions app-actions">
             <button class="btn btn-primary"${buyDisabled} onclick="buyCommodityAction('${commodity.id}')">Buy 1</button>
             <button class="btn btn-primary"${buyDisabled || maxBuyable <= 1 ? " disabled" : ""} onclick="buyAllCommodityAction('${commodity.id}', ${quote.buy})">Buy Max (${maxBuyable})</button>
             <button class="btn btn-ghost"${sellDisabled} onclick="sellCommodityAction('${commodity.id}')">Sell 1</button>
             <button class="btn btn-ghost"${sellDisabled || cargoQty <= 1 ? " disabled" : ""} onclick="sellAllCommodityAction('${commodity.id}')">Sell All (${cargoQty})</button>
           </div>
-        </div>
+          ${commodity.id === bestTradeId ? `<span class="market-card__badge">Top Profit</span>` : ""}
+        </article>
       `;
     })
     .join("");
+
+  const summaryCard = `
+    <div class="panel-card market-summary-card">
+      <p class="label">Market Overview</p>
+      <div class="market-summary__rows">
+        <div>
+          <span>System</span>
+          <strong>${system.name}</strong>
+        </div>
+        <div>
+          <span>Day</span>
+          <strong>${gameState.time.day}</strong>
+        </div>
+        <div>
+          <span>Turn</span>
+          <strong>${formatTurn(gameState.time.turn)}</strong>
+        </div>
+        <div>
+          <span>Credits</span>
+          <strong>${gameState.player.credits}</strong>
+        </div>
+        <div>
+          <span>Fuel</span>
+          <strong>${gameState.ship.fuel}/${gameState.ship.maxFuel}</strong>
+        </div>
+        <div>
+          <span>Cargo</span>
+          <strong>${cargoLoad}/${gameState.ship.cargoCapacity}</strong>
+        </div>
+        <div>
+          <span>Wanted</span>
+          <strong>${gameState.player.wanted}</strong>
+        </div>
+      </div>
+      <p id="market-message" class="muted market-summary__message">
+        Credits: ${gameState.player.credits} | Cargo: ${formatCargoSummary()}
+      </p>
+      <div class="market-summary__cargo">
+        ${
+          cargoItems.length
+            ? cargoItems
+                .map(([commodityId, qty]) => {
+                  const def = getCommodityById(commodityId);
+                  const mass = def?.mass ?? 0;
+                  const massText = mass ? ` (Mass ${Math.round(mass * qty)})` : "";
+                  return `<span>${qty} × ${def?.name || commodityId}${massText}</span>`;
+                })
+                .join("")
+            : '<span class="muted">Cargo empty</span>'
+        }
+      </div>
+      <button class="market-summary__cargo-link" onclick="nav('ship')">View full cargo</button>
+    </div>
+  `;
 
   return `
     <div class="app-root">
@@ -108,39 +233,19 @@ export function MarketScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 
-      <section class="app-stats">
-        <div class="stat-pill">
-          <span class="stat-label">Credits</span>
-          <span class="stat-value">${gameState.player.credits}</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">Fuel</span>
-          <span class="stat-value">${gameState.ship.fuel}/${gameState.ship.maxFuel}</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">Cargo</span>
-          <span class="stat-value">${cargoLoad}/${gameState.ship.cargoCapacity}</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">Wanted</span>
-          <span class="stat-value">${gameState.player.wanted}</span>
-        </div>
-      </section>
-
       <main class="app-main">
-        <section class="data-panel">
-          <h1 class="panel-title">Current Quotes</h1>
-          <p id="market-message" class="muted">
-            Credits: ${gameState.player.credits} | Cargo: ${formatCargoSummary()}
-          </p>
-          ${renderMarketEvents(system.id)}
-          ${renderIntelSection(system)}
-          <div class="panel-row">
-            ${rows}
+        <section class="data-panel market-container">
+          <aside class="market-sidebar">
+            ${summaryCard}
+            ${renderMarketEvents(system.id)}
+            ${renderIntelSection(system)}
+          </aside>
+          <div class="market-grid">
+            ${cards}
           </div>
         </section>
       </main>
@@ -163,19 +268,32 @@ function formatCargoSummary(): string {
 
 function renderMarketEvents(systemId: string): string {
   const events = getActiveEventsForSystem(systemId);
-  if (!events.length) return "";
+  if (!events.length) {
+    return `
+      <div class="panel-card market-events-card">
+        <p class="label">Market Events</p>
+        <p class="muted">No active market events.</p>
+      </div>
+    `;
+  }
   const items = events
     .map(
       (ev) => `
-      <div class="panel-card">
-        <p class="label">Market Event</p>
+      <div class="market-event">
         <p class="value-inline">${ev.label || `${ev.commodityId || "local goods"} x${ev.multiplier}`}</p>
-        <p class="muted">Expires in ${Math.max(0, ev.expiresAtTurn - gameState.time.turn)} turns</p>
+        <p class="muted">Expires in ${Math.max(0, (ev.expiresAtTurn ?? 0) - gameState.time.turn)} turns</p>
       </div>
     `
     )
     .join("");
-  return `<div class="panel-row">${items}</div>`;
+  return `
+    <div class="panel-card market-events-card">
+      <p class="label">Market Events</p>
+      <div class="market-event__list">
+        ${items}
+      </div>
+    </div>
+  `;
 }
 
 function renderIntelSection(system: ReturnType<typeof getSystemById>): string {
@@ -247,7 +365,7 @@ function computeMaxBuyable(price: number, currentLoad: number, commodityId: stri
 function formatTags(tags: string[] | undefined): string {
   if (!tags?.length) return "";
   const unique = Array.from(new Set(tags));
-  return unique.map((t) => titleCase(t.replace(/_/g, " "))).join(" · ");
+  return unique.map((t) => titleCase(t.replace(/_/g, " "))).join(" | ");
 }
 
 function buildMetaLine(
@@ -259,7 +377,7 @@ function buildMetaLine(
   const mass = typeof commodity.mass === "number" ? `${commodity.mass}t` : null;
   const parts = [`Held ${cargoQty}`, `Tier ${tier}`, legality];
   if (mass) parts.push(`Mass ${mass}`);
-  return parts.join(" · ");
+  return parts.join(" | ");
 }
 
 function titleCase(text: string): string {

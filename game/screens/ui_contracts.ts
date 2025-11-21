@@ -7,7 +7,9 @@ import {
   describeMission,
   getMissionProgress
 } from "../systems/missionSystem";
+import { getWeaponById } from "../systems/weaponSystem";
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
 declare const acceptContract: (missionId: string) => void;
@@ -62,7 +64,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 
@@ -107,7 +109,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
 }
 
 function formatReward(
-  reward?: { credits?: number; rep?: Record<string, number> }
+  reward?: { credits?: number; rep?: Record<string, number>; weapon?: string }
 ): string {
   if (!reward) return "None";
   const parts: string[] = [];
@@ -117,6 +119,10 @@ function formatReward(
       .map(([faction, value]) => `${faction} ${value > 0 ? "+" : ""}${value}`)
       .join(", ");
     parts.push(`Rep: ${repText}`);
+  }
+  if (reward.weapon) {
+    const weaponName = getWeaponById(reward.weapon)?.name || reward.weapon;
+    parts.push(`Weapon: ${weaponName}`);
   }
   return parts.join(" | ") || "None";
 }

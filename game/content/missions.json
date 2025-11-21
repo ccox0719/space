@@ -8,7 +8,7 @@
     "requirements": {
       "deliver": {
         "systemId": "argent_gate",
-        "commodityId": "food",
+      "commodityId": "medical_supplies",
         "quantity": 3
       }
     },
@@ -58,7 +58,7 @@
     "requirements": {
       "deliver": {
         "systemId": "dawn_reach",
-        "commodityId": "ore",
+        "commodityId": "steel_ingots",
         "quantity": 4
       },
       "failureAfterTurns": 7
@@ -163,9 +163,9 @@
       { "id": "investigate_field", "description": "Scan the debris field for survivors." },
       { "id": "escort_survivor", "description": "Escort the damaged vessel back to friendly space." }
     ],
-    "rewards": {
+    "reward": {
       "credits": 500,
-      "reputation": { "faction": "helion_republic", "amount": 5 }
+      "rep": { "helion_republic": 5 }
     }
   },
   {
@@ -177,7 +177,7 @@
       { "id": "decode", "description": "Find a decoder capable of interpreting the fragment." },
       { "id": "hunt_sources", "description": "Locate other fragments scattered across pirate sectors." }
     ],
-    "rewards": {
+    "reward": {
       "credits": 300,
       "weapon": "ion_disruptor"
     }

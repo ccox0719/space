@@ -66,60 +66,119 @@ export function ShipyardScreen(): string {
   const shipsHtml =
     ships.length === 0
       ? `<p class="muted">No ships are currently for sale.</p>`
-      : ships
-          .map(
-            (s) => `
-        <div class="panel-card">
-          <p class="label">${s.roleHint}</p>
-          <p class="value-inline"><strong>${s.name}</strong></p>
-          <p class="muted">${s.description}</p>
-          <p class="muted">Hull: ${s.hull} | Shields: ${s.shields} | Fuel: ${s.fuel} | Cargo: ${s.cargo}</p>
-          <p><strong>Cost:</strong> ${s.cost} cr</p>
-          <button class="btn btn-primary" onclick="buyShipAction('${s.id}')">Buy & Replace</button>
-        </div>
-      `
-          )
-          .join("");
+      : `
+        <table class="shipyard-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Name</th>
+              <th>Stats</th>
+              <th>Cost</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ships
+              .map(
+                (s) => `
+                  <tr>
+                    <td>${s.roleHint}</td>
+                    <td>
+                      <strong>${s.name}</strong>
+                      <p class="muted">${s.description}</p>
+                    </td>
+                    <td class="muted">Hull ${s.hull} · Shields ${s.shields} · Fuel ${s.fuel} · Cargo ${s.cargo}</td>
+                    <td class="numeric">${s.cost} cr</td>
+                    <td class="actions-cell">
+                      <button class="btn btn-primary" onclick="buyShipAction('${s.id}')">Buy & Replace</button>
+                    </td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
 
   const compsHtml =
     comps.length === 0
       ? `<p class="muted">No components in stock.</p>`
-      : comps
-          .map(
-            (c) => `
-        <div class="panel-card">
-          <p class="label">Component</p>
-          <p class="value-inline"><strong>${c.name}</strong></p>
-          <p class="muted">${c.description}</p>
-          <p class="muted">Effect: +${c.value} ${c.effectType}</p>
-          <p><strong>Cost:</strong> ${c.cost} cr</p>
-          <button class="btn btn-primary" onclick="buyComponentAction('${c.id}')">Buy & Install</button>
-        </div>
-      `
-          )
-          .join("");
+      : `
+        <table class="shipyard-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Effect</th>
+              <th>Description</th>
+              <th>Cost</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${comps
+              .map(
+                (c) => `
+                  <tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td class="muted">+${c.value} ${c.effectType}</td>
+                    <td class="muted">${c.description}</td>
+                    <td class="numeric">${c.cost} cr</td>
+                    <td class="actions-cell">
+                      <button class="btn btn-primary" onclick="buyComponentAction('${c.id}')">Buy & Install</button>
+                    </td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
 
   const weaponsHtml =
     weapons.length === 0
       ? `<p class="muted">No weapons available.</p>`
-      : weapons
-          .map((w) => {
-            const hint = getWeaponHint(w);
-            const tagLine = hint.tagNotes.length ? `Traits: ${hint.tagNotes.join(", ")}` : "";
-            return `
-        <div class="panel-card">
-          <p class="label">${w.type} / ${w.size}</p>
-          <p class="value-inline"><strong>${w.name}</strong></p>
-          <p class="muted">Damage: ${w.damage} (${w.damageType}) · Acc: ${Math.round(w.accuracy * 100)}% · Crit: ${Math.round(w.critChance * 100)}% ×${w.critMultiplier}</p>
-          <p class="muted">Cooldown: ${w.cooldown} | Energy: ${w.energyCost}</p>
-          <p class="muted">Role: ${hint.role} (${hint.typeLabel}) — Vs Shields: ${hint.vsShields}, Vs Hull: ${hint.vsHull}</p>
-          ${tagLine ? `<p class="muted">${tagLine}</p>` : ""}
-          <p><strong>Price:</strong> ${w.price} cr</p>
-          <button class="btn btn-primary" onclick="buyWeaponAction('${w.id}')">Buy Weapon</button>
-        </div>
+      : `
+        <table class="shipyard-table">
+          <thead>
+            <tr>
+              <th>Type / Size</th>
+              <th>Name</th>
+              <th>Stats</th>
+              <th>Role</th>
+              <th>Cost</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${weapons
+              .map((w) => {
+                const hint = getWeaponHint(w);
+                const tagLine = hint.tagNotes.length ? `Traits: ${hint.tagNotes.join(", ")}` : "";
+                return `
+                  <tr>
+                    <td>${w.type} / ${w.size}</td>
+                    <td>
+                      <strong>${w.name}</strong>
+                      <p class="muted">${tagLine}</p>
+                    </td>
+                    <td class="muted">
+                      Damage: ${w.damage} (${w.damageType}) · Acc: ${Math.round(w.accuracy * 100)}% · Crit: ${Math.round(
+                        w.critChance * 100
+                      )}% ×${w.critMultiplier}<br/>
+                      Cooldown: ${w.cooldown} · Energy: ${w.energyCost}
+                    </td>
+                    <td class="muted">${hint.role} (${hint.typeLabel}) — Vs Shields: ${hint.vsShields}, Vs Hull: ${hint.vsHull}</td>
+                    <td class="numeric">${w.price} cr</td>
+                    <td class="actions-cell">
+                      <button class="btn btn-primary" onclick="buyWeaponAction('${w.id}')">Buy Weapon</button>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
       `;
-          })
-          .join("");
 
   const inventoryHtml =
     inventoryNames.length > 0
@@ -142,13 +201,13 @@ export function ShipyardScreen(): string {
       <main class="app-main">
         <section class="data-panel">
           <h1 class="panel-title">Ships for Sale</h1>
-          <div class="panel-row">${shipsHtml}</div>
+          ${shipsHtml}
 
           <h2 class="panel-title">Components & Upgrades</h2>
-          <div class="panel-row">${compsHtml}</div>
+          ${compsHtml}
 
           <h2 class="panel-title">Weapons for Sale</h2>
-          <div class="panel-row">${weaponsHtml}</div>
+          ${weaponsHtml}
 
           <h2 class="panel-title">Your Weapon Inventory</h2>
           <div class="panel-card">${inventoryHtml}</div>

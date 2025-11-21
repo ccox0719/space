@@ -1,7 +1,8 @@
-import { gameState } from "../core/state";
+import { addCommodityTrade, addCreditsEarned, devTune, gameState, getCombatTune } from "../core/state";
 import type { GameState, MarketEvent, MarketIntelSnapshot } from "../core/state";
 import { content, getSystemById } from "../core/engine";
 import type { CommodityDef, SystemDef } from "../core/contentTypes";
+import { recordDelivery } from "./missionSystem";
 
 const MARKET_GLOBAL_MODIFIER = "__global__";
 const DEFAULT_SPREAD = { buyMultiplier: 1, sellMultiplier: 0.85 };
@@ -57,6 +58,7 @@ function ensureMarketState(): NonNullable<GameState["marketState"]> {
     gameState.marketState.activeEvents = gameState.marketState.activeEvents || [];
     gameState.marketState.localAdjustments = gameState.marketState.localAdjustments || {};
     gameState.marketState.priceIntel = gameState.marketState.priceIntel || {};
+    gameState.marketState.initialDriftSeeded = gameState.marketState.initialDriftSeeded ?? false;
   }
   return gameState.marketState;
 }
@@ -116,12 +118,18 @@ function applyProfileModifiers(system: SystemDef, commodity: CommodityDef): numb
   return modifier;
 }
 
+function getEffectiveVolatility(commodity: CommodityDef): number {
+  const base = Math.min(Math.max(commodity.volatility ?? 0.25, 0), 1);
+  const scale = Math.min(2, Math.max(0, (devTune.marketPriceVolatility ?? 100) / 100));
+  return Math.min(1, base * scale);
+}
+
 function computeBaseLocalPrice(system: SystemDef, commodity: CommodityDef): number {
   const base = Math.max(1, commodity.basePrice);
   const tierModifier = TIER_PRICE_MODIFIERS[commodity.tier ?? "standard"] ?? 1;
   const systemModifier = system.marketModifiers?.[commodity.id] ?? 1;
   const profileModifier = applyProfileModifiers(system, commodity);
-  const volatility = Math.min(Math.max(commodity.volatility ?? 0.25, 0), 1);
+  const volatility = getEffectiveVolatility(commodity);
   const volatilityBoost = 1 + volatility * 0.08;
   const temporary = getTemporaryMarketMultiplier(commodity.id);
   const eventMultiplier = getMarketEventMultiplier(system.id, commodity.id);
@@ -159,14 +167,24 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
 
   const basePrice = computeBaseLocalPrice(system, commodity);
   const spread = commodity.baseSpread ?? DEFAULT_SPREAD;
-  const volatility = Math.min(Math.max(commodity.volatility ?? 0.25, 0), 1);
+  const volatility = getEffectiveVolatility(commodity);
+  const profitMultiplier = Math.max(0.1, Math.min(3, devTune.tradeProfitMultiplier ?? 1));
+  const incomeScale = Math.max(0, getCombatTune().globalIncomeMultiplier ?? 1);
   const buy = Math.max(
     1,
-    Math.round(basePrice * (spread.buyMultiplier ?? 1) * (1 + volatility * 0.05))
+    Math.round(
+      (basePrice * (spread.buyMultiplier ?? 1) * (1 + volatility * 0.05)) / profitMultiplier
+    )
   );
   const sell = Math.max(
     1,
-    Math.round(basePrice * (spread.sellMultiplier ?? 0.85) * Math.max(0.6, 1 - volatility * 0.05))
+    Math.round(
+      basePrice *
+        (spread.sellMultiplier ?? 0.85) *
+        Math.max(0.6, 1 - volatility * 0.05) *
+        profitMultiplier *
+        incomeScale
+    )
   );
   const high = Math.max(buy, sell, Math.round(basePrice * (1 + volatility * 0.1)));
   const low = Math.max(
@@ -228,12 +246,15 @@ function tickMarketByDay(state: GameState): void {
   const commodities = content?.commodities ?? [];
   const day = state.time.day;
 
+  ensureInitialDrift(market, systems, commodities);
+
   for (const system of systems) {
     for (const commodity of commodities) {
       const current = getLocalAdjustment(system.id, commodity.id);
-      const volatility = Math.min(Math.max(commodity.volatility ?? 0.25, 0), 1);
-      const drift = (1 - current) * 0.1;
-      const noise = (Math.random() - 0.5) * 0.1 * (0.5 + volatility);
+      const volatility = getEffectiveVolatility(commodity);
+      const trendStrength = devTune.marketDailyTrendStrength ?? 1;
+      const drift = (1 - current) * 0.1 * trendStrength;
+      const noise = (Math.random() - 0.5) * 0.1 * (0.5 + volatility) * trendStrength;
       const next = clampMultiplier(current + drift + noise);
       if (!market.localAdjustments[system.id]) market.localAdjustments[system.id] = {};
       market.localAdjustments[system.id][commodity.id] = next;
@@ -247,6 +268,22 @@ function tickMarketByDay(state: GameState): void {
   });
 
   decayLocalAdjustments(market, 0.1);
+}
+
+function ensureInitialDrift(
+  market: NonNullable<GameState["marketState"]>,
+  systems: SystemDef[],
+  commodities: CommodityDef[]
+): void {
+  if (market.initialDriftSeeded) return;
+  for (const system of systems) {
+    if (!market.localAdjustments[system.id]) market.localAdjustments[system.id] = {};
+    for (const commodity of commodities) {
+      const baseDrift = Math.max(0.9, Math.min(1.1, 1 + (Math.random() - 0.5) * 0.1));
+      market.localAdjustments[system.id][commodity.id] = baseDrift;
+    }
+  }
+  market.initialDriftSeeded = true;
 }
 
 export function getCargoCount(commodityId: string): number {
@@ -441,7 +478,10 @@ export function sellCommodity(
   const cargo = ensureCargo();
   cargo[commodityId] = Math.max(0, (cargo[commodityId] || 0) - amount);
   gameState.player.credits += total;
+  addCreditsEarned(total);
+  addCommodityTrade(commodityId, amount, total);
   applyTradeVolumeDrift(systemId, commodityId, amount, price, "sell");
+  recordDelivery(commodityId, amount, systemId);
   return true;
 }
 

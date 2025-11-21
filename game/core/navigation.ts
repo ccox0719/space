@@ -10,7 +10,8 @@ export type ScreenID =
   | "combat"
   | "shipyard"
   | "ship_select"
-  | "mining";
+  | "mining"
+  | "gameover";
 
 interface NavigationState {
   current: ScreenID;

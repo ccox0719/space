@@ -2,6 +2,7 @@ import { getStarterShips, chooseStarterShip } from "../systems/shipSystem";
 import { autoEquipAvailableWeapons } from "../systems/weaponSystem";
 import { navigation } from "../core/navigation";
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 
 declare global {
   interface Window {
@@ -66,7 +67,7 @@ export function ShipSelectScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 
@@ -74,9 +75,9 @@ export function ShipSelectScreen(): string {
         <section class="data-panel">
           <h1 class="panel-title">Select Your Starter Ship</h1>
           <p class="muted">Pick a hull to define your opening playstyle.</p>
-          <div class="panel-row">
-            ${list}
-          </div>
+        <div class="panel-row">
+          ${list}
+        </div>
         </section>
       </main>
 

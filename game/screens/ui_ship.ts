@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import { getCurrentShipTemplate, repairShip, refuelShip } from "../systems/shipSystem";
 import { getInstalledComponents } from "../systems/componentSystem";
 import { getWeaponById, getWeaponHint } from "../systems/weaponSystem";
@@ -49,7 +50,7 @@ export function ShipScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 

@@ -18,9 +18,6 @@ export function EventScreen(params: Record<string, unknown> = {}): string {
       <div class="screen event">
         <h1>No Event</h1>
         <p>No events available here.</p>
-        <div class="screen-actions">
-          <button onclick="nav('main')">Back to Main</button>
-        </div>
       </div>
     `;
   }
@@ -56,9 +53,7 @@ export function EventScreen(params: Record<string, unknown> = {}): string {
         <h2>Choices</h2>
         ${choiceSection}
       </section>
-      <div class="screen-actions">
-        <button onclick="nav('main')">Back to Main</button>
-      </div>
+      <div class="screen-actions"></div>
     </div>
   `;
 }

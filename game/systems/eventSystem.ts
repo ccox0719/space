@@ -1,10 +1,14 @@
-import { gameState } from "../core/state";
+import { devTune, gameState, scaleTurnDelta, getCombatTune } from "../core/state";
+import { content } from "../core/engine";
 import type { GameState } from "../core/state";
 import type { SystemDef, EventChoice, GameEvent } from "../core/contentTypes";
 import { acceptMission, tickMissionTimers, getActiveContracts } from "./missionSystem";
 import { adjustReputationBatch } from "./reputationSystem";
 import { applyTemporaryMarketModifier, tickMarket } from "./economySystem";
-import { content } from "../core/engine";
+import { triggerGameOver } from "../core/gameFlow";
+import { addCreditsEarned } from "../core/state";
+
+const EVENT_CACHE_KEY = "space-events-cache";
 
 export interface EventContext {
   context: "travel" | string;
@@ -23,7 +27,9 @@ export interface ChoiceResolution {
 let events: GameEvent[] = [];
 
 export function setEvents(data: GameEvent[]): void {
-  events = data;
+  const persisted = loadPersistedEvents();
+  events = mergeEvents(data, persisted);
+  persistEvents(events);
 }
 
 export function getEvents(): GameEvent[] {
@@ -39,6 +45,13 @@ export function pickEvent(context: EventContext): GameEvent | undefined {
 
   const hazard = Math.max(0, Math.min(1, context.hazardChance ?? 0.4));
   if (Math.random() > hazard) return undefined;
+  const combatTune = getCombatTune();
+  const frequencyWeight = Math.max(0, combatTune.nonPirateEventWeight ?? 1);
+  const frequencyChance = Math.min(
+    1,
+    Math.max(0, ((devTune.eventFrequency ?? 50) / 100) * frequencyWeight)
+  );
+  if (Math.random() > frequencyChance) return undefined;
 
   const weighted = events
     .map((ev) => ({ ev, weight: computeEventWeight(ev, context) }))
@@ -65,9 +78,11 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
   }
 
   const resolution: ChoiceResolution = {};
+  const rewardMultiplier = Math.max(0.1, Math.min(5, devTune.eventRewardMultiplier ?? 1));
 
   const addCredits = (amount: number) => {
     gameState.player.credits += amount;
+    addCreditsEarned(amount);
     if (gameState.player.credits < 0) {
       gameState.player.credits = 0;
     }
@@ -77,12 +92,14 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
     const min = outcomes.giveCredits.min ?? 0;
     const max = outcomes.giveCredits.max ?? min;
     const amount = randomInRange(min, max);
-    addCredits(amount);
-    gameState.notifications.push(`Received ${amount} credits.`);
+    const scaledAmount = Math.round(amount * rewardMultiplier);
+    addCredits(scaledAmount);
+    gameState.notifications.push(`Received ${scaledAmount} credits.`);
   }
 
   if (typeof outcomes.creditsDelta === "number") {
-    addCredits(outcomes.creditsDelta);
+    const delta = Math.round(outcomes.creditsDelta * rewardMultiplier);
+    addCredits(delta);
   }
 
   if (typeof outcomes.fuelDelta === "number") {
@@ -94,9 +111,10 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
   }
 
   if (typeof outcomes.turnDelta === "number") {
-    gameState.time.turn += outcomes.turnDelta;
+    const turnDelta = scaleTurnDelta(outcomes.turnDelta);
+    gameState.time.turn += turnDelta;
     tickMissionTimers();
-    tickMarket(outcomes.turnDelta);
+    tickMarket(turnDelta);
   }
 
   if (outcomes.cargoGain) {
@@ -127,6 +145,10 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
     const damage = randomInRange(min, max);
     gameState.ship.hp = Math.max(0, gameState.ship.hp - damage);
     gameState.notifications.push(`Ship took ${damage} damage.`);
+    if (gameState.ship.hp <= 0) {
+      triggerGameOver("ship_destroyed", "Ship destroyed by event.");
+      return resolution;
+    }
   }
 
   if (outcomes.applyStatus) {
@@ -222,24 +244,81 @@ export function tickWorldEvents(state: GameState): void {
     );
   }
 
-  // Placeholder: a small chance to spawn local market shifts.
-  const roll = Math.random();
-  if (roll < 0.05 && state.location?.systemId) {
+  const burstChance = Math.min(1, Math.max(0, (devTune.marketBurstChance ?? 5) / 100));
+  const crashChance = Math.min(1, Math.max(0, (devTune.marketCrashChance ?? 5) / 100));
+  if (state.location?.systemId) {
     const commodity = content?.commodities?.[Math.floor(Math.random() * (content?.commodities.length || 1))];
     if (commodity) {
       const systemId = state.location.systemId;
-      const duration = 2;
-      applyTemporaryMarketModifier(commodity.id, 1.1, duration);
-      state.marketState.activeEvents.push({
-        systemId,
-        commodityId: commodity.id,
-        multiplier: 1.15,
-        expiresAtDay: today + duration,
-        expiresAtTurn: state.time.turn + duration * 2,
-        label: `${commodity.name} surge`
-      });
+      const duration = 2 + Math.ceil(Math.random() * 2);
+      if (Math.random() < burstChance) {
+        const boost = 1.1 + Math.random() * 0.35;
+        applyTemporaryMarketModifier(commodity.id, boost, duration);
+        state.marketState.activeEvents.push({
+          systemId,
+          commodityId: commodity.id,
+          multiplier: Math.max(0, boost),
+          expiresAtDay: today + duration,
+          expiresAtTurn: state.time.turn + duration * 2,
+          label: `${commodity.name} surge`
+        });
+        state.notifications.push(
+          `Market surge in ${systemId}: ${commodity.name} prices x${boost.toFixed(2)} for ${duration} turns.`
+        );
+      } else if (Math.random() < crashChance) {
+        const slip = Math.max(0.5, 0.85 - Math.random() * 0.25);
+        applyTemporaryMarketModifier(commodity.id, slip, duration);
+        state.marketState.activeEvents.push({
+          systemId,
+          commodityId: commodity.id,
+          multiplier: slip,
+          expiresAtDay: today + duration,
+          expiresAtTurn: state.time.turn + duration * 2,
+          label: `${commodity.name} slip`
+        });
+        state.notifications.push(
+          `Market slip in ${systemId}: ${commodity.name} prices x${slip.toFixed(2)} for ${duration} turns.`
+        );
+      }
     }
   }
+}
+
+export function persistCurrentEvents(): void {
+  persistEvents(events);
+}
+
+export function clearEventCache(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  window.localStorage.removeItem(EVENT_CACHE_KEY);
+}
+
+function mergeEvents(base: GameEvent[], overrides: GameEvent[] | null): GameEvent[] {
+  if (!overrides?.length) return base;
+  const map = new Map<string, GameEvent>();
+  for (const entry of base) map.set(entry.id, entry);
+  for (const entry of overrides) map.set(entry.id, entry);
+  return Array.from(map.values());
+}
+
+function loadPersistedEvents(): GameEvent[] | null {
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  const raw = window.localStorage.getItem(EVENT_CACHE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    // ignore corruption
+  }
+  return null;
+}
+
+function persistEvents(payload: GameEvent[]): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  window.localStorage.setItem(EVENT_CACHE_KEY, JSON.stringify(payload));
 }
 
 function applyCargoDelta(
@@ -305,6 +384,11 @@ function computeEventWeight(event: GameEvent, context: EventContext): number {
 
   if (event.systemModifiers?.weightMultiplier) {
     weight *= event.systemModifiers.weightMultiplier;
+  }
+
+  if (event.tags.includes("danger") || event.type === "combat") {
+    const dangerMult = Math.max(0.1, devTune.eventDangerMultiplier ?? 1);
+    weight *= dangerMult;
   }
 
   if (context.routeType === "wild_jump" && event.tags.includes("combat")) {

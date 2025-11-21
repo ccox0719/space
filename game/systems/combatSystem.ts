@@ -1,8 +1,25 @@
-import { gameState } from "../core/state";
+import {
+  devTune,
+  gameState,
+  newGameState,
+  setGameState,
+  loadDevTune,
+  getHighScore,
+  setHighScore,
+  DEFAULT_DEV_TUNE,
+  getCombatTune
+} from "../core/state";
 import { navigation } from "../core/navigation";
 import { content } from "../core/engine";
 import { computeWeaponDamage, getWeaponById } from "./weaponSystem";
 import { rollLoot } from "./lootSystem";
+import { triggerGameOver } from "../core/gameFlow";
+import {
+  recordCombatDamageDealt,
+  recordCombatDamageTaken,
+  recordCombatVictory,
+  recordShipDestroyed
+} from "../core/state";
 import {
   BRACE_DAMAGE_REDUCTION,
   CALLED_SHOT_MODS,
@@ -13,6 +30,8 @@ import {
 export { CALLED_SHOT_TIP, BRACE_TIP, DAMAGE_TYPE_GUIDE } from "./combatConstants";
 import { computePlayerPower, computeDayPressure } from "./difficultySystem";
 import { systemHasTag } from "./systemHelpers";
+import { recordCombatKill } from "./missionSystem";
+import { adjustWanted } from "./wantedSystem";
 
 type Stance = "assault" | "balanced" | "evasive";
 type AimMode = "normal" | "called_shot";
@@ -32,7 +51,7 @@ function randBetween(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export type PlayerCombatActionType = "fire" | "brace" | "flee";
+export type PlayerCombatActionType = "fire" | "brace" | "flee" | "fire_all";
 
 function log(line: string) {
   const state = gameState.combat;
@@ -56,17 +75,24 @@ export function startCombat(enemyId: string) {
   const playerCooldowns = shipWeapons.map(() => 0);
   const enemyWeapons = tpl.weaponIds.slice();
   const enemyCooldowns = enemyWeapons.map(() => 0);
+  const tune = getCombatTune();
+  const hpMultiplier = tune.enemyHpMultiplier ?? 1;
+  const minCount = Math.max(1, Math.round(tune.enemyCountMin ?? 1));
+  const maxCount = Math.max(minCount, Math.round(tune.enemyCountMax ?? minCount));
+  const enemyCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
+  const enemyCountFactor = Math.max(1, enemyCount);
 
   gameState.combat = {
     enemyId: tpl.id,
     enemyName: tpl.name,
-    enemyHp: tpl.hull,
-    enemyMaxHp: tpl.hull,
-    enemyShields: tpl.shields,
-    enemyMaxShields: tpl.shields,
+    enemyHp: Math.max(1, Math.round(tpl.hull * hpMultiplier * enemyCountFactor)),
+    enemyMaxHp: Math.max(1, Math.round(tpl.hull * hpMultiplier * enemyCountFactor)),
+    enemyShields: Math.max(0, Math.round(tpl.shields * hpMultiplier * enemyCountFactor)),
+    enemyMaxShields: Math.max(0, Math.round(tpl.shields * hpMultiplier * enemyCountFactor)),
     enemyWeapons,
     enemyCooldowns,
     enemyTags: tpl.tags || [],
+    enemyCount: enemyCountFactor,
     playerCooldowns,
     playerBracing: false,
     playerStance: "balanced",
@@ -87,6 +113,10 @@ export function startCombat(enemyId: string) {
     adviceToken: Math.random()
   };
 
+  if (enemyCountFactor > 1) {
+    gameState.combat.log.push(`Multiple bogies detected (${enemyCountFactor} ships).`);
+  }
+
   navigation.go("combat");
 }
 
@@ -99,9 +129,13 @@ function chooseEnemyId(systemId?: string): string {
   if (!content?.enemies?.length) return "pirate_cutter";
   const playerPower = computePlayerPower(gameState);
   const dayPressure = computeDayPressure(gameState.time.day);
+  const tune = getCombatTune();
+  const perDayFactor = 1 + Math.max(0, tune.difficultyScalePerDay ?? 0) / 100 * Math.max(0, gameState.time.day - 1);
+  const shipScale = Math.max(0, tune.difficultyScalePerShipPower ?? 1);
+  const effectivePower = playerPower * shipScale * perDayFactor;
 
-  let minEnemyPower = playerPower * (0.6 + 0.2 * dayPressure);
-  let maxEnemyPower = playerPower * (0.9 + 0.4 * dayPressure);
+  let minEnemyPower = effectivePower * (0.6 + 0.2 * dayPressure);
+  let maxEnemyPower = effectivePower * (0.9 + 0.4 * dayPressure);
 
   if (systemId && systemHasTag(systemId, "core")) {
     minEnemyPower = playerPower * 0.4;
@@ -150,6 +184,9 @@ export function playerCombatAction(
         return;
       }
       playerFireWeapon(weaponIndex, aimMode);
+      break;
+    case "fire_all":
+      fireAllReadyWeapons(aimMode);
       break;
     case "brace":
       playerBrace();
@@ -227,6 +264,8 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
     return;
   }
 
+  recordCombatDamageDealt(damage);
+
   let remaining = damage;
   if (combat.enemyShields > 0) {
     const absorbed = Math.min(combat.enemyShields, remaining);
@@ -253,6 +292,27 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
   combat.playerCooldowns[slotIndex] = weapon.cooldown;
 }
 
+function fireAllReadyWeapons(aimMode: AimMode) {
+  const combat = gameState.combat;
+  if (!combat) return;
+  const ship = gameState.ship;
+  const readySlots = ship.weapons
+    .map((id, idx) => ({ id, idx }))
+    .filter(
+      ({ id, idx }) =>
+        Boolean(id) && (combat.playerCooldowns[idx] ?? 0) <= 0
+    )
+    .map((entry) => entry.idx);
+  if (!readySlots.length) {
+    log("No weapons are ready to fire.");
+    return;
+  }
+  for (const idx of readySlots) {
+    if (!gameState.combat || gameState.combat.enemyHp <= 0) break;
+    playerFireWeapon(idx, aimMode);
+  }
+}
+
 function playerBrace() {
   const combat = gameState.combat;
   if (!combat) return;
@@ -275,7 +335,9 @@ function attemptFlee(): boolean {
   const enemyManeuver = 40;
   const maneuverBonus = clamp((playerManeuver - enemyManeuver) * 0.01, -0.15, 0.15);
 
-  const chance = clamp(baseChance + stanceBonus + maneuverBonus, 0.1, 0.9);
+  const tune = getCombatTune();
+  const fleeBonus = (tune.fleeSuccessBonus ?? 0) / 100;
+  const chance = clamp(baseChance + stanceBonus + maneuverBonus + fleeBonus, 0.05, 0.95);
 
   if (Math.random() <= chance) {
     log(
@@ -328,9 +390,14 @@ function enemyTurn() {
     hp: gameState.ship.hp
   };
   const accPenalty = Math.min(0.3, Math.max(0, combat.playerStatus.maneuverBonus || 0) * 0.01);
+  const tune = getCombatTune();
   let damage = computeWeaponDamage(weapon, targetState, {
-    accuracyMultiplier: 1 - accPenalty
+    accuracyMultiplier: Math.max(0, (1 - accPenalty) * (tune.enemyAccuracyMultiplier ?? 1))
   });
+  damage = Math.max(0, Math.round(damage * (tune.enemyDamageMultiplier ?? 1)));
+  if (combat.enemyCount && combat.enemyCount > 1) {
+    damage = Math.max(0, Math.round(damage * combat.enemyCount));
+  }
 
   if (damage <= 0) {
     log(`The ${combat.enemyName} fires ${weapon.name}, but misses.`);
@@ -343,6 +410,7 @@ function enemyTurn() {
   }
 
   damage = Math.max(0, Math.round(damage * getIncomingMod(combat.playerStance)));
+  damage = Math.max(0, Math.round(damage * (tune.playerDamageTakenMultiplier ?? 1)));
 
   let remaining = damage;
   if (combat.playerStatus.shieldBoost > 0) {
@@ -360,6 +428,7 @@ function enemyTurn() {
   }
 
   log(`The ${combat.enemyName} hits you with ${weapon.name} for ${damage} damage.`);
+  recordCombatDamageTaken(damage);
   combat.enemyCooldowns[slot] = weapon.cooldown;
 }
 
@@ -483,6 +552,19 @@ function handleVictory() {
     log("No notable loot recovered.");
   }
 
+  recordCombatVictory();
+  recordShipDestroyed();
+
+  recordCombatKill(combat.enemyId);
+  if (
+    combat.enemyTags?.some((tag) => /pirate|raider/i.test(tag)) ||
+    combat.enemyId.includes("pirate") ||
+    combat.enemyId.includes("raider")
+  ) {
+    const repMult = getCombatTune().repGainMultiplier ?? 1;
+    adjustWanted(Math.round(3 * repMult));
+  }
+
   gameState.combat = null;
   navigation.go("main");
 }
@@ -492,8 +574,8 @@ function handleDefeat() {
   gameState.ship.hp = 0;
   gameState.ship.shields = 0;
   gameState.combat = null;
-  gameState.notifications.push("Game over — hull integrity dropped to zero.");
-  navigation.go("main");
+  gameState.notifications.push("Critical failure — hull integrity dropped to zero.");
+  triggerGameOver("ship_destroyed", "Ship destroyed in combat.");
 }
 
 export function setPlayerStance(stance: Stance): void {

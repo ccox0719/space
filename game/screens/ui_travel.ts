@@ -1,5 +1,6 @@
 import { getCurrentSystem, getNeighbors, getRouteProfile } from "../systems/travelSystem";
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 
 declare const nav: (screen: string) => void;
 
@@ -67,7 +68,7 @@ export function TravelScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 

@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import {
   playerCombatAction,
   setPlayerStance,
@@ -17,6 +18,7 @@ declare global {
     brace: () => void;
     flee: () => void;
     setStance: (stance: "assault" | "balanced" | "evasive") => void;
+    fireAllWeapons: (aimMode?: "normal" | "called_shot") => void;
   }
 }
 
@@ -43,6 +45,13 @@ window.flee = () => {
 
 window.setStance = (stance: "assault" | "balanced" | "evasive") => {
   setPlayerStance(stance);
+  if (gameState.combat) {
+    nav("combat");
+  }
+};
+
+window.fireAllWeapons = (aimMode: "normal" | "called_shot" = "normal") => {
+  playerCombatAction("fire_all", undefined, aimMode);
   if (gameState.combat) {
     nav("combat");
   }
@@ -119,7 +128,7 @@ export function CombatScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn} · Round ${c.round}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)} · Round ${c.round}</span>
         </div>
       </header>
 
@@ -165,6 +174,14 @@ export function CombatScreen(): string {
               <button class="btn btn-primary" onclick="setStance('assault')">Assault</button>
               <button class="btn btn-primary" onclick="setStance('balanced')">Balanced</button>
               <button class="btn btn-primary" onclick="setStance('evasive')">Evasive</button>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <p class="label">Volley</p>
+            <div class="app-actions">
+              <button class="btn btn-primary" onclick="fireAllWeapons('normal')">Fire All</button>
+              <button class="btn btn-ghost" onclick="fireAllWeapons('called_shot')">All Called Shots</button>
             </div>
           </div>
 

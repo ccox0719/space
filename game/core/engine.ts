@@ -3,7 +3,8 @@ import {
   newGameState,
   setGameState,
   gameState,
-  loadPersistedLoadout
+  loadPersistedLoadout,
+  loadDevTune
 } from "./state";
 import { navigation } from "./navigation";
 import { render } from "./renderer";
@@ -139,6 +140,7 @@ export async function initGame() {
   // New game state (later you can check for saves)
   const initialState: GameState = newGameState();
   setGameState(initialState);
+  loadDevTune();
 
   const persistedLoadout = loadPersistedLoadout();
   if (persistedLoadout) {

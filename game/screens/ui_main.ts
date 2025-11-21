@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import { navigation } from "../core/navigation";
 import { systemHasTag } from "../systems/systemHelpers";
 import { getSystemById } from "../core/engine";
@@ -28,7 +29,7 @@ export function MainScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${s.time.day}</span>
-          <span>Turn ${s.time.turn}</span>
+            <span>Turn ${formatTurn(s.time.turn)}</span>
         </div>
       </header>
 
@@ -73,22 +74,35 @@ export function MainScreen(): string {
         </section>
       </main>
 
-      <nav class="app-actions">
-        <button class="btn btn-primary" onclick="nav('travel')">Travel</button>
-        <button class="btn btn-primary" onclick="nav('market')">Market</button>
-        <button class="btn btn-primary" onclick="nav('contracts', { source: 'main_menu' })">Contracts</button>
-        <button class="btn btn-primary" onclick="nav('ship')">Ship</button>
-        ${systemHasTag(s.location.systemId, "shipyard")
-          ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
-          : ``}
+      <nav class="app-menu" aria-label="Primary menu">
+        <div class="menu-group">
+          <span class="menu-group__label">Primary</span>
+          <div class="menu-group__actions">
+            <button class="btn btn-primary" onclick="nav('travel')">Travel</button>
+            <button class="btn btn-primary" onclick="nav('contracts', { source: 'main_menu' })">
+              Contracts
+            </button>
+            <button class="btn btn-primary" onclick="nav('ship')">Ship</button>
+          </div>
+        </div>
+        <div class="menu-group">
+          <span class="menu-group__label">System</span>
+          <div class="menu-group__actions">
+            <button class="btn btn-primary" onclick="nav('market')" id="navMarket">
+              Market
+            </button>
+            ${systemHasTag(s.location.systemId, "shipyard")
+              ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
+              : ``}
+          </div>
+        </div>
+        <div class="menu-group">
+          <span class="menu-group__label">Tools</span>
+          <div class="menu-group__actions">
+            <button class="btn btn-ghost" id="navDev">Dev Tools</button>
+          </div>
+        </div>
       </nav>
-
-      <footer class="app-footer">
-        <button class="btn btn-ghost btn-small" id="navTravel">Travel</button>
-        <button class="btn btn-ghost btn-small" id="navMarket">Market</button>
-        <button class="btn btn-ghost btn-small" id="navShip">Ship</button>
-        <button class="btn btn-ghost btn-small" id="navDev">Dev</button>
-      </footer>
     </div>
   `;
 }

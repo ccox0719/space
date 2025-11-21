@@ -1,4 +1,4 @@
-import { gameState } from "../core/state";
+import { addCreditsEarned, devTune, gameState, getCombatTune } from "../core/state";
 import type { LootTable, LootEntry, BattleResult } from "../core/contentTypes";
 import { acceptMission } from "./missionSystem";
 
@@ -43,18 +43,25 @@ function weightedPick(entries: LootEntry[]): LootEntry | null {
 }
 
 function applyLootEntry(entry: LootEntry, result: BattleResult): void {
+  const tune = getCombatTune();
+  const incomeScale =
+    Math.max(0, tune.creditsRewardMultiplier ?? 1) *
+    Math.max(0, tune.globalIncomeMultiplier ?? 1);
   switch (entry.type) {
     case "credits": {
       const min = entry.min ?? 0;
       const max = entry.max ?? min;
       const amount = randomInRange(min, max);
-      gameState.player.credits += amount;
-      result.creditsEarned += amount;
+      const scaled = Math.max(0, Math.round(amount * incomeScale));
+      gameState.player.credits += scaled;
+      result.creditsEarned += scaled;
+      addCreditsEarned(scaled);
       break;
     }
     case "commodity": {
       const qty = randomInRange(entry.min ?? 1, entry.max ?? (entry.min ?? 1));
-      const added = addCargoWithCapacity(entry.id || "unknown", qty);
+      const scaled = Math.max(0, Math.round(qty * incomeScale));
+      const added = addCargoWithCapacity(entry.id || "unknown", scaled);
       if (added > 0) {
         result.commodities.push({ id: entry.id || "unknown", qty: added });
       }
@@ -101,6 +108,12 @@ export function rollLoot(
   context: { quickKill?: boolean; lowDamageTaken?: boolean } = {},
   enemyTags: string[] = []
 ): BattleResult | null {
+  const tune = getCombatTune();
+  const incomeScale =
+    Math.max(0, tune.creditsRewardMultiplier ?? 1) *
+    Math.max(0, tune.globalIncomeMultiplier ?? 1);
+  const dropChance = Math.max(0, Math.min(1, (tune.lootDropChance ?? 100) / 100));
+  if (Math.random() > dropChance) return null;
   const table = pickTableForEnemy(enemyId, enemyTags);
   if (!table) return null;
 
@@ -125,16 +138,19 @@ export function rollLoot(
   };
 
   // Always roll common once
-  rollTier(table.common, 1);
+  rollTier(table.common, dropChance);
   // 35% for uncommon, 12% for rare by default (scaled for bonuses)
-  rollTier(scaleEntries(table.uncommon, uncommonMult), 0.35);
-  rollTier(scaleEntries(table.rare, rareMult), 0.12);
+  rollTier(scaleEntries(table.uncommon, uncommonMult), 0.35 * dropChance);
+  const rareChance = Math.max(0, Math.min(1, (tune.rareLootChance ?? 12) / 100));
+  rollTier(scaleEntries(table.rare, rareMult), rareChance * dropChance);
 
   if (table.guaranteed?.credits) {
     const { min, max } = table.guaranteed.credits;
     const amount = randomInRange(min, max);
-    gameState.player.credits += amount;
-    result.creditsEarned += amount;
+    const tunedAmount = Math.max(0, Math.round(amount * incomeScale));
+    gameState.player.credits += tunedAmount;
+    result.creditsEarned += tunedAmount;
+    addCreditsEarned(tunedAmount);
   }
 
   return result;

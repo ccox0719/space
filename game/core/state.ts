@@ -32,6 +32,7 @@ export interface MarketState {
   activeEvents: MarketEvent[];
   localAdjustments: Record<string, Record<string, number>>; // systemId -> commodityId -> multiplier
   priceIntel: Record<string, MarketIntelSnapshot>; // systemId -> snapshot
+  initialDriftSeeded?: boolean;
 }
 
 export interface PlayerState {
@@ -49,6 +50,53 @@ export interface SystemIntel {
 
 export interface IntelState {
   systems: SystemIntel[];
+}
+
+export interface RunStats {
+  daysSurvived: number;
+  jumpsMade: number;
+  systemsVisited: number;
+  creditsEarnedTotal: number;
+  highestNetWorth: number;
+  tradeProfitTotal: number;
+  commodityVolumes: Record<string, number>;
+  mostTradedCommodityId?: string;
+  contractsCompleted: number;
+  contractPayoutTotal: number;
+  fightsSurvived: number;
+  shipsDestroyed: number;
+  damageDealtTotal: number;
+  damageTakenTotal: number;
+  miningRuns: number;
+  oreMinedTotal: number;
+  rareFinds: number;
+}
+
+export type GameOverReason = "ship_destroyed" | "out_of_fuel" | "story_fail" | "other";
+
+export interface RunSummary {
+  score: number;
+  reason: GameOverReason;
+  message: string;
+  location: string;
+  stats: RunStats;
+}
+
+export interface GameOverState {
+  active: boolean;
+  reason: GameOverReason | null;
+  message?: string;
+  summary?: RunSummary;
+}
+
+export interface HighScoreEntry {
+  score: number;
+  timestamp: number;
+  reason: GameOverReason;
+  daysSurvived: number;
+  contractsCompleted: number;
+  shipsDestroyed: number;
+  message: string;
 }
 
 import shipsData from "../content/ships.json";
@@ -100,6 +148,7 @@ export interface CombatState {
   enemyWeapons: string[];
   enemyCooldowns: number[];
   enemyTags?: string[];
+  enemyCount?: number;
   playerCooldowns: number[];
   playerBracing: boolean;
   playerStance: "assault" | "balanced" | "evasive";
@@ -193,6 +242,29 @@ export interface GameState {
   lastBattleResult?: import("./contentTypes").BattleResult | null;
   marketState: MarketState;
   intel: IntelState;
+  runStats: RunStats;
+  gameOver: GameOverState;
+}
+
+export function createRunStats(): RunStats {
+  return {
+    daysSurvived: 0,
+    jumpsMade: 0,
+    systemsVisited: 0,
+    creditsEarnedTotal: 0,
+    highestNetWorth: 0,
+    tradeProfitTotal: 0,
+    commodityVolumes: {},
+    contractsCompleted: 0,
+    contractPayoutTotal: 0,
+    fightsSurvived: 0,
+    shipsDestroyed: 0,
+    damageDealtTotal: 0,
+    damageTakenTotal: 0,
+    miningRuns: 0,
+    oreMinedTotal: 0,
+    rareFinds: 0
+  };
 }
 
 export let gameState: GameState;
@@ -272,14 +344,303 @@ export function newGameState(): GameState {
       temporaryModifiers: {},
       activeEvents: [],
       localAdjustments: {},
-      priceIntel: {}
+      priceIntel: {},
+      initialDriftSeeded: false
     },
     intel: {
       systems: []
     }
+    ,
+    runStats: createRunStats(),
+    gameOver: { active: false, reason: null }
   };
 }
 
 export function setGameState(state: GameState) {
   gameState = state;
+}
+
+export interface CombatDevTuning {
+  pirateEncounterRateBase: number;
+  pirateCargoValueSensitivity: number;
+  navyEncounterRateBase: number;
+  maxEncountersPerDay: number;
+
+  enemyHpMultiplier: number;
+  enemyDamageMultiplier: number;
+  enemyAccuracyMultiplier: number;
+  enemyCountMin: number;
+  enemyCountMax: number;
+  difficultyScalePerDay: number;
+  difficultyScalePerShipPower: number;
+
+  creditsRewardMultiplier: number;
+  lootDropChance: number;
+  rareLootChance: number;
+  repGainMultiplier: number;
+
+  playerDamageTakenMultiplier: number;
+  fleeSuccessBonus: number;
+  globalIncomeMultiplier: number;
+  globalDangerMultiplier: number;
+  encounterChancePerJump: number;
+  nonPirateEventWeight: number;
+  showEncounterDebug: number;
+}
+
+export interface DevTuneConfig {
+  miningYieldMultiplier: number;
+  rareMineralChance: number;
+  miningDuration: number;
+  marketPriceVolatility: number;
+  marketDailyTrendStrength: number;
+  marketBurstChance: number;
+  marketCrashChance: number;
+  tradeProfitMultiplier: number;
+  contractPayoutMultiplier: number;
+  contractDifficultyMultiplier: number;
+  fuelCostMultiplier: number;
+  travelRiskScaling: number;
+  eventFrequency: number;
+  eventDangerMultiplier: number;
+  eventRewardMultiplier: number;
+  progressionSpeedMultiplier: number;
+  combat: CombatDevTuning;
+}
+
+const DEV_TUNE_KEY = "space-dev-tune";
+
+export const DEFAULT_DEV_TUNE: DevTuneConfig = {
+  miningYieldMultiplier: 1,
+  rareMineralChance: 0,
+  miningDuration: 5,
+  marketPriceVolatility: 100,
+  marketDailyTrendStrength: 1,
+  marketBurstChance: 5,
+  marketCrashChance: 5,
+  tradeProfitMultiplier: 1,
+  contractPayoutMultiplier: 1,
+  contractDifficultyMultiplier: 1,
+  fuelCostMultiplier: 1,
+  travelRiskScaling: 100,
+  eventFrequency: 50,
+  eventDangerMultiplier: 1,
+  eventRewardMultiplier: 1,
+  progressionSpeedMultiplier: 1,
+  combat: {
+    pirateEncounterRateBase: 0,
+    pirateCargoValueSensitivity: 1,
+    navyEncounterRateBase: 0,
+    maxEncountersPerDay: 10,
+    enemyHpMultiplier: 1,
+    enemyDamageMultiplier: 1,
+    enemyAccuracyMultiplier: 1,
+    enemyCountMin: 1,
+    enemyCountMax: 1,
+    difficultyScalePerDay: 0,
+    difficultyScalePerShipPower: 1,
+    creditsRewardMultiplier: 1,
+    lootDropChance: 100,
+    rareLootChance: 12,
+    repGainMultiplier: 1,
+    playerDamageTakenMultiplier: 1,
+    fleeSuccessBonus: 0,
+    globalIncomeMultiplier: 1,
+    globalDangerMultiplier: 1,
+    encounterChancePerJump: 100,
+    nonPirateEventWeight: 1,
+    showEncounterDebug: 0
+  }
+};
+
+export let devTune: DevTuneConfig = { ...DEFAULT_DEV_TUNE };
+
+function mergeCombatTuning(
+  incoming: Partial<CombatDevTuning> & Record<string, unknown>
+): CombatDevTuning {
+  return {
+    ...DEFAULT_DEV_TUNE.combat,
+    ...incoming
+  };
+}
+
+export function loadDevTune(): void {
+  if (typeof window === "undefined" || !window.localStorage) {
+    devTune = { ...DEFAULT_DEV_TUNE };
+    return;
+  }
+
+  const raw = window.localStorage.getItem(DEV_TUNE_KEY);
+  if (!raw) {
+    devTune = { ...DEFAULT_DEV_TUNE };
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<DevTuneConfig> & Record<string, unknown>;
+
+    // Backward compatibility: map legacy combat fields into the new combat bucket.
+    const legacyCombat: Partial<CombatDevTuning> = {};
+    if (typeof parsed.enemyHpMultiplier === "number") legacyCombat.enemyHpMultiplier = parsed.enemyHpMultiplier;
+    if (typeof parsed.enemyDamageMultiplier === "number") legacyCombat.enemyDamageMultiplier = parsed.enemyDamageMultiplier;
+    if (typeof parsed.combatRewardMultiplier === "number") legacyCombat.creditsRewardMultiplier = parsed.combatRewardMultiplier;
+    if (typeof parsed.pirateEncounterRate === "number") legacyCombat.pirateEncounterRateBase = parsed.pirateEncounterRate;
+
+    const combatPayload = mergeCombatTuning({
+      ...(parsed.combat as Partial<CombatDevTuning>),
+      ...legacyCombat
+    });
+
+    devTune = {
+      ...DEFAULT_DEV_TUNE,
+      ...parsed,
+      combat: combatPayload
+    };
+  } catch {
+    devTune = { ...DEFAULT_DEV_TUNE };
+  }
+}
+
+export function persistDevTune(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  window.localStorage.setItem(DEV_TUNE_KEY, JSON.stringify(devTune));
+}
+
+export function scaleTurnDelta(turns: number): number {
+  const multiplier = devTune.progressionSpeedMultiplier ?? 1;
+  return turns * multiplier;
+}
+
+export function resetCombatTuning(): void {
+  devTune.combat = { ...DEFAULT_DEV_TUNE.combat };
+}
+
+export function getCombatTune(): CombatDevTuning {
+  return devTune.combat ?? DEFAULT_DEV_TUNE.combat;
+}
+
+const RUN_HIGH_SCORES_KEY = "cosmo_run_high_scores";
+const MAX_HIGH_SCORE_ENTRIES = 5;
+
+export function snapshotRunStats(): RunStats {
+  if (!gameState) return createRunStats();
+  return {
+    ...gameState.runStats,
+    commodityVolumes: { ...gameState.runStats.commodityVolumes }
+  };
+}
+
+export function computeRunScore(stats: RunStats): number {
+  return Math.round(
+    stats.creditsEarnedTotal / 10 +
+      stats.contractsCompleted * 50 +
+      stats.shipsDestroyed * 30 +
+      stats.rareFinds * 40 +
+      stats.systemsVisited * 5 +
+      stats.daysSurvived * 3
+  );
+}
+
+function loadHighScoreEntries(): HighScoreEntry[] {
+  if (typeof window === "undefined" || !window.localStorage) return [];
+  const raw = window.localStorage.getItem(RUN_HIGH_SCORES_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, MAX_HIGH_SCORE_ENTRIES);
+  } catch {
+    return [];
+  }
+}
+
+function saveHighScoreEntries(entries: HighScoreEntry[]): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  window.localStorage.setItem(RUN_HIGH_SCORES_KEY, JSON.stringify(entries.slice(0, MAX_HIGH_SCORE_ENTRIES)));
+}
+
+export function getHighScores(): HighScoreEntry[] {
+  return loadHighScoreEntries();
+}
+
+export function recordHighScore(entry: HighScoreEntry): void {
+  const entries = loadHighScoreEntries();
+  entries.push(entry);
+  entries.sort((a, b) => b.score - a.score);
+  saveHighScoreEntries(entries);
+}
+
+export function clearHighScores(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  window.localStorage.removeItem(RUN_HIGH_SCORES_KEY);
+}
+
+export function addCreditsEarned(amount: number): void {
+  if (!gameState || amount <= 0) return;
+  gameState.runStats.creditsEarnedTotal += amount;
+  const netWorth = gameState.player.credits;
+  if (netWorth > gameState.runStats.highestNetWorth) {
+    gameState.runStats.highestNetWorth = netWorth;
+  }
+}
+
+export function addCommodityTrade(commodityId: string, quantity: number, revenue: number): void {
+  if (!gameState) return;
+  gameState.runStats.tradeProfitTotal += Math.max(0, revenue);
+  const volumes = gameState.runStats.commodityVolumes;
+  volumes[commodityId] = (volumes[commodityId] || 0) + quantity;
+  const mostTraded = gameState.runStats.mostTradedCommodityId;
+  if (!mostTraded || volumes[commodityId] > volumes[mostTraded]) {
+    gameState.runStats.mostTradedCommodityId = commodityId;
+  }
+}
+
+export function recordContractPayout(amount: number): void {
+  if (!gameState || amount <= 0) return;
+  gameState.runStats.contractPayoutTotal += amount;
+}
+
+export function recordContractCompletion(): void {
+  if (!gameState) return;
+  gameState.runStats.contractsCompleted += 1;
+}
+
+export function recordCombatDamageDealt(amount: number): void {
+  if (!gameState || amount <= 0) return;
+  gameState.runStats.damageDealtTotal += amount;
+}
+
+export function recordCombatDamageTaken(amount: number): void {
+  if (!gameState || amount <= 0) return;
+  gameState.runStats.damageTakenTotal += amount;
+}
+
+export function recordCombatVictory(): void {
+  if (!gameState) return;
+  gameState.runStats.fightsSurvived += 1;
+}
+
+export function recordShipDestroyed(): void {
+  if (!gameState) return;
+  gameState.runStats.shipsDestroyed += 1;
+}
+
+export function recordMiningYield(amount: number, rare: boolean): void {
+  if (!gameState || amount <= 0) return;
+  gameState.runStats.miningRuns += 1;
+  gameState.runStats.oreMinedTotal += amount;
+  if (rare) {
+    gameState.runStats.rareFinds += 1;
+  }
+}
+
+export function recordJump(): void {
+  if (!gameState) return;
+  gameState.runStats.jumpsMade += 1;
+  gameState.runStats.systemsVisited += 1;
+}
+
+export function recordDaySurvived(day: number): void {
+  if (!gameState) return;
+  gameState.runStats.daysSurvived = Math.max(gameState.runStats.daysSurvived, day);
 }

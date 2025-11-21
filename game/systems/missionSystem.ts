@@ -1,6 +1,14 @@
-import { gameState } from "../core/state";
+import {
+  devTune,
+  gameState,
+  addCreditsEarned,
+  recordContractCompletion,
+  recordContractPayout,
+  getCombatTune
+} from "../core/state";
 import type { ContractState, GameState } from "../core/state";
 import { adjustReputationBatch } from "./reputationSystem";
+import { getWeaponById } from "./weaponSystem";
 
 export interface MissionTemplate {
   id: string;
@@ -9,7 +17,11 @@ export interface MissionTemplate {
   factionId?: string;
   type: string;
   requirements?: Record<string, unknown>;
-  reward?: { credits?: number; rep?: Record<string, number> };
+  reward?: {
+    credits?: number;
+    rep?: Record<string, number>;
+    weapon?: string;
+  };
 }
 
 let missionTemplates: MissionTemplate[] = [];
@@ -113,11 +125,33 @@ export function completeMission(
 
 function applyRewards(contract: ContractState, status: "completed" | "failed"): void {
   if (status !== "completed" || !contract.reward) return;
-  if (contract.reward.credits) {
-    gameState.player.credits += contract.reward.credits;
+  const reward = contract.reward;
+  if (reward.credits) {
+    const payoutMultiplier = Math.max(0.1, Math.min(5, devTune.contractPayoutMultiplier ?? 1));
+    const scaledReward = Math.max(0, Math.round(reward.credits * payoutMultiplier));
+    const incomeScale = Math.max(0, getCombatTune().globalIncomeMultiplier ?? 1);
+    const finalPayout = Math.max(0, Math.round(scaledReward * incomeScale));
+    gameState.player.credits += finalPayout;
+    addCreditsEarned(finalPayout);
+    recordContractPayout(finalPayout);
+    gameState.notifications.push(`Mission reward: +${finalPayout} credits.`);
   }
-  if (contract.reward.rep) {
-    adjustReputationBatch(contract.reward.rep);
+  if (reward.rep) {
+    adjustReputationBatch(reward.rep);
+    const repSummary = Object.entries(reward.rep)
+      .map(([faction, delta]) => `${faction} ${delta >= 0 ? "+" : ""}${delta}`)
+      .join(", ");
+    if (repSummary) {
+      gameState.notifications.push(`Mission reward: Reputation updated (${repSummary}).`);
+    }
+  }
+  if (reward.weapon) {
+    const inventory = gameState.inventory ?? { weapons: [] };
+    inventory.weapons = inventory.weapons || [];
+    inventory.weapons.push(reward.weapon);
+    gameState.inventory = inventory;
+    const weaponName = getWeaponById(reward.weapon)?.name ?? reward.weapon;
+    gameState.notifications.push(`Rewarded weapon: ${weaponName}.`);
   }
 }
 
@@ -125,7 +159,9 @@ export function tickMissionTimers(): void {
   getActiveContracts().forEach((contract) => {
     const failure = contract.requirements?.failureAfterTurns as number | undefined;
     if (failure && contract.acceptedTurn != null) {
-      if (gameState.time.turn - contract.acceptedTurn >= failure) {
+      const difficultyScale = Math.max(0.1, devTune.contractDifficultyMultiplier ?? 1);
+      const allowedTurns = Math.max(1, Math.round(failure / difficultyScale));
+      if (gameState.time.turn - contract.acceptedTurn >= allowedTurns) {
         failMission(contract.id);
       }
     }
@@ -159,9 +195,19 @@ export function consumeMissionEventId(): string | null {
 export function recordTravel(systemId: string): void {
   getActiveContracts().forEach((contract) => {
     const requirement = contract.requirements?.travel as { systemId?: string } | undefined;
+    contract.progress = contract.progress || {};
     if (requirement?.systemId === systemId) {
-      contract.progress = contract.progress || {};
       contract.progress.travelCompleted = true;
+      tryAutoComplete(contract);
+    }
+
+    const multiTravel = contract.requirements?.multiTravel as string[] | undefined;
+    if (multiTravel?.length) {
+      const seen = new Set<string>(
+        (contract.progress?.multiTravelVisited as string[] | undefined) ?? []
+      );
+      seen.add(systemId);
+      contract.progress.multiTravelVisited = Array.from(seen);
       tryAutoComplete(contract);
     }
   });
@@ -192,8 +238,77 @@ export function recordCombatKill(enemyId: string): void {
   });
 }
 
+export function checkContractsOnArrival(
+  state: GameState,
+  systemId: string
+): { checked: number; completed: string[] } {
+  recordTravel(systemId);
+  const cargo = (state.ship.cargo ||= {});
+  let checked = 0;
+  const completed: string[] = [];
+
+  for (const contract of getActiveContracts()) {
+    const beforeStatus = contract.status;
+    const deliverReq = contract.requirements?.deliver as
+      | {
+          commodityId?: string;
+          quantity?: number;
+          systemId?: string;
+          retain?: boolean;
+        }
+      | undefined;
+    if (!deliverReq || !deliverReq.commodityId) {
+      continue;
+    }
+    const targetSystem = deliverReq.systemId ?? systemId;
+    if (targetSystem !== systemId) continue;
+    checked += 1;
+
+    if (!hasRequiredCommodities(cargo, deliverReq)) {
+      continue;
+    }
+
+    if (!deliverReq.retain) {
+      consumeRequiredCommodities(cargo, deliverReq);
+    }
+
+    contract.progress = contract.progress || {};
+    const delivered = (contract.progress.deliveredQuantity as number) || 0;
+    contract.progress.deliveredQuantity = delivered + (deliverReq.quantity || 1);
+    tryAutoComplete(contract);
+
+    if (beforeStatus !== "completed" && contract.status === "completed") {
+      completed.push(contract.name);
+    }
+  }
+
+  if (completed.length) {
+    const summary = `Contracts completed: ${completed.join(", ")}`;
+    state.notifications.push(summary);
+  }
+
+  return { checked, completed };
+}
+
+function hasRequiredCommodities(
+  cargo: Record<string, number>,
+  requirement: { commodityId: string; quantity?: number }
+): boolean {
+  const qty = Math.max(1, requirement.quantity ?? 1);
+  return (cargo[requirement.commodityId] ?? 0) >= qty;
+}
+
+function consumeRequiredCommodities(
+  cargo: Record<string, number>,
+  requirement: { commodityId: string; quantity?: number }
+): void {
+  const qty = Math.max(1, requirement.quantity ?? 1);
+  const current = cargo[requirement.commodityId] ?? 0;
+  cargo[requirement.commodityId] = Math.max(0, current - qty);
+}
+
 function tryAutoComplete(contract: ContractState): void {
-  if (!contract.requirements) return;
+  if (!contract.requirements || contract.status !== "active") return;
   const { travel, deliver, combat } = contract.requirements as {
     travel?: { systemId?: string };
     deliver?: { commodityId?: string; quantity?: number };
@@ -206,11 +321,13 @@ function tryAutoComplete(contract: ContractState): void {
     ? (progress.deliveredQuantity as number) >= (deliver.quantity || 0)
     : true;
   const combatDone = combat ? Boolean(progress.combatCompleted) : true;
-  const multiDone = multi ? Boolean(progress.multiTravel) : true;
+  const multiVisited = (progress.multiTravelVisited as string[] | undefined) ?? [];
+  const multiDone = multi ? multi.every((id) => multiVisited.includes(id)) : true;
 
   if (travelDone && deliverDone && combatDone && multiDone) {
     contract.status = "completed";
     applyRewards(contract, "completed");
+    recordContractCompletion();
     pushNotification(`Mission completed: ${contract.name}`);
   }
 }

@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import { getWeaponById } from "../systems/weaponSystem";
 
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
@@ -53,7 +54,7 @@ export function WeaponSlotsScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 

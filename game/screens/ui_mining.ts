@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import { performMiningAction, endMiningSession } from "../systems/miningSystem";
 import { navigation } from "../core/navigation";
 import { getCargoValue } from "../systems/economySystem";
@@ -107,7 +108,7 @@ export function MiningScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 

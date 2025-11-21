@@ -1,4 +1,5 @@
 import type { GameState } from "../core/state";
+import { recordDaySurvived } from "../core/state";
 import { tickMarket } from "./economySystem";
 import { tickWorldEvents } from "./eventSystem";
 import { tickMissions } from "./missionSystem";
@@ -8,6 +9,7 @@ import { tickResources } from "./miningSystem";
 
 export function advanceDay(state: GameState): void {
   state.time.day += 1;
+  recordDaySurvived(state.time.day);
 
   tickMarket(state);
   tickWorldEvents(state);

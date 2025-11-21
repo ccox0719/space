@@ -1,4 +1,5 @@
 import { gameState } from "../core/state";
+import { formatTurn } from "../core/formatters";
 import {
   canEquipWeapon,
   equipWeapon,
@@ -89,7 +90,7 @@ export function WeaponSelectScreen(params: Record<string, unknown> = {}): string
         </div>
         <div class="app-meta">
           <span>Day ${gameState.time.day}</span>
-          <span>Turn ${gameState.time.turn}</span>
+          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 
