@@ -1,5 +1,6 @@
 import type { GameState, MiningBeltState } from "../core/state";
 import { devTune, recordMiningYield, scaleTurnDelta } from "../core/state";
+import { getPassiveEffects } from "../core/passives";
 import { computePirateChance } from "./riskSystem";
 import { getLocalPrice } from "./economySystem";
 import { startCombat } from "./combatSystem";
@@ -191,7 +192,8 @@ export function performMiningAction(
   const commonDrop = rollTableEntry(table);
   const minedCommodityId = commonDrop?.id ?? session.resourceId ?? "aurite_ore";
   const baseAmount = commonDrop?.amount ?? randBetween(1, 3);
-  const tunedYieldMultiplier = devTune.miningYieldMultiplier ?? 1;
+  const passive = getPassiveEffects();
+  const tunedYieldMultiplier = (devTune.miningYieldMultiplier ?? 1) * (passive.miningYield ?? 1);
   const minedAmount = Math.max(
     1,
     Math.round(baseAmount * rules.yieldMultiplier * tunedYieldMultiplier)
@@ -209,7 +211,9 @@ export function performMiningAction(
   const stabilityRatio = session.stability / Math.max(1, session.maxStability);
   const depthBonus = (1 - stabilityRatio) * 0.5;
   const baseRareChance = belt.baseRareChance;
-  const extraRareChance = Math.min(1, Math.max(0, (devTune.rareMineralChance ?? 0) / 100));
+  const extraRareChance =
+    Math.min(1, Math.max(0, (devTune.rareMineralChance ?? 0) / 100)) +
+    Math.max(0, (passive.rareFindChance ?? 0) - 1);
   const rareChance = Math.min(
     1,
     baseRareChance * rules.rareMod + depthBonus + extraRareChance
@@ -272,7 +276,7 @@ export function performMiningAction(
     rareFind: rareFound
   };
 
-  const duration = devTune.miningDuration ?? 5;
+  const duration = Math.max(1, Math.round((devTune.miningDuration ?? 5) * Math.max(0.1, passive.miningSpeed ?? 1)));
   state.time.turn += scaleTurnDelta(duration);
 
   recordMiningYield(added + (rareFound?.amount || 0), Boolean(rareFound));

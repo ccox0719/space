@@ -100,7 +100,7 @@ export interface HighScoreEntry {
 }
 
 import shipsData from "../content/ships.json";
-import type { ShipDef } from "./contentTypes";
+import type { ShipDef, ShipPassive } from "./contentTypes";
 
 const shipsCatalog = shipsData as ShipDef[];
 const starterTemplate = shipsCatalog.find((ship) => ship.starter) ?? shipsCatalog[0];
@@ -136,6 +136,7 @@ export interface ShipState {
     size: "small" | "medium" | "large";
     type: "energy" | "projectile" | "missile" | "hybrid";
   }[];
+  passive?: ShipPassive | null;
 }
 
 export interface CombatState {
@@ -327,6 +328,8 @@ export function newGameState(): GameState {
       maneuverRating: starterTemplate?.maneuverRating ?? 0,
       components: [],
       hardpoints: starterTemplate?.hardpoints.map((hp) => ({ ...hp })) ?? []
+      ,
+      passive: starterTemplate?.passive ?? null
     },
     reputation: {},
     contracts: [],
@@ -517,6 +520,10 @@ export function resetCombatTuning(): void {
 
 export function getCombatTune(): CombatDevTuning {
   return devTune.combat ?? DEFAULT_DEV_TUNE.combat;
+}
+
+export function getShipPassive() {
+  return gameState.ship.passive?.effects ?? {};
 }
 
 const RUN_HIGH_SCORES_KEY = "cosmo_run_high_scores";

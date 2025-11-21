@@ -158,6 +158,13 @@ export interface HardpointDef {
   type: "energy" | "projectile" | "missile" | "hybrid";
 }
 
+export interface ShipPassive {
+  id: string;
+  name: string;
+  description?: string;
+  effects: Record<string, number>;
+}
+
 export interface ShipDef {
   id: string;
   name: string;
@@ -175,6 +182,7 @@ export interface ShipDef {
   powerGrid: number;
   cpuLimit: number;
   maneuverRating: number;
+  passive?: ShipPassive;
 }
 
 export interface ComponentDef {

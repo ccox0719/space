@@ -17,6 +17,9 @@ import { maybeSpawnMarketEvent } from "./economySystem";
 import { advanceDay } from "./timeSystem";
 import { markRiskSeen } from "./intelSystem";
 import { checkContractsOnArrival } from "./missionSystem";
+import { adjustWanted } from "./wantedSystem";
+import { getBuySellPrices, getCommodityById } from "./economySystem";
+import { getPassiveEffects } from "../core/passives";
 
 declare global {
   interface Window {
@@ -75,10 +78,12 @@ interface RouteProfile {
   travelTime: number;
   fuelCost: number;
   hazardChance: number;
+  hazardMitigation?: number;
   routeType: "trade_lane" | "wild_jump" | "standard";
 }
 
 function computeRouteProfile(from: SystemDef, to: SystemDef): RouteProfile {
+  const passive = getPassiveEffects();
   const isTradeLane =
     to.tags.includes("trade_lane") ||
     to.tags.includes("checkpoint") ||
@@ -124,13 +129,135 @@ function computeRouteProfile(from: SystemDef, to: SystemDef): RouteProfile {
   }
 
   hazardChance = Math.min(0.95, Math.max(0.1, hazardChance));
+  const hazardBeforePassive = hazardChance;
 
+  hazardChance = Math.max(0, hazardChance - Math.max(0, passive.hazardDetectionBonus ?? 0));
   return {
     travelTime,
-    fuelCost: travelTime,
+    fuelCost: Math.max(1, Math.round(travelTime * Math.max(0.1, passive.fuelCostMultiplier ?? 1))),
     hazardChance,
+    hazardMitigation: Math.max(0, hazardBeforePassive - hazardChance),
     routeType: isTradeLane ? "trade_lane" : isWild ? "wild_jump" : "standard"
   };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+interface ContrabandSummary {
+  illegalUnits: number;
+  restrictedUnits: number;
+  totalUnits: number;
+  estimatedValue: number;
+}
+
+function getContrabandSummary(system: SystemDef): ContrabandSummary | null {
+  const cargo = gameState.ship.cargo || {};
+  let illegalUnits = 0;
+  let restrictedUnits = 0;
+  let estimatedValue = 0;
+  for (const [commodityId, qty] of Object.entries(cargo)) {
+    if (!qty) continue;
+    const commodity = getCommodityById(commodityId);
+    if (!commodity) continue;
+    if (commodity.legalStatus !== "illegal" && commodity.legalStatus !== "restricted") {
+      continue;
+    }
+    const quote = getBuySellPrices(system.id, commodityId);
+    estimatedValue += quote.sell * qty;
+    if (commodity.legalStatus === "illegal") {
+      illegalUnits += qty;
+    } else {
+      restrictedUnits += qty;
+    }
+  }
+  const totalUnits = illegalUnits + restrictedUnits;
+  if (totalUnits <= 0) return null;
+  return { illegalUnits, restrictedUnits, totalUnits, estimatedValue };
+}
+
+function computeScanDetectionChance(
+  summary: ContrabandSummary,
+  system: SystemDef,
+  routeType: RouteProfile["routeType"],
+  passive = getPassiveEffects()
+): number {
+  let base =
+    system.security === "high" ? 0.35 : system.security === "low" ? 0.15 : 0.25;
+  if (system.marketProfile?.blackMarket) {
+    base *= 0.65;
+  }
+  if (system.tags.includes("restricted")) {
+    base += 0.12;
+  }
+  if (system.tags.includes("checkpoint") || system.tags.includes("trade_lane")) {
+    base += 0.08;
+  }
+  if (routeType === "trade_lane") {
+    base += 0.06;
+  }
+
+  const severity = 1 + Math.min(1.5, summary.illegalUnits * 0.1 + summary.restrictedUnits * 0.04);
+  const scanMultiplier = Math.max(0, passive.scanDetectionMultiplier ?? 1);
+  const tolerance = Math.max(0.5, passive.illegalTolerance ?? 1);
+  return clamp(base * severity * scanMultiplier / tolerance, 0, 0.95);
+}
+
+function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile): boolean {
+  const summary = getContrabandSummary(system);
+  if (!summary) return false;
+  const passive = getPassiveEffects();
+  const detectionChance = computeScanDetectionChance(summary, system, profile.routeType, passive);
+  if (Math.random() > detectionChance) {
+    return false;
+  }
+
+  const cargo = gameState.ship.cargo || {};
+  let seizedUnits = 0;
+  for (const [commodityId, qty] of Object.entries(cargo)) {
+    if (!qty) continue;
+    const commodity = getCommodityById(commodityId);
+    if (!commodity) continue;
+    if (commodity.legalStatus !== "illegal" && commodity.legalStatus !== "restricted") {
+      continue;
+    }
+    seizedUnits += qty;
+    cargo[commodityId] = 0;
+  }
+  gameState.ship.cargo = cargo;
+
+  const baseFine = Math.max(25, Math.round(summary.estimatedValue * 0.35));
+  const bonusFine = (summary.illegalUnits || 0) * 15 + (summary.restrictedUnits || 0) * 8;
+  const fine = baseFine + bonusFine;
+  gameState.player.credits = Math.max(
+    0,
+    gameState.player.credits - fine
+  );
+  const wantedGain = 3 + Math.min(12, Math.round(summary.illegalUnits * 0.5 + summary.restrictedUnits * 0.25));
+  adjustWanted(wantedGain);
+
+  gameState.notifications.push(
+    `Checkpoint scans flag contraband. Seized ${seizedUnits} units, fined ${fine} credits, wanted +${wantedGain}.`
+  );
+  return true;
+}
+
+function logHazardMitigation(
+  profile: RouteProfile,
+  scaledHazard: number,
+  riskScale: number,
+  dangerMult: number
+): void {
+  const baseHazard =
+    clamp((profile.hazardChance + (profile.hazardMitigation ?? 0)) * riskScale * dangerMult, 0, 0.95);
+  const mitigated = clamp(scaledHazard, 0, 0.95);
+  const reductionPct = Math.max(0, Math.round((baseHazard - mitigated) * 100));
+  if (reductionPct > 0) {
+    gameState.notifications.push(
+      `Hazard scanners trimmed travel risk by ${reductionPct}% (current hazard ${(mitigated * 100).toFixed(0)}%).`
+    );
+  }
 }
 
 export function getRouteProfile(targetSystemId: string): RouteProfile | null {
@@ -199,6 +326,12 @@ export function travelTo(targetSystemId: string): void {
     "_",
     " "
   )} (${travelTurnsDisplay} turn${turnLabel}).`;
+
+  logHazardMitigation(profile, scaledProfile.hazardChance, riskScale, dangerMult);
+  const inspectionTriggered = maybeRunContrabandInspection(target, scaledProfile);
+  if (inspectionTriggered) {
+    logEncounterDebug("Contraband inspection triggered on arrival.");
+  }
 
   if (maybeTriggerPirateTravel(target)) {
     return;
@@ -288,7 +421,11 @@ function maybeTriggerNavyIntercept(target: SystemDef): boolean {
   if (base <= 0) return false;
   const encounterScale = Math.max(0, (combatTune.encounterChancePerJump ?? 100) / 100);
   const securityMod = target.security === "high" ? 1.15 : target.security === "low" ? 0.65 : 1;
-  const chance = Math.min(1, base * encounterScale * securityMod);
+  const passive = getPassiveEffects();
+  const contraband = getContrabandSummary(target);
+  const contrabandPressure = contraband ? 1 + Math.min(1.2, contraband.totalUnits * 0.02) : 1;
+  const scanMod = Math.max(0, passive.scanDetectionMultiplier ?? 1) / Math.max(0.5, passive.illegalTolerance ?? 1);
+  const chance = Math.min(1, base * encounterScale * securityMod * contrabandPressure * scanMod);
   if (Math.random() <= chance) {
     markEncounterStarted();
     const message = `Patrol intercepts you near ${target.name}!`;

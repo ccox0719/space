@@ -9,6 +9,7 @@ import {
   DEFAULT_DEV_TUNE,
   getCombatTune
 } from "../core/state";
+import { getPassiveEffects } from "../core/passives";
 import { navigation } from "../core/navigation";
 import { content } from "../core/engine";
 import { computeWeaponDamage, getWeaponById } from "./weaponSystem";
@@ -238,6 +239,17 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
     log("Missing weapon data.");
     return;
   }
+  const passive = getPassiveEffects();
+  const firstRound = combat.round <= 1;
+  const effectiveWeapon = {
+    ...weapon,
+    critChance: Math.min(
+      0.95,
+      (weapon.critChance ?? 0) +
+        (passive.critBonus ?? 0) +
+        (firstRound ? passive.critBonus ?? 0 : 0)
+    )
+  };
 
   const cooldown = combat.playerCooldowns[slotIndex] ?? 0;
   if (cooldown > 0) {
@@ -252,9 +264,9 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
   const aimDamageMod = aimMode === "called_shot" ? CALLED_SHOT_MODS.damageMultiplier : 1;
   const aimAccuracyMod = aimMode === "called_shot" ? CALLED_SHOT_MODS.accuracyMultiplier : 1;
   const stanceMod = getOutgoingMod(combat.playerStance);
-  const damage = computeWeaponDamage(weapon, targetState, {
+  const damage = computeWeaponDamage(effectiveWeapon, targetState, {
     accuracyMultiplier: aimAccuracyMod,
-    damageMultiplier: aimDamageMod * stanceMod
+    damageMultiplier: aimDamageMod * stanceMod * (passive.playerDamageBonus ?? 1)
   });
 
   if (damage <= 0) {
@@ -336,7 +348,8 @@ function attemptFlee(): boolean {
   const maneuverBonus = clamp((playerManeuver - enemyManeuver) * 0.01, -0.15, 0.15);
 
   const tune = getCombatTune();
-  const fleeBonus = (tune.fleeSuccessBonus ?? 0) / 100;
+  const passive = getPassiveEffects();
+  const fleeBonus = (tune.fleeSuccessBonus ?? 0) / 100 + (passive.fleeBonus ?? 0);
   const chance = clamp(baseChance + stanceBonus + maneuverBonus + fleeBonus, 0.05, 0.95);
 
   if (Math.random() <= chance) {
@@ -391,8 +404,16 @@ function enemyTurn() {
   };
   const accPenalty = Math.min(0.3, Math.max(0, combat.playerStatus.maneuverBonus || 0) * 0.01);
   const tune = getCombatTune();
+  const passive = getPassiveEffects();
+  const firstRound = combat.round <= 1;
   let damage = computeWeaponDamage(weapon, targetState, {
-    accuracyMultiplier: Math.max(0, (1 - accPenalty) * (tune.enemyAccuracyMultiplier ?? 1))
+    accuracyMultiplier: Math.max(
+      0,
+      (1 - accPenalty) *
+        (tune.enemyAccuracyMultiplier ?? 1) *
+        Math.max(0, 1 - (passive.dodgeBonus ?? 0)) *
+        (firstRound ? Math.max(0, 1 - (passive.dodgeBonus ?? 0)) : 1)
+    )
   });
   damage = Math.max(0, Math.round(damage * (tune.enemyDamageMultiplier ?? 1)));
   if (combat.enemyCount && combat.enemyCount > 1) {
@@ -410,7 +431,15 @@ function enemyTurn() {
   }
 
   damage = Math.max(0, Math.round(damage * getIncomingMod(combat.playerStance)));
-  damage = Math.max(0, Math.round(damage * (tune.playerDamageTakenMultiplier ?? 1)));
+  damage = Math.max(
+    0,
+    Math.round(
+      damage *
+        (tune.playerDamageTakenMultiplier ?? 1) *
+        Math.max(0.1, passive.damageTakenMultiplier ?? 1) *
+        (firstRound ? Math.max(0.1, passive.damageTakenMultiplier ?? 1) : 1)
+    )
+  );
 
   let remaining = damage;
   if (combat.playerStatus.shieldBoost > 0) {

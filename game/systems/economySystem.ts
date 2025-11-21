@@ -1,4 +1,5 @@
 import { addCommodityTrade, addCreditsEarned, devTune, gameState, getCombatTune } from "../core/state";
+import { getPassiveEffects, getIncomeMultiplier } from "../core/passives";
 import type { GameState, MarketEvent, MarketIntelSnapshot } from "../core/state";
 import { content, getSystemById } from "../core/engine";
 import type { CommodityDef, SystemDef } from "../core/contentTypes";
@@ -168,12 +169,18 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
   const basePrice = computeBaseLocalPrice(system, commodity);
   const spread = commodity.baseSpread ?? DEFAULT_SPREAD;
   const volatility = getEffectiveVolatility(commodity);
+  const passive = getPassiveEffects();
   const profitMultiplier = Math.max(0.1, Math.min(3, devTune.tradeProfitMultiplier ?? 1));
-  const incomeScale = Math.max(0, getCombatTune().globalIncomeMultiplier ?? 1);
+  const incomeScale = getIncomeMultiplier();
+  const buyBonus = Math.max(0.5, passive.buyBonus ?? 1);
+  const sellBonus = Math.max(0, passive.sellBonus ?? 1);
+  const taxBonus = Math.max(0.5, passive.marketTax ?? 1);
   const buy = Math.max(
     1,
     Math.round(
-      (basePrice * (spread.buyMultiplier ?? 1) * (1 + volatility * 0.05)) / profitMultiplier
+      (basePrice * (spread.buyMultiplier ?? 1) * (1 + volatility * 0.05)) /
+        profitMultiplier *
+        buyBonus
     )
   );
   const sell = Math.max(
@@ -183,7 +190,9 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
         (spread.sellMultiplier ?? 0.85) *
         Math.max(0.6, 1 - volatility * 0.05) *
         profitMultiplier *
-        incomeScale
+        incomeScale *
+        sellBonus *
+        taxBonus
     )
   );
   const high = Math.max(buy, sell, Math.round(basePrice * (1 + volatility * 0.1)));

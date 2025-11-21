@@ -1,4 +1,5 @@
 import { devTune, gameState, scaleTurnDelta, getCombatTune } from "../core/state";
+import { getPassiveEffects } from "../core/passives";
 import { content } from "../core/engine";
 import type { GameState } from "../core/state";
 import type { SystemDef, EventChoice, GameEvent } from "../core/contentTypes";
@@ -46,7 +47,9 @@ export function pickEvent(context: EventContext): GameEvent | undefined {
   const hazard = Math.max(0, Math.min(1, context.hazardChance ?? 0.4));
   if (Math.random() > hazard) return undefined;
   const combatTune = getCombatTune();
-  const frequencyWeight = Math.max(0, combatTune.nonPirateEventWeight ?? 1);
+  const frequencyWeight =
+    Math.max(0, combatTune.nonPirateEventWeight ?? 1) *
+    Math.max(0, getPassiveEffects().anomalyChance ?? 1);
   const frequencyChance = Math.min(
     1,
     Math.max(0, ((devTune.eventFrequency ?? 50) / 100) * frequencyWeight)
@@ -78,7 +81,10 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
   }
 
   const resolution: ChoiceResolution = {};
-  const rewardMultiplier = Math.max(0.1, Math.min(5, devTune.eventRewardMultiplier ?? 1));
+  const passive = getPassiveEffects();
+  const rewardMultiplier =
+    Math.max(0.1, Math.min(5, devTune.eventRewardMultiplier ?? 1)) *
+    Math.max(0.1, passive.eventRewardMultiplier ?? 1);
 
   const addCredits = (amount: number) => {
     gameState.player.credits += amount;
@@ -104,9 +110,13 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
 
   if (typeof outcomes.fuelDelta === "number") {
     const capacity = gameState.ship.maxFuel;
+    const fuelDelta =
+      outcomes.fuelDelta > 0
+        ? Math.max(0, Math.round(outcomes.fuelDelta * rewardMultiplier))
+        : outcomes.fuelDelta;
     gameState.ship.fuel = Math.max(
       0,
-      Math.min(capacity, gameState.ship.fuel + outcomes.fuelDelta)
+      Math.min(capacity, gameState.ship.fuel + fuelDelta)
     );
   }
 
@@ -118,7 +128,10 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
   }
 
   if (outcomes.cargoGain) {
-    applyCargoDelta(outcomes.cargoGain, 1);
+    applyCargoDelta(
+      scaleDelta(outcomes.cargoGain, rewardMultiplier, 1),
+      1
+    );
   }
 
   if (outcomes.cargoLoss) {
@@ -130,8 +143,13 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
       outcomes.giveCommodity.min,
       outcomes.giveCommodity.max
     );
-    addCargoWithCapacity(outcomes.giveCommodity.id, amount);
-    gameState.notifications.push(`Collected ${amount} ${outcomes.giveCommodity.id}.`);
+    const scaledAmount = Math.max(0, Math.round(amount * rewardMultiplier));
+    addCargoWithCapacity(outcomes.giveCommodity.id, scaledAmount);
+    if (scaledAmount > 0) {
+      gameState.notifications.push(
+        `Collected ${scaledAmount} ${outcomes.giveCommodity.id}.`
+      );
+    }
   }
 
   if (outcomes.giveWeapon) {
@@ -187,12 +205,16 @@ export function applyAutoResolve(ev: GameEvent): ChoiceResolution {
   const res: ChoiceResolution = {};
   const auto = ev.autoResolve;
   if (!auto) return res;
+  const rewardMultiplier =
+    Math.max(0.1, Math.min(5, devTune.eventRewardMultiplier ?? 1)) *
+    Math.max(0.1, getPassiveEffects().eventRewardMultiplier ?? 1);
 
   if (auto.mining) {
     const qty = randomInRange(auto.mining.quantity.min, auto.mining.quantity.max);
-    addCargoWithCapacity(auto.mining.commodityId, qty);
+    const scaledQty = Math.max(0, Math.round(qty * rewardMultiplier));
+    addCargoWithCapacity(auto.mining.commodityId, scaledQty);
     gameState.notifications.push(
-      `Mining yield: ${qty} ${auto.mining.commodityId} (${auto.mining.grade ?? "standard"}).`
+      `Mining yield: ${scaledQty} ${auto.mining.commodityId} (${auto.mining.grade ?? "standard"}).`
     );
   }
 
@@ -330,6 +352,23 @@ function applyCargoDelta(
     const next = Math.max(0, current + qty * direction);
     gameState.ship.cargo[commodityId] = next;
   }
+}
+
+function scaleDelta(
+  delta: Record<string, number>,
+  multiplier: number,
+  minUnit = 1
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [commodityId, qty] of Object.entries(delta)) {
+    if (qty <= 0) {
+      result[commodityId] = qty;
+      continue;
+    }
+    const scaled = Math.max(minUnit, Math.round(qty * multiplier));
+    result[commodityId] = scaled;
+  }
+  return result;
 }
 
 function addCargoWithCapacity(commodityId: string, qty: number): void {

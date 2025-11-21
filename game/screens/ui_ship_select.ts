@@ -3,6 +3,65 @@ import { autoEquipAvailableWeapons } from "../systems/weaponSystem";
 import { navigation } from "../core/navigation";
 import { gameState } from "../core/state";
 import { formatTurn } from "../core/formatters";
+import type { ShipDef } from "../core/contentTypes";
+
+type EffectFormatter = (value: number) => string | null;
+
+const passiveEffectFormatters: Record<string, EffectFormatter> = {
+  incomeMultiplier: (value) => formatDifference(value, "income"),
+  eventRewardMultiplier: (value) => formatDifference(value, "event rewards"),
+  hpBonus: (value) => formatDifference(value, "hull"),
+  cargoBonus: (value) => formatAbsolute(value, "cargo capacity"),
+  sellBonus: (value) => formatDifference(value, "sell price"),
+  buyBonus: (value) => formatDifference(value, "buy price"),
+  marketTax: (value) => formatDifference(value, "market tax"),
+  miningYield: (value) => formatDifference(value, "mining yield"),
+  rareFindChance: (value) => formatDifference(value, "rare find chance"),
+  miningSpeed: (value) => formatDifference(value, "mining duration"),
+  dodgeBonus: (value) => formatPercent(value, "dodge chance"),
+  critBonus: (value) => formatPercent(value, "crit chance"),
+  damageTakenMultiplier: (value) => formatDifference(value, "damage taken"),
+  fleeBonus: (value) => formatPercent(value, "flee chance"),
+  pirateDetectionMultiplier: (value) => formatDifference(value, "pirate detection"),
+  scanDetectionMultiplier: (value) => formatDifference(value, "scan detection"),
+  illegalTolerance: (value) => formatDifference(value, "illegal tolerance"),
+  fuelCostMultiplier: (value) => formatDifference(value, "fuel cost"),
+  hazardDetectionBonus: (value) => formatPercent(value, "hazard detection"),
+  anomalyChance: (value) => formatDifference(value, "anomaly chance"),
+  shieldRegenBonus: (value) => formatDifference(value, "shield regen")
+};
+
+function describePassiveEffects(ship: ShipDef): string[] {
+  const effects = ship.passive?.effects;
+  if (!effects) return [];
+  return Object.entries(effects)
+    .map(([key, value]) => passiveEffectFormatters[key]?.(value) ?? null)
+    .filter((line): line is string => Boolean(line));
+}
+
+function formatDifference(value: number, label: string): string | null {
+  if (!Number.isFinite(value)) return null;
+  const diff = Math.round((value - 1) * 100);
+  if (diff === 0) return null;
+  const sign = diff > 0 ? "+" : "";
+  return `${sign}${diff}% ${label}`;
+}
+
+function formatPercent(value: number, label: string): string | null {
+  if (!Number.isFinite(value)) return null;
+  const pct = Math.round(value * 100);
+  if (pct === 0) return null;
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct}% ${label}`;
+}
+
+function formatAbsolute(value: number, label: string): string | null {
+  if (!Number.isFinite(value)) return null;
+  const amount = Math.round(value);
+  if (amount === 0) return null;
+  const sign = amount > 0 ? "+" : "";
+  return `${sign}${amount} ${label}`;
+}
 
 declare global {
   interface Window {
@@ -45,17 +104,34 @@ export function ShipSelectScreen(): string {
   }
 
   const list = starters
-    .map(
-      (s) => `
+    .map((ship) => {
+      const passiveLines = describePassiveEffects(ship);
+      const passiveBlock = ship.passive?.name
+        ? `
+        <div class="passive-summary">
+          <p class="muted">Passive: ${ship.passive.name}</p>
+          ${
+            passiveLines.length
+              ? `<ul class="passive-summary__list">${passiveLines
+                  .map((line) => `<li>${line}</li>`)
+                  .join("")}</ul>`
+              : ""
+          }
+        </div>
+      `
+        : "";
+
+      return `
       <div class="panel-card">
-        <p class="label">${s.roleHint}</p>
-        <p class="value-inline"><strong>${s.name}</strong></p>
-        <p class="muted">${s.description}</p>
-        <p class="muted">Hull ${s.hull} · Shields ${s.shields} · Fuel ${s.fuel} · Cargo ${s.cargo}</p>
-        <button class="btn btn-primary" onclick="chooseStarter('${s.id}')">Choose ${s.name}</button>
+        <p class="label">${ship.roleHint}</p>
+        <p class="value-inline"><strong>${ship.name}</strong></p>
+        <p class="muted">${ship.description}</p>
+        ${passiveBlock}
+        <p class="muted">Hull ${ship.hull} | Shields ${ship.shields} | Fuel ${ship.fuel} | Cargo ${ship.cargo}</p>
+        <button class="btn btn-primary" onclick="chooseStarter('${ship.id}')">Choose ${ship.name}</button>
       </div>
-    `
-    )
+    `;
+    })
     .join("");
 
   return `

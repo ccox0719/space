@@ -6,6 +6,7 @@ import {
   recordContractPayout,
   getCombatTune
 } from "../core/state";
+import { getIncomeMultiplier, getPassiveEffects } from "../core/passives";
 import type { ContractState, GameState } from "../core/state";
 import { adjustReputationBatch } from "./reputationSystem";
 import { getWeaponById } from "./weaponSystem";
@@ -128,13 +129,16 @@ function applyRewards(contract: ContractState, status: "completed" | "failed"): 
   const reward = contract.reward;
   if (reward.credits) {
     const payoutMultiplier = Math.max(0.1, Math.min(5, devTune.contractPayoutMultiplier ?? 1));
-    const scaledReward = Math.max(0, Math.round(reward.credits * payoutMultiplier));
-    const incomeScale = Math.max(0, getCombatTune().globalIncomeMultiplier ?? 1);
-    const finalPayout = Math.max(0, Math.round(scaledReward * incomeScale));
-    gameState.player.credits += finalPayout;
-    addCreditsEarned(finalPayout);
-    recordContractPayout(finalPayout);
-    gameState.notifications.push(`Mission reward: +${finalPayout} credits.`);
+    const incomeScale = getIncomeMultiplier();
+    const passiveIncome = Math.max(0, getPassiveEffects().incomeMultiplier ?? 1);
+    const scaledReward = Math.max(
+      0,
+      Math.round(reward.credits * payoutMultiplier * incomeScale * passiveIncome)
+    );
+    gameState.player.credits += scaledReward;
+    addCreditsEarned(scaledReward);
+    recordContractPayout(scaledReward);
+    gameState.notifications.push(`Mission reward: +${scaledReward} credits.`);
   }
   if (reward.rep) {
     adjustReputationBatch(reward.rep);

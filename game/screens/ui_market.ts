@@ -170,6 +170,7 @@ export function MarketScreen(): string {
     })
     .join("");
 
+  const hasCargo = cargoLoad > 0;
   const summaryCard = `
     <div class="panel-card market-summary-card">
       <p class="label">Market Overview</p>
@@ -220,7 +221,10 @@ export function MarketScreen(): string {
             : '<span class="muted">Cargo empty</span>'
         }
       </div>
-      <button class="market-summary__cargo-link" onclick="nav('ship')">View full cargo</button>
+      <div class="app-actions">
+        <button class="btn btn-ghost" onclick="nav('ship')">View full cargo</button>
+        <button class="btn btn-primary"${hasCargo ? "" : " disabled"} onclick="sellAllCargoAction()">Sell All Cargo</button>
+      </div>
     </div>
   `;
 
@@ -403,6 +407,7 @@ declare global {
     sellCommodityAction: (commodityId: string) => void;
     buyAllCommodityAction: (commodityId: string, unitPrice: number) => void;
     sellAllCommodityAction: (commodityId: string) => void;
+    sellAllCargoAction: () => void;
     purchaseNeighborIntel: () => void;
   }
 }
@@ -466,6 +471,34 @@ window.sellAllCommodityAction = (commodityId: string) => {
   const msgEl = document.getElementById("market-message");
   if (msgEl) {
     msgEl.textContent = `Sold ${qty} ${commodity?.name || commodityId} for ${price * qty} cr.`;
+  }
+  nav("market");
+};
+
+window.sellAllCargoAction = () => {
+  const systemId = gameState.location.systemId;
+  const cargoEntries = Object.entries(gameState.ship.cargo || {});
+  let totalUnits = 0;
+  const details: string[] = [];
+  for (const [commodityId, qty] of cargoEntries) {
+    if (!qty) continue;
+    const success = sellCommodity(systemId, commodityId, qty);
+    if (!success) continue;
+    totalUnits += qty;
+    const def = getCommodityById(commodityId);
+    details.push(`${qty} ${def?.name || commodityId}`);
+  }
+  const msgEl = document.getElementById("market-message");
+  if (msgEl) {
+    if (!totalUnits) {
+      msgEl.textContent = "No cargo available to sell.";
+    } else {
+      const summary =
+        details.length > 3
+          ? `${details.slice(0, 3).join(", ")} +${details.length - 3} others`
+          : details.join(", ");
+      msgEl.textContent = `Sold ${totalUnits} cargo units (${summary}).`;
+    }
   }
   nav("market");
 };

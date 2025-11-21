@@ -2,7 +2,7 @@
   {
     "id": "echo_1_skiff",
     "name": "Echo-1 Skiff",
-    "description": "A compact multi-role corvette used as a basic issue starter frame. Adequate cargo, modest defenses, and enough hardpoints to survive early encounters.",
+    "description": "Starter multi-role corvette; Versatility Core boosts income, event rewards, HP, and cargo capacity.",
     "roleHint": "balanced",
     "starter": true,
     "cost": 0,
@@ -10,20 +10,39 @@
     "shields": 50,
     "fuel": 40,
     "cargo": 40,
-    "tags": ["starter", "balanced"],
+    "tags": [
+      "starter",
+      "balanced"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" },
-      { "size": "small", "type": "projectile" }
+      {
+        "size": "small",
+        "type": "energy"
+      },
+      {
+        "size": "small",
+        "type": "projectile"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 45,
     "cpuLimit": 45,
-    "maneuverRating": 55
+    "maneuverRating": 55,
+    "passive": {
+      "id": "versatility-core",
+      "name": "Versatility Core",
+      "effects": {
+        "incomeMultiplier": 1.05,
+        "eventRewardMultiplier": 1.05,
+        "hpBonus": 1.05,
+        "cargoBonus": 5
+      }
+    }
   },
   {
     "id": "cargo_finch",
     "name": "Cargo Finch",
-    "description": "A light hauler with reinforced racks and extended cargo tanks. Fragile in a straight fight but ideal for early trading runs.",
+    "description": "Light trader with reinforced racks; Market Savvy cuts taxes/buy costs while boosting sell value and cargo.",
     "roleHint": "trader",
     "starter": true,
     "cost": 0,
@@ -31,19 +50,35 @@
     "shields": 40,
     "fuel": 45,
     "cargo": 70,
-    "tags": ["starter", "trader"],
+    "tags": [
+      "starter",
+      "trader"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "projectile" }
+      {
+        "size": "small",
+        "type": "projectile"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 38,
     "cpuLimit": 40,
-    "maneuverRating": 50
+    "maneuverRating": 50,
+    "passive": {
+      "id": "market-savvy",
+      "name": "Market Savvy",
+      "effects": {
+        "sellBonus": 1.05,
+        "buyBonus": 0.95,
+        "marketTax": 0.95,
+        "cargoBonus": 10
+      }
+    }
   },
   {
     "id": "drillkite",
     "name": "Drillkite Miner",
-    "description": "An entry-level mining frame fitted with reinforced struts and power feeds for industrial tools. Limited combat capability but efficient in belts.",
+    "description": "Entry-level miner with Industrial Efficiency to boost yield, rare chance, and mining speed.",
     "roleHint": "miner",
     "starter": true,
     "cost": 0,
@@ -51,19 +86,34 @@
     "shields": 45,
     "fuel": 35,
     "cargo": 55,
-    "tags": ["starter", "miner"],
+    "tags": [
+      "starter",
+      "miner"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" }
+      {
+        "size": "small",
+        "type": "energy"
+      }
     ],
     "moduleSlots": 4,
     "powerGrid": 50,
     "cpuLimit": 46,
-    "maneuverRating": 45
+    "maneuverRating": 45,
+    "passive": {
+      "id": "industrial-efficiency",
+      "name": "Industrial Efficiency",
+      "effects": {
+        "miningYield": 1.25,
+        "rareFindChance": 1.1,
+        "miningSpeed": 0.9
+      }
+    }
   },
   {
     "id": "spearling",
     "name": "Spearling Interceptor",
-    "description": "A nimble interceptor frame tuned for quick strikes and evasive maneuvers. Minimal hold space in exchange for speed and gun mounts.",
+    "description": "Nimble interceptor focused on quick strikes; Combat Momentum adds dodge, crit, damage reduction, and flee perks.",
     "roleHint": "fighter",
     "starter": true,
     "cost": 0,
@@ -71,20 +121,39 @@
     "shields": 55,
     "fuel": 35,
     "cargo": 25,
-    "tags": ["starter", "fighter"],
+    "tags": [
+      "starter",
+      "fighter"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" },
-      { "size": "small", "type": "missile" }
+      {
+        "size": "small",
+        "type": "energy"
+      },
+      {
+        "size": "small",
+        "type": "missile"
+      }
     ],
     "moduleSlots": 2,
     "powerGrid": 42,
     "cpuLimit": 48,
-    "maneuverRating": 72
+    "maneuverRating": 72,
+    "passive": {
+      "id": "combat-momentum",
+      "name": "Combat Momentum",
+      "effects": {
+        "dodgeBonus": 0.1,
+        "critBonus": 0.15,
+        "damageTakenMultiplier": 0.9,
+        "fleeBonus": 0.2
+      }
+    }
   },
   {
     "id": "shade_runner",
     "name": "Shade Runner",
-    "description": "A lean courier favored by smugglers. Tight profile, quick burns, and just enough cargo to make risky runs worthwhile.",
+    "description": "Lean smuggler courier with Shadow Courier passive lowering pirate/scan detection, raising tolerance, and aiding flee attempts.",
     "roleHint": "smuggler",
     "starter": true,
     "cost": 0,
@@ -92,19 +161,35 @@
     "shields": 45,
     "fuel": 50,
     "cargo": 35,
-    "tags": ["starter", "smuggler"],
+    "tags": [
+      "starter",
+      "smuggler"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "projectile" }
+      {
+        "size": "small",
+        "type": "projectile"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 40,
     "cpuLimit": 50,
-    "maneuverRating": 68
+    "maneuverRating": 68,
+    "passive": {
+      "id": "shadow-courier",
+      "name": "Shadow Courier",
+      "effects": {
+        "pirateDetectionMultiplier": 0.75,
+        "scanDetectionMultiplier": 0.85,
+        "illegalTolerance": 1.2,
+        "fleeBonus": 0.1
+      }
+    }
   },
   {
     "id": "surveyor_v",
     "name": "Surveyor V",
-    "description": "An explorer’s frame with extended fuel tanks and sensor hardpoints. Built to slip between systems, map anomalies, and survive what it finds.",
+    "description": "Explorer frame with Pathfinder Suite cutting fuel cost, boosting anomaly rewards, and improving hazard detection.",
     "roleHint": "explorer",
     "starter": true,
     "cost": 0,
@@ -112,14 +197,30 @@
     "shields": 50,
     "fuel": 60,
     "cargo": 30,
-    "tags": ["starter", "explorer"],
+    "tags": [
+      "starter",
+      "explorer"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" }
+      {
+        "size": "small",
+        "type": "energy"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 44,
     "cpuLimit": 55,
-    "maneuverRating": 62
+    "maneuverRating": 62,
+    "passive": {
+      "id": "pathfinder-suite",
+      "name": "Pathfinder Suite",
+      "effects": {
+        "fuelCostMultiplier": 0.8,
+        "anomalyChance": 1.2,
+        "eventRewardMultiplier": 1.1,
+        "hazardDetectionBonus": 0.2
+      }
+    }
   },
   {
     "id": "prospector_rig",
@@ -132,15 +233,33 @@
     "shields": 25,
     "fuel": 40,
     "cargo": 110,
-    "tags": ["miner", "industrial"],
+    "tags": [
+      "miner",
+      "industrial"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" },
-      { "size": "small", "type": "projectile" }
+      {
+        "size": "small",
+        "type": "energy"
+      },
+      {
+        "size": "small",
+        "type": "projectile"
+      }
     ],
     "moduleSlots": 2,
     "powerGrid": 50,
     "cpuLimit": 55,
-    "maneuverRating": 52
+    "maneuverRating": 52,
+    "passive": {
+      "id": "deep-miner",
+      "name": "Deep Miner",
+      "effects": {
+        "miningYield": 1.35,
+        "rareFindChance": 1.2,
+        "miningSpeed": 0.85
+      }
+    }
   },
   {
     "id": "gladius_fighter",
@@ -153,15 +272,33 @@
     "shields": 50,
     "fuel": 35,
     "cargo": 45,
-    "tags": ["fighter", "raider"],
+    "tags": [
+      "fighter",
+      "raider"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" },
-      { "size": "small", "type": "missile" }
+      {
+        "size": "small",
+        "type": "energy"
+      },
+      {
+        "size": "small",
+        "type": "missile"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 70,
     "cpuLimit": 60,
-    "maneuverRating": 65
+    "maneuverRating": 65,
+    "passive": {
+      "id": "shielded-assault",
+      "name": "Shielded Assault",
+      "effects": {
+        "dodgeBonus": 0.07,
+        "critBonus": 0.1,
+        "damageTakenMultiplier": 0.85
+      }
+    }
   },
   {
     "id": "sentinel_frigate",
@@ -174,15 +311,32 @@
     "shields": 70,
     "fuel": 30,
     "cargo": 65,
-    "tags": ["combat", "frigate"],
+    "tags": [
+      "combat",
+      "frigate"
+    ],
     "hardpoints": [
-      { "size": "medium", "type": "projectile" },
-      { "size": "medium", "type": "energy" }
+      {
+        "size": "medium",
+        "type": "projectile"
+      },
+      {
+        "size": "medium",
+        "type": "energy"
+      }
     ],
     "moduleSlots": 4,
     "powerGrid": 90,
     "cpuLimit": 60,
-    "maneuverRating": 45
+    "maneuverRating": 45,
+    "passive": {
+      "id": "phalanx-core",
+      "name": "Phalanx Core",
+      "effects": {
+        "shieldRegenBonus": 1.1,
+        "damageTakenMultiplier": 0.9
+      }
+    }
   },
   {
     "id": "atlas_hauler",
@@ -195,15 +349,34 @@
     "shields": 45,
     "fuel": 40,
     "cargo": 165,
-    "tags": ["freighter", "heavy"],
+    "tags": [
+      "freighter",
+      "heavy"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" },
-      { "size": "medium", "type": "missile" }
+      {
+        "size": "small",
+        "type": "energy"
+      },
+      {
+        "size": "medium",
+        "type": "missile"
+      }
     ],
     "moduleSlots": 4,
     "powerGrid": 80,
     "cpuLimit": 45,
-    "maneuverRating": 38
+    "maneuverRating": 38,
+    "passive": {
+      "id": "bulk-captain",
+      "name": "Bulk Captain",
+      "effects": {
+        "sellBonus": 1.08,
+        "buyBonus": 0.92,
+        "marketTax": 0.9,
+        "cargoBonus": 20
+      }
+    }
   },
   {
     "id": "phantom_raider",
@@ -216,14 +389,33 @@
     "shields": 40,
     "fuel": 42,
     "cargo": 75,
-    "tags": ["pirate", "raider"],
+    "tags": [
+      "pirate",
+      "raider"
+    ],
     "hardpoints": [
-      { "size": "small", "type": "energy" },
-      { "size": "medium", "type": "energy" }
+      {
+        "size": "small",
+        "type": "energy"
+      },
+      {
+        "size": "medium",
+        "type": "energy"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 75,
     "cpuLimit": 55,
-    "maneuverRating": 48
+    "maneuverRating": 48,
+    "passive": {
+      "id": "ghost-merc",
+      "name": "Ghost Mercenary",
+      "effects": {
+        "pirateDetectionMultiplier": 0.8,
+        "illegalTolerance": 1.5,
+        "critBonus": 0.2,
+        "fleeBonus": 0.15
+      }
+    }
   }
 ]

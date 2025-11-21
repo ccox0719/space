@@ -78,6 +78,8 @@ export function applyShipTemplate(templateId: string, customName?: string) {
     maneuverRating: tpl.maneuverRating,
     components: emptyComponents,
     hardpoints: tpl.hardpoints.map((hp) => ({ ...hp }))
+    ,
+    passive: tpl.passive ?? null
   };
 
   gameState.ship = newShip;
