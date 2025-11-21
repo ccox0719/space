@@ -6,3 +6,5 @@ netlify deploy --prod
 git add .
 git commit -m "update"
 git push
+
+npm run sync-content
