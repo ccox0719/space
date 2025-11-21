@@ -1,0 +1,103 @@
+[
+  {
+    "id": "pirate_cutter_loot",
+    "enemyTags": ["pirate", "raider"],
+    "common": [
+      { "type": "credits", "min": 40, "max": 120, "weight": 1.0 },
+      { "type": "commodity", "id": "aurite_ore", "min": 1, "max": 3, "weight": 0.9 }
+    ],
+    "uncommon": [
+      { "type": "weapon", "id": "coil_autocannon", "weight": 0.25 },
+      { "type": "commodity", "id": "steel_ingots", "min": 1, "max": 2, "weight": 0.2 }
+    ],
+    "rare": [
+      { "type": "mission", "id": "lost_convoy", "weight": 0.05 },
+      { "type": "weapon", "id": "arc_thrower", "weight": 0.03 }
+    ],
+    "guaranteed": { "credits": { "min": 10, "max": 40 } }
+  },
+  {
+    "id": "raider_skiff_loot",
+    "enemyTags": ["raider", "skiff"],
+    "common": [
+      { "type": "credits", "min": 20, "max": 80, "weight": 1.0 }
+    ],
+    "uncommon": [
+      { "type": "commodity", "id": "aurite_ore", "min": 1, "max": 2, "weight": 0.3 },
+      { "type": "weapon", "id": "stinger_missiles", "weight": 0.18 }
+    ],
+    "rare": [
+      { "type": "mission", "id": "signal_fragment", "weight": 0.04 },
+      { "type": "weapon", "id": "railgun_mk1", "weight": 0.02 }
+    ],
+    "guaranteed": { "credits": { "min": 5, "max": 20 } }
+  },
+  {
+    "id": "syndicate_raider_loot",
+    "enemyTags": ["pirate", "syndicate"],
+    "common": [
+      { "type": "credits", "min": 50, "max": 140, "weight": 1.0 },
+      { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 2, "weight": 0.5 }
+    ],
+    "uncommon": [
+      { "type": "commodity", "id": "contraband_data", "min": 1, "max": 1, "weight": 0.3 },
+      { "type": "weapon", "id": "stinger_missiles", "weight": 0.22 }
+    ],
+    "rare": [
+      { "type": "component", "id": "aux_fuel_tanks", "weight": 0.08 },
+      { "type": "weapon", "id": "storm_lance", "weight": 0.05 }
+    ],
+    "guaranteed": { "credits": { "min": 20, "max": 60 } }
+  },
+  {
+    "id": "navy_interceptor_loot",
+    "enemyTags": ["navy", "lawful"],
+    "common": [
+      { "type": "credits", "min": 30, "max": 90, "weight": 1.0 },
+      { "type": "commodity", "id": "medical_supplies", "min": 1, "max": 2, "weight": 0.4 }
+    ],
+    "uncommon": [
+      { "type": "weapon", "id": "scatter_laser", "weight": 0.2 },
+      { "type": "component", "id": "shield_booster", "weight": 0.18 }
+    ],
+    "rare": [
+      { "type": "component", "id": "reinforced_plating", "weight": 0.08 },
+      { "type": "mission", "id": "patrol_rift", "weight": 0.04 }
+    ],
+    "guaranteed": { "credits": { "min": 15, "max": 35 } }
+  },
+  {
+    "id": "cult_frigate_loot",
+    "enemyTags": ["cult", "mystic"],
+    "common": [
+      { "type": "credits", "min": 60, "max": 140, "weight": 1.0 },
+      { "type": "commodity", "id": "unity_relics", "min": 1, "max": 2, "weight": 0.35 }
+    ],
+    "uncommon": [
+      { "type": "weapon", "id": "ion_disruptor", "weight": 0.2 },
+      { "type": "commodity", "id": "contraband_data", "min": 1, "max": 1, "weight": 0.25 }
+    ],
+    "rare": [
+      { "type": "mission", "id": "signal_fragment", "weight": 0.05 },
+      { "type": "weapon", "id": "plasma_caster", "weight": 0.03 }
+    ],
+    "guaranteed": { "credits": { "min": 25, "max": 60 } }
+  },
+  {
+    "id": "armored_gunboat_loot",
+    "enemyTags": ["navy", "elite"],
+    "common": [
+      { "type": "credits", "min": 120, "max": 220, "weight": 1.0 },
+      { "type": "commodity", "id": "steel_ingots", "min": 2, "max": 4, "weight": 0.6 }
+    ],
+    "uncommon": [
+      { "type": "weapon", "id": "railgun_mk1", "weight": 0.2 },
+      { "type": "component", "id": "reinforced_plating", "weight": 0.18 }
+    ],
+    "rare": [
+      { "type": "weapon", "id": "mass_driver", "weight": 0.08 },
+      { "type": "weapon", "id": "flare_plasma", "weight": 0.05 }
+    ],
+    "guaranteed": { "credits": { "min": 45, "max": 120 } }
+  }
+]

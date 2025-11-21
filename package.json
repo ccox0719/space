@@ -23,6 +23,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "sync-content": "node scripts/copy-content.js",
+    "export-pages": "node scripts/export-docs.js",
     "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
