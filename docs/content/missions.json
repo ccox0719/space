@@ -1,0 +1,185 @@
+[
+  {
+    "id": "deliver_med_supplies",
+    "name": "Deliver Medical Supplies",
+    "factionId": "helion_republic",
+    "type": "delivery",
+    "description": "Transport emergency medical crates to Argent Gate.",
+    "requirements": {
+      "deliver": {
+        "systemId": "argent_gate",
+        "commodityId": "food",
+        "quantity": 3
+      }
+    },
+    "reward": {
+      "credits": 180,
+      "rep": { "helion_republic": 3 }
+    }
+  },
+  {
+    "id": "patrol_rift",
+    "name": "Frontier Patrol",
+    "factionId": "helion_republic",
+    "type": "travel",
+    "description": "Travel to Dawn Reach and report on pirate activity.",
+    "requirements": {
+      "travel": {
+        "systemId": "dawn_reach"
+      }
+    },
+    "reward": {
+      "credits": 120,
+      "rep": { "helion_republic": 2 }
+    }
+  },
+  {
+    "id": "bounty_raider",
+    "name": "Bounty: Raider Skiff",
+    "factionId": "helion_republic",
+    "type": "combat",
+    "description": "Hunt down a raider skiff operating near Dawn Reach.",
+    "requirements": {
+      "combat": {
+        "enemyId": "pirate_cutter"
+      }
+    },
+    "reward": {
+      "credits": 250,
+      "rep": { "helion_republic": 4 }
+    }
+  },
+  {
+    "id": "cargo_relay",
+    "name": "Cargo Relay",
+    "factionId": "frontier_clans",
+    "type": "delivery",
+    "description": "Deliver refined ore to Dawn Reach as part of a relay network.",
+    "requirements": {
+      "deliver": {
+        "systemId": "dawn_reach",
+        "commodityId": "ore",
+        "quantity": 4
+      },
+      "failureAfterTurns": 7
+    },
+    "reward": {
+      "credits": 220,
+      "rep": { "frontier_clans": 3 }
+    }
+  },
+  {
+    "id": "multi_hop_patrol",
+    "name": "Multi-Hop Patrol",
+    "factionId": "helion_republic",
+    "type": "patrol",
+    "description": "Sweep Argent Gate and Dawn Reach, then stay alert for hostiles.",
+    "requirements": {
+      "multiTravel": ["argent_gate", "dawn_reach"],
+      "failureAfterTurns": 9,
+      "triggerEventId": "patrol_ambush"
+    },
+    "reward": {
+      "credits": 200,
+      "rep": { "helion_republic": 3 }
+    }
+  },
+  {
+    "id": "urgent_dispatch",
+    "name": "Urgent Dispatch",
+    "factionId": "helion_republic",
+    "type": "delivery",
+    "description": "Rushed medical data must reach Helion Prime in under five turns.",
+    "requirements": {
+      "travel": {
+        "systemId": "helion_prime"
+      },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 260,
+      "rep": { "helion_republic": 5 }
+    }
+  },
+  {
+    "id": "signal_run",
+    "name": "Signal Run",
+    "factionId": "rift_syndicate",
+    "type": "clue",
+    "description": "Follow the signal to Rift Expanses and see what the distress call was about.",
+    "requirements": {
+      "travel": {
+        "systemId": "rift_expanses"
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 180,
+      "rep": { "rift_syndicate": 2 }
+    }
+  },
+  {
+    "id": "aurora_guard",
+    "name": "Aurora Guard",
+    "factionId": "frontier_clans",
+    "type": "escort",
+    "description": "Protect a convoy of salvage rigs en route to Aurora Belt from pirates.",
+    "requirements": {
+      "travel": { "systemId": "aurora_belt" },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 210,
+      "rep": { "frontier_clans": 3 }
+    }
+  },
+  {
+    "id": "rift_relay",
+    "name": "Rift Relay Run",
+    "factionId": "rift_syndicate",
+    "type": "delivery",
+    "description": "Deliver a cache of ore to the pirate clans deep in the Rift Expanses.",
+    "requirements": {
+      "travel": { "systemId": "rift_expanses" },
+      "deliver": {
+        "systemId": "rift_expanses",
+        "commodityId": "aurite_ore",
+        "quantity": 2
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 280,
+      "rep": { "rift_syndicate": 3, "pirate": 1 }
+    }
+  },
+  {
+    "id": "lost_convoy",
+    "name": "Lost Convoy",
+    "description": "A fragmented distress beacon points to a missing convoy somewhere beyond the rim.",
+    "type": "story",
+    "steps": [
+      { "id": "find_signal", "description": "Track the source of the beacon." },
+      { "id": "investigate_field", "description": "Scan the debris field for survivors." },
+      { "id": "escort_survivor", "description": "Escort the damaged vessel back to friendly space." }
+    ],
+    "rewards": {
+      "credits": 500,
+      "reputation": { "faction": "helion_republic", "amount": 5 }
+    }
+  },
+  {
+    "id": "signal_fragment",
+    "name": "Encrypted Signal Fragment",
+    "description": "A mysterious shard of encoded data. Someone in the black market will pay handsomely for a complete set.",
+    "type": "collection",
+    "steps": [
+      { "id": "decode", "description": "Find a decoder capable of interpreting the fragment." },
+      { "id": "hunt_sources", "description": "Locate other fragments scattered across pirate sectors." }
+    ],
+    "rewards": {
+      "credits": 300,
+      "weapon": "ion_disruptor"
+    }
+  }
+]

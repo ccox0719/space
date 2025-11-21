@@ -33,6 +33,7 @@ jobs:
           cp -R game/dist/* docs/
           mkdir -p docs/content
           cp -R game/content/* docs/content/
+          touch docs/.nojekyll
 
       - name: Commit docs build
         run: |
