@@ -1,5 +1,11 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
-  base: '/space/', // IMPORTANT for GitHub Pages
+  root: resolve(__dirname, 'game'),
+  base: '/space/', // GitHub Pages repo name
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+  },
 });

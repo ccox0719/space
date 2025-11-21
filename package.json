@@ -21,9 +21,9 @@
     "yn": "^3.1.1"
   },
   "scripts": {
-    "dev": "vite dev game",
-    "build": "vite build game",
-    "preview": "vite preview game",
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

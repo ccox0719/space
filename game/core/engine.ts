@@ -48,6 +48,9 @@ declare global {
  * Load all JSON content from /content.
  */
 async function loadContent(): Promise<GameContent> {
+  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/+$/, "/");
+  const contentUrl = (file: string) => `${base}content/${file}`;
+
   const [
     systemsResp,
     shipsResp,
@@ -60,15 +63,15 @@ async function loadContent(): Promise<GameContent> {
     missionsResp
   ] =
     await Promise.all([
-      fetch("/content/systems.json"),
-      fetch("/content/ships.json"),
-      fetch("/content/components.json"),
-      fetch("/content/commodities.json"),
-      fetch("/content/weapons.json"),
-      fetch("/content/enemies.json"),
-      fetch("/content/events.json"),
-      fetch("/content/loot_tables.json"),
-      fetch("/content/missions.json")
+      fetch(contentUrl("systems.json")),
+      fetch(contentUrl("ships.json")),
+      fetch(contentUrl("components.json")),
+      fetch(contentUrl("commodities.json")),
+      fetch(contentUrl("weapons.json")),
+      fetch(contentUrl("enemies.json")),
+      fetch(contentUrl("events.json")),
+      fetch(contentUrl("loot_tables.json")),
+      fetch(contentUrl("missions.json"))
     ]);
 
   if (!systemsResp.ok) {
