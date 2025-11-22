@@ -162,6 +162,17 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.02);
 }
 
+.travel-map {
+  width: 100%;
+  overflow: hidden;
+}
+
+.travel-map svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .panel-log {
   max-height: 140px;
   overflow-y: auto;
@@ -615,6 +626,7 @@ body {
 /* Legacy helpers kept for existing screens while we phase in the new layout */
 h1, h2, h3 { margin-top: 0; }
 .muted { color: var(--text-muted); }
+.muted-bold { font-weight: 600; color: var(--text-main); }
 ul.actions { list-style: none; padding-left: 0; }
 ul.actions li { cursor: pointer; padding: 6px 0; }
 ul.actions li:hover { text-decoration: underline; }

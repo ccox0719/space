@@ -7,4 +7,8 @@ git add .
 git commit -m "update"
 git push
 
-npm run sync-content
+npm run export
+
+"scripts": {
+  "publish": "npm run export-pages && git add package.json scripts docs/content cheatsheet.txt && git commit -m \"update\" && git push"
+}

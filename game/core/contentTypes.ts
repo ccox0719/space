@@ -5,17 +5,47 @@ export interface MarketProfile {
   blackMarket?: boolean;
 }
 
+export type LaneType = "core_lane" | "frontier_lane" | "wildspace";
+
+export interface SystemNeighbor {
+  id: string;
+  distance: number;
+  laneType: LaneType;
+}
+
+export interface SystemCoords {
+  x: number;
+  y: number;
+}
+
 export interface SystemDef {
   id: string;
   name: string;
-  description: string;
+  description?: string;
+  region: "core" | "border" | "fringe" | "pirate" | "wild" | string;
+  coords: SystemCoords;
+  baseDanger: number;
   security: string;
-  faction: string;
+  faction?: string;
   tags: string[];
-  neighbors: string[];
+  economyTags: string[];
+  traits: string[];
+  neighbors: SystemNeighbor[];
   marketModifiers?: Record<string, number>;
   marketProfile?: MarketProfile;
   eventWeights?: Record<string, number>;
+}
+
+export interface PirateBaseDef {
+  id: string;
+  systemId: string;
+  name: string;
+  type: "pirate_base";
+  tier: number;
+  maxWaves: number;
+  wantedReward: number;
+  lootProfile: string;
+  description: string;
 }
 
 export interface MissionDef {
@@ -246,6 +276,9 @@ export interface EnemyDef {
 
 export interface GameContent {
   systems: SystemDef[];
+  systemsById: Record<string, SystemDef>;
+  bases: PirateBaseDef[];
+  basesById: Record<string, PirateBaseDef>;
   ships: ShipDef[];
   components: ComponentDef[];
   weapons: WeaponDef[];

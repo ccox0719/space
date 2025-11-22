@@ -1,0 +1,46 @@
+[
+  {
+    "id": "scar_line_outpost",
+    "systemId": "scar_line",
+    "name": "Scar Line Outpost",
+    "type": "pirate_base",
+    "tier": 1,
+    "maxWaves": 2,
+    "wantedReward": -2,
+    "lootProfile": "pirate_cache_small",
+    "description": "A makeshift raider outpost built into a fractured ore spindle along the Scar Line."
+  },
+  {
+    "id": "black_reef_stronghold",
+    "systemId": "black_reef",
+    "name": "Black Reef Stronghold",
+    "type": "pirate_base",
+    "tier": 2,
+    "maxWaves": 3,
+    "wantedReward": -3,
+    "lootProfile": "pirate_cache_medium",
+    "description": "A heavily shielded reef of wreckage and gun platforms coordinating raids across nearby lanes."
+  },
+  {
+    "id": "broken_crown_fortress",
+    "systemId": "broken_crown",
+    "name": "Broken Crown Fortress",
+    "type": "pirate_base",
+    "tier": 3,
+    "maxWaves": 4,
+    "wantedReward": -5,
+    "lootProfile": "pirate_cache_large",
+    "description": "An infamous stronghold hidden within the shattered remains of a hollowed dwarf planet."
+  },
+  {
+    "id": "duskfall_hideaway",
+    "systemId": "duskfall_station",
+    "name": "Duskfall Hideaway",
+    "type": "pirate_base",
+    "tier": 1,
+    "maxWaves": 2,
+    "wantedReward": -2,
+    "lootProfile": "pirate_cache_small",
+    "description": "A shadow dock and logistics hub used by raiders to stage ambushes in the fringe."
+  }
+]

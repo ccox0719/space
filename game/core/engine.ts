@@ -22,6 +22,7 @@ import type {
   GameEvent,
   LootTable,
   MissionDef,
+  PirateBaseDef,
   GameContent
 } from "./contentTypes";
 
@@ -113,6 +114,16 @@ async function loadContent(): Promise<GameContent> {
   const commodities: CommodityDef[] = await commoditiesResp.json();
   const weapons: WeaponDef[] = await weaponsResp.json();
   const enemies: EnemyDef[] = await enemiesResp.json();
+  const basesResp = await fetch(contentUrl("bases.json"));
+
+  if (!basesResp.ok) {
+    throw new Error(`Failed to load bases.json: ${basesResp.status}`);
+  }
+  const bases: PirateBaseDef[] = await basesResp.json();
+  const systemsById: Record<string, SystemDef> = {};
+  for (const system of systems) {
+    systemsById[system.id] = system;
+  }
 
   const events: GameEvent[] = await eventsResp.json();
   setEvents(events);
@@ -123,7 +134,25 @@ async function loadContent(): Promise<GameContent> {
   const missions: MissionDef[] = await missionsResp.json();
   setMissions(missions as any);
 
-  return { systems, ships, components, commodities, weapons, enemies, events, lootTables, missions };
+  const basesById: Record<string, PirateBaseDef> = {};
+  for (const base of bases) {
+    basesById[base.id] = base;
+  }
+
+  return {
+    systems,
+    systemsById,
+    bases,
+    basesById,
+    ships,
+    components,
+    commodities,
+    weapons,
+    enemies,
+    events,
+    lootTables,
+    missions
+  };
 }
 
 /**
@@ -175,7 +204,7 @@ export async function initGame() {
 
 export function getSystemById(id: string): SystemDef | null {
   if (!content) return null;
-  return content.systems.find((system) => system.id === id) ?? null;
+  return content.systemsById[id] ?? null;
 }
 
 export function getShipById(id: string): ShipDef | null {
