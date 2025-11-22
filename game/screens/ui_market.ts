@@ -16,7 +16,6 @@ import {
   getNeighborIntel
 } from "../systems/economySystem";
 import { getActiveContracts } from "../systems/missionSystem";
-import { getActiveContracts } from "../systems/missionSystem";
 
 const TREND_ICONS: Record<MarketPriceQuote["trend"], string> = {
   high: "^",
@@ -26,7 +25,7 @@ const TREND_ICONS: Record<MarketPriceQuote["trend"], string> = {
 
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
 
-export function MarketScreen(): string {
+export function MarketScreen(params: Record<string, unknown> = {}): string {
   const system = getSystemById(gameState.location.systemId);
   if (!system) {
     return `
@@ -119,21 +118,30 @@ export function MarketScreen(): string {
       (best, entry) => (entry.profit > best.value ? { id: entry.commodity.id, value: entry.profit } : best),
       { id: entries[0]?.commodity.id ?? "", value: Number.NEGATIVE_INFINITY }
     ).id;
+  const selectedCommodityId =
+    typeof params.selectedCommodityId === "string" ? params.selectedCommodityId : null;
+  const selectedEntry =
+    entries.find((entry) => entry.commodity.id === selectedCommodityId) ||
+    entries.find((entry) => entry.commodity.id === bestTradeId) ||
+    entries[0];
 
   const rows = entries
-    .map(({ commodity, quote, tags, cargoQty, metaLine, maxBuyable }) => {
+    .map(({ commodity, quote, tags, cargoQty }) => {
+      const isSelected = selectedEntry?.commodity.id === commodity.id;
+      const isBestTrade = commodity.id === bestTradeId;
       const buyDisabled = canBuy(system.id, commodity.id, 1) ? "" : " disabled";
       const sellDisabled = canSell(system.id, commodity.id, 1) ? "" : " disabled";
       const contractInfo = contractTargets.get(commodity.id);
       const rowClasses = ["market-row"];
-      if (commodity.id === bestTradeId) rowClasses.push("market-row--highlight");
+      if (isSelected) rowClasses.push("market-row--highlight");
       const contractPill = contractInfo
         ? `<span class="contract-pill${contractInfo.deliverable ? " ready" : ""}">${
             contractInfo.deliverable ? "Deliver now" : "Needed"
           }</span>`
         : "";
+      const bestMarginPill = isBestTrade ? `<span class="contract-pill">Top margin</span>` : "";
       return `
-        <article class="${rowClasses.join(" ")}">
+        <article class="${rowClasses.join(" ")}" onclick="selectMarketCommodity('${commodity.id}')">
           <div class="market-row__main">
             <span class="market-row__name">${commodity.name}</span>
             <span class="market-row__info">
@@ -143,6 +151,7 @@ export function MarketScreen(): string {
           <div class="market-row__meta">
             <span class="market-row__trend">${TREND_ICONS[quote.trend]} ${quote.trend}</span>
             <span>${tags || "Local goods"}</span>
+            ${bestMarginPill}
             ${contractPill}
           </div>
         </article>
@@ -208,8 +217,6 @@ export function MarketScreen(): string {
     </div>
   `;
 
-  const selectedEntry =
-    entries.find((entry) => entry.commodity.id === bestTradeId) ?? entries[0];
   const selectedCanBuy = selectedEntry
     ? canBuy(system.id, selectedEntry.commodity.id, 1)
     : false;
@@ -442,6 +449,7 @@ function formatLegality(status: string): string {
 
 declare global {
   interface Window {
+    selectMarketCommodity: (commodityId: string) => void;
     buyCommodityAction: (commodityId: string) => void;
     sellCommodityAction: (commodityId: string) => void;
     buyAllCommodityAction: (commodityId: string, unitPrice: number) => void;
@@ -450,6 +458,10 @@ declare global {
     purchaseNeighborIntel: () => void;
   }
 }
+
+window.selectMarketCommodity = (commodityId: string) => {
+  nav("market", { selectedCommodityId: commodityId });
+};
 
 window.buyCommodityAction = (commodityId: string) => {
   const systemId = gameState.location.systemId;
@@ -462,7 +474,7 @@ window.buyCommodityAction = (commodityId: string) => {
       ? `Bought 1 ${commodity?.name || commodityId} for ${price} cr.`
       : `Cannot buy ${commodity?.name || commodityId}.`;
   }
-  nav("market");
+  nav("market", { selectedCommodityId: commodityId });
 };
 
 window.sellCommodityAction = (commodityId: string) => {
@@ -476,7 +488,7 @@ window.sellCommodityAction = (commodityId: string) => {
       ? `Sold 1 ${commodity?.name || commodityId} for ${price} cr.`
       : `Cannot sell ${commodity?.name || commodityId}.`;
   }
-  nav("market");
+  nav("market", { selectedCommodityId: commodityId });
 };
 
 window.buyAllCommodityAction = (commodityId: string, unitPrice: number) => {
@@ -494,7 +506,7 @@ window.buyAllCommodityAction = (commodityId: string, unitPrice: number) => {
   if (msgEl) {
     msgEl.textContent = `Bought ${maxBuy} ${commodity?.name || commodityId} for ${unitPrice * maxBuy} cr.`;
   }
-  nav("market");
+  nav("market", { selectedCommodityId: commodityId });
 };
 
 window.sellAllCommodityAction = (commodityId: string) => {
@@ -511,7 +523,7 @@ window.sellAllCommodityAction = (commodityId: string) => {
   if (msgEl) {
     msgEl.textContent = `Sold ${qty} ${commodity?.name || commodityId} for ${price * qty} cr.`;
   }
-  nav("market");
+  nav("market", { selectedCommodityId: commodityId });
 };
 
 window.sellAllCargoAction = () => {

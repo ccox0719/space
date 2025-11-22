@@ -248,7 +248,7 @@ export function render() {
       html = TravelScreen();
       break;
     case "market":
-      html = MarketScreen();
+      html = MarketScreen(navigation.params);
       break;
     case "contracts":
       html = ContractsScreen();
