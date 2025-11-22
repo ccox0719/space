@@ -10,6 +10,7 @@ import { getIncomeMultiplier, getPassiveEffects } from "../core/passives";
 import type { ContractState, GameState } from "../core/state";
 import { adjustReputationBatch } from "./reputationSystem";
 import { getWeaponById } from "./weaponSystem";
+import { getSystemById } from "../core/engine";
 
 export interface MissionTemplate {
   id: string;
@@ -52,15 +53,24 @@ export function describeMission(contract: ContractState): string {
     deliver?: { commodityId?: string; quantity?: number; systemId?: string };
     combat?: { enemyId?: string };
   } | undefined;
+  const highlightSystem = (id?: string) => {
+    if (!id) return "";
+    const system = getSystemById(id);
+    const label = system?.name || id;
+    return `<strong>${label}</strong>`;
+  };
+
   const parts: string[] = [];
-  if (req?.travel?.systemId) parts.push(`Travel to ${req.travel.systemId}`);
+  if (req?.travel?.systemId) {
+    const target = highlightSystem(req.travel.systemId);
+    parts.push(`Travel to ${target}`);
+  }
   if (req?.deliver?.commodityId) {
     const qty = req.deliver.quantity || 0;
-    parts.push(
-      `Deliver ${qty} ${req.deliver.commodityId}${
-        req.deliver.systemId ? ` at ${req.deliver.systemId}` : ""
-      }`
-    );
+    const target = req.deliver.systemId
+      ? ` at ${highlightSystem(req.deliver.systemId)}`
+      : "";
+    parts.push(`Deliver ${qty} ${req.deliver.commodityId}${target}`);
   }
   if (req?.combat?.enemyId) parts.push(`Defeat ${req.combat.enemyId}`);
   return parts.join(" • ") || "No special requirements.";
@@ -177,6 +187,16 @@ function failMission(missionId: string): void {
   if (!contract) return;
   contract.status = "failed";
   pushNotification(`Mission failed: ${contract.name}`);
+}
+
+export function abandonMission(missionId: string): { success: boolean; reason?: string } {
+  const contract = gameState.contracts.find((c) => c.id === missionId && c.status === "active");
+  if (!contract) {
+    return { success: false, reason: "Mission not active" };
+  }
+  contract.status = "failed";
+  pushNotification(`Mission abandoned: ${contract.name}`);
+  return { success: true };
 }
 
 let pendingEventId: string | null = null;

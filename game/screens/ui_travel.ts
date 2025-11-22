@@ -53,7 +53,7 @@ export function TravelScreen(): string {
   const mapDisplay = current ? renderTravelMap(current, neighbors) : "";
   const neighborCards =
     neighbors.length === 0
-      ? `<div class="panel-card"><p class="label">Connections</p><p class="value-inline">No nearby systems detected.</p></div>`
+      ? `<p class="muted">No nearby systems detected.</p>`
       : neighbors
           .map(({ system, route, profile }) => {
             const securityLabel = formatSecurity(system.security);
@@ -63,14 +63,25 @@ export function TravelScreen(): string {
             const travelTime = `${profile.travelTime} turn${profile.travelTime === 1 ? "" : "s"}`;
             const laneLabel = formatLaneType(route.laneType);
             const distanceText = `Distance: ${route.distance}`;
+            const tagLine = tagNotes.length ? tagNotes.join(" · ") : "No special tags";
             return `
-              <div class="panel-card">
-                <p class="label">${securityLabel}${tagNotes.length ? ` - ${tagNotes.join(", ")}` : ""}</p>
-                <p class="value-inline"><strong>${system.name}</strong></p>
-                <p class="muted">${laneLabel} - ${distanceText}</p>
-                <p class="muted">${fuelCost} - ${travelTime} - Risk: ${riskText}</p>
-                <button class="btn btn-primary" onclick="travelToSystem('${system.id}')">Jump to ${system.name}</button>
-              </div>
+              <article class="travel-row">
+                <div class="travel-row__main">
+                  <span class="travel-row__name">${system.name}</span>
+                  <span class="travel-row__label">${securityLabel}</span>
+                </div>
+                <div class="travel-row__meta">
+                  <div class="travel-row__info">
+                    <span>${laneLabel}</span>
+                    <span>${distanceText}</span>
+                  </div>
+                  <span class="travel-row__label">${fuelCost} · ${travelTime} · Risk: ${riskText}</span>
+                </div>
+                <div class="travel-actions">
+                  <button class="btn btn-primary" onclick="travelToSystem('${system.id}')">Jump to ${system.name}</button>
+                  <span class="travel-row__label">${tagLine}</span>
+                </div>
+              </article>
             `;
           })
           .join("");
@@ -111,7 +122,7 @@ export function TravelScreen(): string {
         <section class="data-panel">
           <h1 class="panel-title">Travel</h1>
           <p class="muted">${current.description}</p>
-          <div class="panel-row">
+          <div class="travel-list">
             ${neighborCards}
           </div>
           <div class="panel-card">
@@ -205,6 +216,9 @@ function renderTravelMap(
   const mapWidth = 320;
   const mapHeight = 200;
   const padding = 16;
+  const viewBoxPadding = 32;
+  const labelOffsetX = 8;
+  const labelOffsetY = 8;
   const nodes = new Map<string, ReturnType<typeof getCurrentSystem>>();
   const addNode = (system: ReturnType<typeof getCurrentSystem>) => {
     if (system && system.coords) {
@@ -262,10 +276,10 @@ function renderTravelMap(
     })
     .join("");
 
-  const nodesSvg = Array.from(layoutMap.values())
-    .map((node) => {
-      const isCurrent = node.id === current.id;
-      const label = node.name.length > 16 ? `${node.name.slice(0, 14)}…` : node.name;
+      const nodesSvg = Array.from(layoutMap.values())
+        .map((node) => {
+          const isCurrent = node.id === current.id;
+          const label = node.name.length > 16 ? `${node.name.slice(0, 14)}...` : node.name;
       return `
         <g>
           <circle
@@ -276,7 +290,13 @@ function renderTravelMap(
             stroke="#0b1116"
             stroke-width="1.5"
           ></circle>
-          <text x="${node.sx.toFixed(1)}" y="${(node.sy - 10).toFixed(1)}" text-anchor="middle" font-size="11" fill="#ffffff">${label}</text>
+          <text
+            x="${(node.sx + labelOffsetX).toFixed(1)}"
+            y="${(node.sy - labelOffsetY).toFixed(1)}"
+            text-anchor="start"
+            font-size="11"
+            fill="#ffffff"
+          >${label}</text>
         </g>
       `;
     })
@@ -284,7 +304,13 @@ function renderTravelMap(
 
   return `
     <div class="travel-map" style="max-width:${mapWidth}px;margin:0 auto;">
-      <svg width="${mapWidth}" height="${mapHeight}" viewBox="0 0 ${mapWidth} ${mapHeight}" role="img" aria-label="Local system map">
+      <svg
+        width="${mapWidth}"
+        height="${mapHeight}"
+        viewBox="-${viewBoxPadding} -${viewBoxPadding} ${mapWidth + viewBoxPadding * 2} ${mapHeight + viewBoxPadding * 2}"
+        role="img"
+        aria-label="Local system map"
+      >
         ${lines}
         ${nodesSvg}
       </svg>

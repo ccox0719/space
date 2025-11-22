@@ -120,51 +120,31 @@ export function MarketScreen(): string {
       { id: entries[0]?.commodity.id ?? "", value: Number.NEGATIVE_INFINITY }
     ).id;
 
-  const cards = entries
+  const rows = entries
     .map(({ commodity, quote, tags, cargoQty, metaLine, maxBuyable }) => {
       const buyDisabled = canBuy(system.id, commodity.id, 1) ? "" : " disabled";
       const sellDisabled = canSell(system.id, commodity.id, 1) ? "" : " disabled";
       const contractInfo = contractTargets.get(commodity.id);
-      const highlightClasses: string[] = [];
-      if (commodity.id === bestTradeId) highlightClasses.push("market-card--highlight");
-      if (contractInfo) {
-        highlightClasses.push(
-          contractInfo.deliverable
-            ? "market-card--contract-ready"
-            : "market-card--contract-target"
-        );
-      }
-      const highlightClass = highlightClasses.length ? ` ${highlightClasses.join(" ")}` : "";
+      const rowClasses = ["market-row"];
+      if (commodity.id === bestTradeId) rowClasses.push("market-row--highlight");
       const contractPill = contractInfo
         ? `<span class="contract-pill${contractInfo.deliverable ? " ready" : ""}">${
             contractInfo.deliverable ? "Deliver now" : "Needed"
           }</span>`
         : "";
       return `
-        <article class="market-card${highlightClass}">
-          <div class="market-card__header">
-            <strong>${commodity.name}</strong>
-            <div>
-              <span class="muted">${tags || "Local goods"}</span>
-              ${contractPill}
-            </div>
+        <article class="${rowClasses.join(" ")}">
+          <div class="market-row__main">
+            <span class="market-row__name">${commodity.name}</span>
+            <span class="market-row__info">
+              BUY ${quote.buy} · SELL ${quote.sell} · Held ${cargoQty}
+            </span>
           </div>
-          <div class="market-card__prices">
-            <span>BUY: ${quote.buy} cr</span>
-            <span>SELL: ${quote.sell} cr</span>
-            <span class="market-card__trend">${TREND_ICONS[quote.trend]} ${quote.trend}</span>
+          <div class="market-row__meta">
+            <span class="market-row__trend">${TREND_ICONS[quote.trend]} ${quote.trend}</span>
+            <span>${tags || "Local goods"}</span>
+            ${contractPill}
           </div>
-          <div class="market-card__meta">
-            <span>Held ${cargoQty}</span>
-            <span>${metaLine}</span>
-          </div>
-          <div class="market-card__actions app-actions">
-            <button class="btn btn-primary"${buyDisabled} onclick="buyCommodityAction('${commodity.id}')">Buy 1</button>
-            <button class="btn btn-primary"${buyDisabled || maxBuyable <= 1 ? " disabled" : ""} onclick="buyAllCommodityAction('${commodity.id}', ${quote.buy})">Buy Max (${maxBuyable})</button>
-            <button class="btn btn-ghost"${sellDisabled} onclick="sellCommodityAction('${commodity.id}')">Sell 1</button>
-            <button class="btn btn-ghost"${sellDisabled || cargoQty <= 1 ? " disabled" : ""} onclick="sellAllCommodityAction('${commodity.id}')">Sell All (${cargoQty})</button>
-          </div>
-          ${commodity.id === bestTradeId ? `<span class="market-card__badge">Top Profit</span>` : ""}
         </article>
       `;
     })
@@ -228,6 +208,64 @@ export function MarketScreen(): string {
     </div>
   `;
 
+  const selectedEntry =
+    entries.find((entry) => entry.commodity.id === bestTradeId) ?? entries[0];
+  const selectedCanBuy = selectedEntry
+    ? canBuy(system.id, selectedEntry.commodity.id, 1)
+    : false;
+  const selectedCanSell = selectedEntry
+    ? canSell(system.id, selectedEntry.commodity.id, 1)
+    : false;
+  const selectedBuyDisabled = selectedEntry ? (!selectedCanBuy ? " disabled" : "") : " disabled";
+  const selectedBuyMaxDisabled =
+    selectedEntry && selectedEntry.maxBuyable > 1 && selectedCanBuy ? "" : " disabled";
+  const selectedSellDisabled =
+    selectedEntry && selectedCanSell && selectedEntry.cargoQty > 0 ? "" : " disabled";
+  const detailPanel = selectedEntry
+    ? `
+    <div class="market-detail">
+      <div class="market-detail__header">
+        <strong>${selectedEntry.commodity.name}</strong>
+        <span class="market-row__trend">${TREND_ICONS[selectedEntry.quote.trend]} ${selectedEntry.quote.trend}</span>
+      </div>
+      <div class="market-detail__meta">
+        <span>BUY ${selectedEntry.quote.buy} · SELL ${selectedEntry.quote.sell}</span>
+        <span>${selectedEntry.metaLine}</span>
+      </div>
+      <div class="market-detail__actions">
+        <button
+          class="btn btn-primary"
+          ${selectedBuyDisabled}
+          onclick="buyCommodityAction('${selectedEntry.commodity.id}')"
+        >
+          Buy 1
+        </button>
+        <button
+          class="btn btn-primary"
+          ${selectedBuyMaxDisabled}
+          onclick="buyAllCommodityAction('${selectedEntry.commodity.id}', ${selectedEntry.quote.buy})"
+        >
+          Buy Max (${selectedEntry.maxBuyable})
+        </button>
+        <button
+          class="btn btn-ghost"
+          ${selectedSellDisabled}
+          onclick="sellCommodityAction('${selectedEntry.commodity.id}')"
+        >
+          Sell 1
+        </button>
+        <button
+          class="btn btn-ghost"
+          ${selectedSellDisabled}
+          onclick="sellAllCommodityAction('${selectedEntry.commodity.id}')"
+        >
+          Sell All (${selectedEntry.cargoQty})
+        </button>
+      </div>
+    </div>
+  `
+    : "";
+
   return `
     <div class="app-root">
       <header class="app-header">
@@ -248,8 +286,9 @@ export function MarketScreen(): string {
             ${renderMarketEvents(system.id)}
             ${renderIntelSection(system)}
           </aside>
-          <div class="market-grid">
-            ${cards}
+          <div class="market-list">
+            ${rows}
+            ${detailPanel}
           </div>
         </section>
       </main>

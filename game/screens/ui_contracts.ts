@@ -4,15 +4,35 @@ import {
   getAvailableMissions,
   getActiveContracts,
   acceptMission,
+  abandonMission,
   describeMission,
   getMissionProgress
 } from "../systems/missionSystem";
 import { getWeaponById } from "../systems/weaponSystem";
+import { getSystemById } from "../core/engine";
 import { gameState } from "../core/state";
 import { formatTurn } from "../core/formatters";
 
-declare const nav: (screen: string, params?: Record<string, unknown>) => void;
-declare const acceptContract: (missionId: string) => void;
+function parseMissionIds(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === "string");
+      }
+    } catch {
+      return value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    }
+  }
+  return [];
+}
 
 export function ContractsScreen(params: Record<string, unknown> = {}): string {
   const message =
@@ -20,39 +40,74 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
   const active = getActiveContracts();
   const available = getAvailableMissions();
   const cargoLoad = Object.values(gameState.ship.cargo || {}).reduce((sum, qty) => sum + qty, 0);
+  const selectionCandidates = parseMissionIds(params.selectedMissionIds);
+  const selectedMissionId =
+    selectionCandidates[0] ??
+    (typeof params.selectedMissionId === "string" ? params.selectedMissionId : "");
 
   const activeList =
     active.length > 0
-      ? active
-          .map(
-            (mission) => `
-              <div class="panel-card">
-                <p class="label">${mission.status}</p>
-                <p class="value-inline"><strong>${mission.name}</strong></p>
-                <p class="muted">${mission.description || ""}</p>
-                <p class="muted">${describeMission(mission)}</p>
-                <p class="muted">${getMissionProgress(mission)}</p>
-              </div>
-            `
-          )
-          .join("")
+      ? `
+        <div class="contract-list contract-section">
+          ${active
+            .map((mission) => {
+              const req = mission.requirements || {};
+              const systemName = formatMissionSystem(req.travel?.systemId);
+              return `
+                <article class="contract-row contract-row--active" onclick="abandonMission('${mission.id}')">
+                  <div class="contract-row__main">
+                    <span class="contract-row__name">${mission.name}</span>
+                    <span class="contract-type">${mission.type}</span>
+                  </div>
+                  ${mission.description ? `<p class="muted">${mission.description}</p>` : ""}
+                  <div class="contract-row__meta">
+                    <span>${describeMission(mission)}</span>
+                    <span>${getMissionProgress(mission)}</span>
+                  </div>
+                  <div class="contract-row__info">
+                    <span>System: ${systemName}</span>
+                  </div>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      `
       : "<p class=\"muted\">No active missions.</p>";
 
+  const selectionForRows = selectedMissionId
+    ? [selectedMissionId]
+    : available[0]
+    ? [available[0].id]
+    : [];
   const availableList =
     available.length > 0
-      ? available
-          .map(
-            (mission) => `
-              <div class="panel-card">
-                <p class="label">${mission.type}</p>
-                <p class="value-inline"><strong>${mission.name}</strong></p>
-                <p class="muted">${mission.description}</p>
-                <p class="muted">Reward: ${formatReward(mission.reward)}</p>
-                <button class="btn btn-primary" onclick="acceptContract('${mission.id}')">Accept</button>
-              </div>
-            `
-          )
-          .join("")
+      ? `
+        <div class="contract-list">
+          ${available
+            .map((mission) => {
+              const systemName = formatMissionSystem(mission.requirements?.travel?.systemId);
+              const rowClasses = ["contract-row"];
+              if (selectionForRows.includes(mission.id)) {
+                rowClasses.push("contract-row--active");
+              }
+              return `
+                <article class="${rowClasses.join(" ")}" onclick="acceptContract('${mission.id}')">
+                  <div class="contract-row__main">
+                    <span class="contract-row__name">${mission.name}</span>
+                    <span class="contract-type">${mission.type}</span>
+                  </div>
+                  <p class="muted">${mission.description}</p>
+                  <div class="contract-row__info">
+                    <span>System: ${systemName}</span>
+                    <span>Reward: ${formatReward(mission.reward)}</span>
+                  </div>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      `
       : "<p class=\"muted\">No available missions.</p>";
 
   return `
@@ -88,13 +143,15 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
       </section>
 
       <main class="app-main">
-        <section class="data-panel">
+        <section class="data-panel contract-section">
           <h1 class="panel-title">Contracts</h1>
           ${message ? `<p class="muted">${message}</p>` : ""}
           <h2 class="panel-title">Active</h2>
           <div class="panel-row">${activeList}</div>
           <h2 class="panel-title">Available</h2>
-          <div class="panel-row">${availableList}</div>
+          <div class="panel-row">
+            ${availableList}
+          </div>
         </section>
       </main>
 
@@ -106,6 +163,12 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
       </footer>
     </div>
   `;
+}
+
+function formatMissionSystem(systemId?: string): string {
+  if (!systemId) return "Unknown";
+  const system = getSystemById(systemId);
+  return system?.name ? `<strong>${system.name}</strong>` : systemId;
 }
 
 function formatReward(
@@ -130,6 +193,7 @@ function formatReward(
 declare global {
   interface Window {
     acceptContract: (missionId: string) => void;
+    abandonMission: (missionId: string) => void;
   }
 }
 
@@ -138,3 +202,10 @@ window.acceptContract = (missionId: string) => {
   const message = result.success ? "Mission accepted." : result.reason || "Unable to accept.";
   nav("contracts", { message });
 };
+
+window.abandonMission = (missionId: string) => {
+  const result = abandonMission(missionId);
+  const message = result.success ? "Mission abandoned." : result.reason || "Unable to abandon.";
+  nav("contracts", { message });
+};
+
