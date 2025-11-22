@@ -2,7 +2,7 @@ import { content } from "../core/engine";
 
 export function getSystemById(id: string) {
   if (!content) return null;
-  return content.systems.find((s) => s.id === id) ?? null;
+  return content.systemsById[id] ?? null;
 }
 
 export function systemHasTag(systemId: string, tag: string): boolean {

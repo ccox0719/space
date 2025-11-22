@@ -1,7 +1,7 @@
 // systems/travelSystem.ts
 
 import { content } from "../core/engine";
-import type { SystemDef, GameEvent } from "../core/contentTypes";
+import type { SystemDef, GameEvent, SystemNeighbor, LaneType } from "../core/contentTypes";
 import {
   devTune,
   gameState,
@@ -31,9 +31,18 @@ window.travelToSystem = (id: string) => {
   travelTo(id);
 };
 
-function findSystem(id: string): SystemDef | null {
+function getSystemsMap(): Record<string, SystemDef> | null {
   if (!content) return null;
-  return content.systems.find((s) => s.id === id) ?? null;
+  return content.systemsById;
+}
+
+function findSystem(id: string): SystemDef | null {
+  const systems = getSystemsMap();
+  return systems ? systems[id] ?? null : null;
+}
+
+function getNeighborRoute(from: SystemDef, targetId: string): SystemNeighbor | null {
+  return from.neighbors.find((neighbor) => neighbor.id === targetId) ?? null;
 }
 
 let encountersToday = 0;
@@ -65,79 +74,94 @@ export function getCurrentSystem(): SystemDef | null {
   return findSystem(gameState.location.systemId);
 }
 
-export function getNeighbors(): SystemDef[] {
-  const current = getCurrentSystem();
-  if (!current) return [];
-
-  return current.neighbors
-    .map((id) => findSystem(id))
-    .filter((s): s is SystemDef => s !== null);
-}
-
-interface RouteProfile {
+export interface RouteProfile {
   travelTime: number;
   fuelCost: number;
   hazardChance: number;
   hazardMitigation?: number;
   routeType: "trade_lane" | "wild_jump" | "standard";
+  laneType: LaneType;
+  distance: number;
 }
 
-function computeRouteProfile(from: SystemDef, to: SystemDef): RouteProfile {
+export interface NeighborRoute {
+  system: SystemDef;
+  route: SystemNeighbor;
+  profile: RouteProfile;
+}
+
+export function getNeighbors(): NeighborRoute[] {
+  const current = getCurrentSystem();
+  if (!current) return [];
+  const systems = getSystemsMap();
+  if (!systems) return [];
+
+  return current.neighbors
+    .map((route) => {
+      const target = systems[route.id];
+      if (!target) return null;
+      return {
+        system: target,
+        route,
+        profile: computeRouteProfile(current, target, route)
+      };
+    })
+    .filter((entry): entry is NeighborRoute => entry !== null);
+}
+
+function computeRouteProfile(from: SystemDef, to: SystemDef, route: SystemNeighbor): RouteProfile {
   const passive = getPassiveEffects();
-  const isTradeLane =
-    to.tags.includes("trade_lane") ||
-    to.tags.includes("checkpoint") ||
-    from.tags.includes("trade_lane") ||
-    from.tags.includes("checkpoint");
-  const isWild =
-    to.tags.includes("frontier") ||
-    to.tags.includes("mining_belt") ||
-    to.tags.includes("anomaly") ||
-    from.tags.includes("frontier") ||
-    from.tags.includes("mining_belt");
+  const averageDanger = (from.baseDanger + to.baseDanger) / 2;
+  const regionModifiers: Record<string, number> = {
+    core: -0.04,
+    border: 0,
+    fringe: 0.08,
+    pirate: 0.14,
+    wild: 0.12
+  };
+  const laneFuelFactor = route.laneType === "core_lane" ? 0.9 : route.laneType === "frontier_lane" ? 1.05 : 1.3;
+  const laneTimeFactor = route.laneType === "core_lane" ? 0.85 : route.laneType === "frontier_lane" ? 1 : 1.25;
+  const laneHazardBonus = route.laneType === "core_lane" ? -0.02 : route.laneType === "frontier_lane" ? 0.05 : 0.12;
+  const regionModifier = (regionModifiers[from.region] ?? 0) + (regionModifiers[to.region] ?? 0);
 
-  let travelTime = isTradeLane ? 1 : 2;
-  if (to.tags.includes("mining_belt") || to.tags.includes("frontier")) {
-    travelTime += 1;
-  }
-  if (to.tags.includes("anomaly")) {
-    travelTime += 1;
-  }
-  travelTime = Math.min(3, Math.max(1, travelTime));
+  const travelTime = Math.max(
+    1,
+    Math.round(route.distance * laneTimeFactor + Math.max(0, regionModifier) * 2)
+  );
 
-  let hazardChance: number;
-  switch (to.security) {
-    case "high":
-      hazardChance = 0.25;
-      break;
-    case "medium":
-      hazardChance = 0.4;
-      break;
-    default:
-      hazardChance = 0.6;
-      break;
-  }
+  const hazardBase = clamp(
+    0.1 * route.distance +
+      averageDanger * 0.12 +
+      laneHazardBonus +
+      regionModifier +
+      (route.laneType === "wildspace" ? 0.05 : 0),
+    0.1,
+    0.95
+  );
 
-  if (isTradeLane) {
-    hazardChance *= 0.7;
-  }
-  if (isWild) {
-    hazardChance = Math.min(1, hazardChance + 0.15);
-  }
-  if (to.tags.includes("restricted")) {
-    hazardChance -= 0.05;
-  }
+  const hazardBeforePassive = Math.min(0.95, Math.max(0.1, hazardBase));
+  const hazardChance = Math.max(0, hazardBeforePassive - Math.max(0, passive.hazardDetectionBonus ?? 0));
+  const fuelBase = Math.max(1, Math.round(route.distance * laneFuelFactor * (1 + averageDanger * 0.06)));
+  const fuelCost = Math.max(
+    1,
+    Math.round(fuelBase * Math.max(0.1, passive.fuelCostMultiplier ?? 1))
+  );
 
-  hazardChance = Math.min(0.95, Math.max(0.1, hazardChance));
-  const hazardBeforePassive = hazardChance;
+  const routeType =
+    route.laneType === "core_lane"
+      ? "trade_lane"
+      : route.laneType === "wildspace"
+      ? "wild_jump"
+      : "standard";
 
-  hazardChance = Math.max(0, hazardChance - Math.max(0, passive.hazardDetectionBonus ?? 0));
   return {
     travelTime,
-    fuelCost: Math.max(1, Math.round(travelTime * Math.max(0.1, passive.fuelCostMultiplier ?? 1))),
+    fuelCost,
     hazardChance,
     hazardMitigation: Math.max(0, hazardBeforePassive - hazardChance),
-    routeType: isTradeLane ? "trade_lane" : isWild ? "wild_jump" : "standard"
+    routeType,
+    laneType: route.laneType,
+    distance: route.distance
   };
 }
 
@@ -263,16 +287,19 @@ function logHazardMitigation(
 export function getRouteProfile(targetSystemId: string): RouteProfile | null {
   const current = getCurrentSystem();
   if (!current) return null;
+  const route = getNeighborRoute(current, targetSystemId);
+  if (!route) return null;
   const target = findSystem(targetSystemId);
   if (!target) return null;
-  return computeRouteProfile(current, target);
+  return computeRouteProfile(current, target, route);
 }
 
 export function travelTo(targetSystemId: string): void {
   const current = getCurrentSystem();
   if (!content || !current) return;
 
-  if (!current.neighbors.includes(targetSystemId)) {
+  const route = getNeighborRoute(current, targetSystemId);
+  if (!route) {
     console.warn(`System ${targetSystemId} is not a neighbor of ${current.id}`);
     return;
   }
@@ -280,7 +307,7 @@ export function travelTo(targetSystemId: string): void {
   const target = findSystem(targetSystemId);
   if (!target) return;
 
-  const profile = computeRouteProfile(current, target);
+  const profile = computeRouteProfile(current, target, route);
   const fuelMultiplier = Math.max(0, devTune.fuelCostMultiplier ?? 1);
   const fuelCost = Math.max(0, Math.round(profile.fuelCost * fuelMultiplier));
   const riskScale = Math.max(0, Math.min(3, (devTune.travelRiskScaling ?? 100) / 100));

@@ -408,7 +408,7 @@ function decayLocalAdjustments(
 export function captureNeighborIntel(): { success: boolean; message: string } {
   const current = getSystemById(gameState.location.systemId);
   const neighbors = current?.neighbors
-    .map((id) => getSystemById(id))
+    .map((entry) => getSystemById(entry.id))
     .filter((s): s is SystemDef => !!s) || [];
   if (!neighbors.length) return { success: false, message: "No neighboring systems to scan." };
   const cost = 100;

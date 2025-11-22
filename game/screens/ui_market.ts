@@ -304,7 +304,7 @@ function renderIntelSection(system: ReturnType<typeof getSystemById>): string {
   const intel = getNeighborIntel();
   const neighbors =
     system?.neighbors
-      .map((id) => getSystemById(id))
+      .map((entry) => getSystemById(entry.id))
       .filter((s): s is NonNullable<typeof system> => !!s && intel[s.id]) || [];
 
   const lines = neighbors
