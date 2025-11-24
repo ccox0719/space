@@ -11,6 +11,8 @@ import type { ContractState, GameState } from "../core/state";
 import { adjustReputationBatch } from "./reputationSystem";
 import { getWeaponById } from "./weaponSystem";
 import { getSystemById } from "../core/engine";
+import { navigation } from "../core/navigation";
+import { getStarMap, shortestPath } from "../core/map";
 
 export interface MissionTemplate {
   id: string;
@@ -105,6 +107,7 @@ export function acceptMission(missionId: string): { success: boolean; reason?: s
   if (gameState.contracts.some((c) => c.id === missionId && c.status === "active")) {
     return { success: false, reason: "Mission already active" };
   }
+  const reqTargetSystem = deriveTargetSystem(tpl.requirements);
   const contract: ContractState = {
     id: tpl.id,
     name: tpl.name,
@@ -112,12 +115,16 @@ export function acceptMission(missionId: string): { success: boolean; reason?: s
     type: tpl.type,
     status: "active",
     sourceFaction: tpl.factionId,
+    targetSystemId: reqTargetSystem,
     reward: tpl.reward,
     requirements: tpl.requirements,
     acceptedTurn: gameState.time.turn,
     progress: {}
   };
   gameState.contracts.push(contract);
+  if (reqTargetSystem) {
+    activateRouteForMission(contract.id, reqTargetSystem);
+  }
   return { success: true };
 }
 
@@ -187,6 +194,7 @@ function failMission(missionId: string): void {
   if (!contract) return;
   contract.status = "failed";
   pushNotification(`Mission failed: ${contract.name}`);
+  maybeClearRouteForMission(contract.id);
 }
 
 export function abandonMission(missionId: string): { success: boolean; reason?: string } {
@@ -196,6 +204,7 @@ export function abandonMission(missionId: string): { success: boolean; reason?: 
   }
   contract.status = "failed";
   pushNotification(`Mission abandoned: ${contract.name}`);
+  maybeClearRouteForMission(contract.id);
   return { success: true };
 }
 
@@ -353,11 +362,49 @@ function tryAutoComplete(contract: ContractState): void {
     applyRewards(contract, "completed");
     recordContractCompletion();
     pushNotification(`Mission completed: ${contract.name}`);
+    maybeClearRouteForMission(contract.id);
   }
 }
 
 function pushNotification(message: string): void {
   gameState.notifications.push(message);
+}
+
+interface MissionRequirements {
+  travel?: { systemId?: string };
+  deliver?: { systemId?: string };
+  multiTravel?: string[];
+}
+
+function deriveTargetSystem(requirements?: Record<string, unknown>): string | undefined {
+  const req = requirements as MissionRequirements | undefined;
+  if (!req) return undefined;
+  if (req.travel?.systemId) return req.travel.systemId;
+  if (req.deliver?.systemId) return req.deliver.systemId;
+  if (req.multiTravel && req.multiTravel.length) return req.multiTravel[0];
+  return undefined;
+}
+
+function activateRouteForMission(missionId: string, targetSystemId: string): void {
+  const map = getStarMap();
+  if (!map) return;
+  const start = gameState.location.systemId;
+  const path = shortestPath(map, start, targetSystemId);
+  if (!path.length || path.length <= 1) {
+    return;
+  }
+  navigation.setActiveRoute({
+    nodes: path,
+    currentIndex: 0,
+    source: "mission",
+    missionId
+  });
+}
+
+function maybeClearRouteForMission(missionId: string): void {
+  if (navigation.activeRoute?.missionId === missionId) {
+    navigation.clearActiveRoute();
+  }
 }
 
 export function tickMissions(state: GameState): void {

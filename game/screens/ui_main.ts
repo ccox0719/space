@@ -19,6 +19,7 @@ export function MainScreen(): string {
   const system = getSystemById(s.location.systemId);
   const cargoLoad = Object.values(s.ship.cargo || {}).reduce((sum, qty) => sum + qty, 0);
   const lastNote = s.notifications[s.notifications.length - 1];
+  const logEntries = (s.notifications || []).slice(-5).reverse();
 
   return `
     <div class="app-root">
@@ -72,6 +73,20 @@ export function MainScreen(): string {
             </div>
           </div>
         </section>
+          <section class="app-log">
+            <h2 class="panel-title small">Recent Log</h2>
+            ${logEntries.length
+              ? logEntries
+                  .map(
+                    (note) => `
+                <div class="app-log-line">
+                  <span>${note}</span>
+                </div>
+              `
+                  )
+                  .join("")
+              : `<div class="app-log-line muted">No log entries yet.</div>`}
+          </section>
       </main>
 
       <nav class="app-menu" aria-label="Primary menu">

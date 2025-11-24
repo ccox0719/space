@@ -34,7 +34,6 @@ export function EventScreen(params: Record<string, unknown> = {}): string {
           <button onclick='beginMiningSession(${JSON.stringify(
             ev.beltId ?? ""
           )}, ${JSON.stringify(ev.miningCommodityId ?? "")})'>Enter Mining Belt</button>
-          <button class="ghost" onclick="nav('main')">Decline</button>
         </div>
       </div>
     `;
@@ -53,7 +52,6 @@ export function EventScreen(params: Record<string, unknown> = {}): string {
         <h2>Choices</h2>
         ${choiceSection}
       </section>
-      <div class="screen-actions"></div>
     </div>
   `;
 }

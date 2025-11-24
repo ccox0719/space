@@ -1,7 +1,7 @@
 import type { WeaponDamageType } from "../core/contentTypes";
 
 export const CALLED_SHOT_MODS = { damageMultiplier: 1.25, accuracyMultiplier: 0.8 };
-export const BRACE_DAMAGE_REDUCTION = 0.6;
+export const BRACE_DAMAGE_REDUCTION = 0.4;
 
 export const CALLED_SHOT_TIP =
   "Called shots focus on the hull; you trade 20% accuracy for +25% damage, so use them once shields are down or when an armor-piercing weapon is ready.";

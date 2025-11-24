@@ -2,7 +2,7 @@
   {
     "id": "aurite_ore",
     "name": "Aurite Ore",
-    "basePrice": 120,
+    "basePrice": 36,
     "mass": 1,
     "tags": ["ore", "mining"],
     "tier": "standard",

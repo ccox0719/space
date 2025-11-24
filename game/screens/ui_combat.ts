@@ -219,12 +219,6 @@ export function CombatScreen(): string {
         </section>
       </main>
 
-      <footer class="app-footer">
-        <button class="btn btn-ghost btn-small" onclick="nav('main')">Retreat</button>
-        <button class="btn btn-ghost btn-small" onclick="nav('ship')">Ship</button>
-        <button class="btn btn-ghost btn-small" onclick="nav('market')">Market</button>
-        <button class="btn btn-ghost btn-small" onclick="nav('travel')">Travel</button>
-      </footer>
     </div>
   `;
 }

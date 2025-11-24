@@ -33,6 +33,8 @@ import { computePlayerPower, computeDayPressure } from "./difficultySystem";
 import { systemHasTag } from "./systemHelpers";
 import { recordCombatKill } from "./missionSystem";
 import { adjustWanted } from "./wantedSystem";
+import { abortMiningSession } from "./miningSystem";
+import type { ScreenID } from "../core/navigation";
 
 type Stance = "assault" | "balanced" | "evasive";
 type AimMode = "normal" | "called_shot";
@@ -70,7 +72,20 @@ function estimateEnemyPower(enemy: { hull: number; shields: number; weaponIds: s
   return hp + weaponFactor;
 }
 
-export function startCombat(enemyId: string) {
+type CombatReturn = {
+  returnScreen?: ScreenID;
+  returnParams?: Record<string, unknown>;
+};
+
+function resolveReturn(screen?: ScreenID): ScreenID {
+  return screen ?? "main";
+}
+
+function navReturn(screen?: ScreenID, params?: Record<string, unknown>) {
+  navigation.go(resolveReturn(screen), params);
+}
+
+export function startCombat(enemyId: string, opts: CombatReturn = {}) {
   const tpl = getEnemyTemplate(enemyId);
   const shipWeapons = gameState.ship.weapons;
   const playerCooldowns = shipWeapons.map(() => 0);
@@ -111,7 +126,9 @@ export function startCombat(enemyId: string) {
     startingHp: gameState.ship.hp,
     round: 1,
     log: [`${tpl.name} engages you in combat!`],
-    adviceToken: Math.random()
+    adviceToken: Math.random(),
+    returnTo: opts.returnScreen,
+    returnParams: opts.returnParams
   };
 
   if (enemyCountFactor > 1) {
@@ -352,14 +369,19 @@ function attemptFlee(): boolean {
   const fleeBonus = (tune.fleeSuccessBonus ?? 0) / 100 + (passive.fleeBonus ?? 0);
   const chance = clamp(baseChance + stanceBonus + maneuverBonus + fleeBonus, 0.05, 0.95);
 
-  if (Math.random() <= chance) {
-    log(
-      `You punch the thrusters and break free! (Flee chance ${(chance * 100).toFixed(0)}%)`
-    );
-    gameState.combat = null;
-    navigation.go("main");
-    return true;
-  } else {
+    if (Math.random() <= chance) {
+      log(
+        `You punch the thrusters and break free! (Flee chance ${(chance * 100).toFixed(0)}%)`
+      );
+      gameState.combat = null;
+      abortMiningSession(
+        gameState,
+        "Fled combat; mining mission aborted and ore left behind."
+      );
+      window.alert("Fleeing a mining pirate encounter aborts the claim and leaves the ore behind.");
+      navigation.go("main", { message: "Mining mission aborted by fleeing combat." });
+      return true;
+    } else {
     log(
       `You attempt to flee, but the enemy holds you in their sights. (Flee chance ${(chance * 100).toFixed(0)}%)`
     );
@@ -595,7 +617,7 @@ function handleVictory() {
   }
 
   gameState.combat = null;
-  navigation.go("main");
+  navReturn(combat.returnTo, combat.returnParams);
 }
 
 function handleDefeat() {

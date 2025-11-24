@@ -142,6 +142,45 @@ const DEV_CONTROL_SECTIONS: { title: string; controls: DevControl[] }[] = [
     ]
   },
   {
+    title: "Mining",
+    controls: [
+      {
+        path: "miningEfficiency",
+        label: "Mining Efficiency",
+        min: 0.1,
+        max: 1,
+        step: 0.1,
+        formatter: (value) => `${(value * 100).toFixed(0)}%`
+      },
+      {
+        path: "miningPayoutMultiplier",
+        label: "Mining Payout Mult",
+        min: 0.05,
+        max: 1,
+        step: 0.1,
+        formatter: (value) => `${(value * 100).toFixed(0)}%`
+      }
+      ,
+      {
+        path: "miningThreatMultiplier",
+        label: "Mining Threat Mult",
+        min: 0.4,
+        max: 1,
+        step: 0.05,
+        formatter: (value) => `${(value * 100).toFixed(0)}%`
+      }
+      ,
+      {
+        path: "drillDamageMultiplier",
+        label: "Drill Damage Mult",
+        min: 0.5,
+        max: 2,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(1)}x`
+      }
+    ]
+  },
+  {
     title: "Debug",
     controls: [
       {
@@ -283,7 +322,10 @@ export function render() {
   }
 
   const backButton =
-    navigation.current !== "main"
+    navigation.current !== "main" &&
+    navigation.current !== "event" &&
+    navigation.current !== "combat" &&
+    navigation.current !== "mining"
       ? `
         <div class="menu-back">
           <button class="btn btn-ghost btn-small" onclick="nav('main')">Back</button>
@@ -311,6 +353,15 @@ export function render() {
             <button class="btn btn-ghost" id="devHardReset">Hard Reset Game</button>
           </div>
       </section>
+      <section class="dev-section">
+        <h3>Mining Tools</h3>
+        <div class="dev-actions">
+          <button class="btn btn-primary" id="devResetMiningSession">Reset Mining Session</button>
+          <button class="btn btn-primary" id="devSpikeThreat">Max Threat</button>
+          <button class="btn btn-primary" id="devLogMiningGrid">Log Mining Grid</button>
+        </div>
+        <div class="dev-mining-status" id="devMiningStatus"></div>
+      </section>
     </div>
   `;
 
@@ -330,13 +381,17 @@ function wireDevPanel() {
   const btnCredits = document.getElementById("devAddCredits");
   const btnCargo = document.getElementById("devFillCargo");
   const btnGod = document.getElementById("devGodMode");
+  const btnResetMiningSession = document.getElementById("devResetMiningSession");
+  const btnSpikeThreat = document.getElementById("devSpikeThreat");
+  const btnLogMining = document.getElementById("devLogMiningGrid");
   const navTravel = document.getElementById("navTravel");
   const navMarket = document.getElementById("navMarket");
   const navShip = document.getElementById("navShip");
   const btnPersistEvents = document.getElementById("devPersistEvents");
   const btnClearEvents = document.getElementById("devClearEvents");
-  const btnHardReset = document.getElementById("devHardReset");
-  const sliderInputs = panel?.querySelectorAll<HTMLInputElement>("input[data-dev-path]");
+    const btnHardReset = document.getElementById("devHardReset");
+    const sliderInputs = panel?.querySelectorAll<HTMLInputElement>("input[data-dev-path]");
+    const miningStatusEl = document.getElementById("devMiningStatus");
 
   const togglePanel = () => {
     if (!panel) return;
@@ -362,6 +417,29 @@ function wireDevPanel() {
     };
     input.addEventListener("input", applySlider);
   });
+
+  const renderMiningStatus = () => {
+    if (!miningStatusEl) return;
+    const session = gameState.miningSession;
+    if (!session) {
+      miningStatusEl.textContent = "No active mining session.";
+      return;
+    }
+    const threat = (session.threat ?? 0).toFixed(1);
+    const depth = session.depth ?? 0;
+    miningStatusEl.innerHTML = `
+      <div>System: ${session.systemId}</div>
+      <div>Belt: ${session.beltName ?? session.beltId ?? "—"}</div>
+      <div>Depth: Z${depth}</div>
+      <div>Threat: ${threat}%</div>
+      <div>Exploration: ${(session.explorationScore ?? 0).toFixed(2)}</div>
+      <div>Drills: ${session.drillsUsed ?? 0}</div>
+      <div>Selected: ${
+        session.selectedRow != null ? `X${session.selectedCol! + 1} Y${session.selectedRow + 1}` : "none"
+      }</div>
+    `;
+  };
+  renderMiningStatus();
 
   navDev?.addEventListener("click", togglePanel);
   closeBtn?.addEventListener("click", () => panel?.classList.add("hidden"));
@@ -402,6 +480,29 @@ function wireDevPanel() {
       gameState.ship.shields = gameState.ship.maxShields;
     }
     alert(`God Mode: ${devGodMode ? "On" : "Off"}`);
+  });
+
+  btnResetMiningSession?.addEventListener("click", () => {
+    startMiningSession(gameState, gameState.location.systemId, gameState.miningSession?.beltId);
+    panel?.classList.add("hidden");
+    render();
+    renderMiningStatus();
+  });
+
+  btnSpikeThreat?.addEventListener("click", () => {
+    const session = gameState.miningSession;
+    if (!session) return;
+    session.threat = 95;
+    session.currentPirateChance = 0.95;
+    panel?.classList.add("hidden");
+    render();
+    renderMiningStatus();
+  });
+
+  btnLogMining?.addEventListener("click", () => {
+    console.group("Mining Debug");
+    console.log("Mining Session", gameState.miningSession);
+    console.groupEnd();
   });
 
   btnPersistEvents?.addEventListener("click", () => {

@@ -328,9 +328,10 @@ export function travelTo(targetSystemId: string): void {
     return;
   }
 
-  gameState.ship.fuel -= scaledProfile.fuelCost;
-  gameState.location.systemId = target.id;
-  gameState.location.docked = true;
+    gameState.ship.fuel -= scaledProfile.fuelCost;
+    gameState.location.systemId = target.id;
+    gameState.location.docked = true;
+  navigation.advanceActiveRoute(target.id);
   const travelTurns = scaleTurnDelta(profile.travelTime);
   gameState.time.turn += travelTurns;
   maybeSpawnMarketEvent(target.id);

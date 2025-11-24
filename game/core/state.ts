@@ -168,6 +168,36 @@ export interface CombatState {
   round: number;
   log: string[];
   adviceToken?: number;
+  returnTo?: import("./navigation").ScreenID;
+  returnParams?: Record<string, unknown>;
+}
+
+export interface MiningSample {
+  id: number;
+  intensity: "careful" | "standard" | "overcharge";
+  commodityId: string;
+  amount: number;
+  approxValue: number;
+  rareFind?: { id: string; amount: number } | null;
+  pirate?: boolean;
+  collapsed?: boolean;
+  stability: number;
+  stabilityLoss: number;
+  risk: number;
+  signal: number;
+  depth: number;
+  hullDamage?: number;
+  timestamp: number;
+  note?: string;
+}
+
+export interface MiningCellState {
+  signal?: number | null;
+  directionClass?: string | null;
+  depthHint?: "shallow" | "deep" | "optimal" | null;
+  depthClass?: string | null;
+  drilled?: boolean;
+  selected?: boolean;
 }
 
 export interface MiningSessionState {
@@ -177,9 +207,24 @@ export interface MiningSessionState {
   resourceId?: string;
   minesTaken: number;
   totalValueMined: number;
-  currentPirateChance: number;
+  currentPirateChance: number; // threat as fraction 0-1
   stability: number;
   maxStability: number;
+  depth: number;
+  threat: number;
+  drillsUsed: number;
+  runComplete?: boolean;
+  grid?: MiningCellState[][];
+  selectedRow?: number | null;
+  selectedCol?: number | null;
+  veinRow?: number;
+  veinCol?: number;
+  veinDepth?: number;
+  accumulatedOre?: Record<string, number>;
+  gridRows?: number;
+  gridCols?: number;
+  explorationScore?: number;
+  uniqueDrills?: number;
   beltName?: string;
   lastMessage?: string;
   lastYield?: {
@@ -188,6 +233,7 @@ export interface MiningSessionState {
     approxValue: number;
     rareFind?: { id: string; amount: number } | null;
   };
+  samples?: MiningSample[];
 }
 
 export interface ReputationTrack {
@@ -245,6 +291,7 @@ export interface GameState {
   intel: IntelState;
   runStats: RunStats;
   gameOver: GameOverState;
+  map?: import("./map").StarMap | null;
 }
 
 export function createRunStats(): RunStats {
@@ -343,7 +390,7 @@ export function newGameState(): GameState {
       weapons: ["laser_mk1"]
     },
     lastBattleResult: null,
-    marketState: {
+  marketState: {
       temporaryModifiers: {},
       activeEvents: [],
       localAdjustments: {},
@@ -355,7 +402,8 @@ export function newGameState(): GameState {
     }
     ,
     runStats: createRunStats(),
-    gameOver: { active: false, reason: null }
+    gameOver: { active: false, reason: null },
+    map: null
   };
 }
 
@@ -408,6 +456,10 @@ export interface DevTuneConfig {
   eventDangerMultiplier: number;
   eventRewardMultiplier: number;
   progressionSpeedMultiplier: number;
+  miningEfficiency: number;
+  miningPayoutMultiplier: number;
+  drillDamageMultiplier: number;
+  miningThreatMultiplier: number;
   combat: CombatDevTuning;
 }
 
@@ -430,18 +482,22 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
   eventDangerMultiplier: 1,
   eventRewardMultiplier: 1,
   progressionSpeedMultiplier: 1,
+  miningEfficiency: 1,
+  miningPayoutMultiplier: 1,
+  drillDamageMultiplier: 1,
+  miningThreatMultiplier: 1,
   combat: {
     pirateEncounterRateBase: 0,
     pirateCargoValueSensitivity: 1,
     navyEncounterRateBase: 0,
     maxEncountersPerDay: 10,
-    enemyHpMultiplier: 1,
-    enemyDamageMultiplier: 1,
-    enemyAccuracyMultiplier: 1,
+    enemyHpMultiplier: 0.4,
+    enemyDamageMultiplier: 0.2,
+    enemyAccuracyMultiplier: 0.6,
     enemyCountMin: 1,
     enemyCountMax: 1,
     difficultyScalePerDay: 0,
-    difficultyScalePerShipPower: 1,
+    difficultyScalePerShipPower: 0,
     creditsRewardMultiplier: 1,
     lootDropChance: 100,
     rareLootChance: 12,

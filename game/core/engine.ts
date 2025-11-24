@@ -12,6 +12,7 @@ import { setEvents } from "../systems/eventSystem";
 import { setLootTables } from "../systems/lootSystem";
 import { setMissions } from "../systems/missionSystem";
 import { autoEquipAvailableWeapons } from "../systems/weaponSystem";
+import { buildStarMapFromSystems, setStarMap } from "./map";
 import type {
   SystemDef,
   ShipDef,
@@ -165,10 +166,13 @@ async function loadContent(): Promise<GameContent> {
 export async function initGame() {
   // Load content
   content = await loadContent();
+  const starMap = buildStarMapFromSystems(content.systems);
 
   // New game state (later you can check for saves)
   const initialState: GameState = newGameState();
+  initialState.map = starMap;
   setGameState(initialState);
+  setStarMap(starMap);
   loadDevTune();
 
   const persistedLoadout = loadPersistedLoadout();
@@ -188,6 +192,13 @@ export async function initGame() {
   const originalGo = navigation.go.bind(navigation);
   navigation.go = (screen, params) => {
     originalGo(screen, params);
+    render();
+  };
+
+  const originalSetZoom = navigation.setZoom.bind(navigation);
+  navigation.setZoom = (zoom) => {
+    if (navigation.zoom === zoom) return;
+    originalSetZoom(zoom);
     render();
   };
 

@@ -12,6 +12,7 @@ import { getWeaponById } from "../systems/weaponSystem";
 import { getSystemById } from "../core/engine";
 import { gameState } from "../core/state";
 import { formatTurn } from "../core/formatters";
+import { getStarMap, getHopDistance } from "../core/map";
 
 function parseMissionIds(value: unknown): string[] {
   if (!value) return [];
@@ -53,6 +54,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
             .map((mission) => {
               const req = mission.requirements || {};
               const systemName = formatMissionSystem(req.travel?.systemId);
+              const systemRange = formatMissionRange(req.travel?.systemId);
               return `
                 <article class="contract-row contract-row--active" onclick="abandonMission('${mission.id}')">
                   <div class="contract-row__main">
@@ -65,7 +67,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
                     <span>${getMissionProgress(mission)}</span>
                   </div>
                   <div class="contract-row__info">
-                    <span>System: ${systemName}</span>
+                    <span>System: ${systemName}${systemRange ? ` - ${systemRange}` : ""}</span>
                   </div>
                 </article>
               `;
@@ -87,6 +89,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
           ${available
             .map((mission) => {
               const systemName = formatMissionSystem(mission.requirements?.travel?.systemId);
+              const systemRange = formatMissionRange(mission.requirements?.travel?.systemId);
               const rowClasses = ["contract-row"];
               if (selectionForRows.includes(mission.id)) {
                 rowClasses.push("contract-row--active");
@@ -99,7 +102,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
                   </div>
                   <p class="muted">${mission.description}</p>
                   <div class="contract-row__info">
-                    <span>System: ${systemName}</span>
+                    <span>System: ${systemName}${systemRange ? ` - ${systemRange}` : ""}</span>
                     <span>Reward: ${formatReward(mission.reward)}</span>
                   </div>
                 </article>
@@ -169,6 +172,16 @@ function formatMissionSystem(systemId?: string): string {
   if (!systemId) return "Unknown";
   const system = getSystemById(systemId);
   return system?.name ? `<strong>${system.name}</strong>` : systemId;
+}
+
+function formatMissionRange(systemId?: string): string {
+  if (!systemId) return "";
+  const map = getStarMap();
+  if (!map) return "";
+  const hops = getHopDistance(map, gameState.location.systemId, systemId);
+  if (hops == null) return "Uncharted";
+  if (hops === 0) return "Here";
+  return `${hops} jump${hops === 1 ? "" : "s"} away`;
 }
 
 function formatReward(

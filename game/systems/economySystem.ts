@@ -183,7 +183,7 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
         buyBonus
     )
   );
-  const sell = Math.max(
+  const unsaltedSell = Math.max(
     1,
     Math.round(
       basePrice *
@@ -195,19 +195,20 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
         taxBonus
     )
   );
-  const high = Math.max(buy, sell, Math.round(basePrice * (1 + volatility * 0.1)));
+  const sellPrice = Math.max(1, Math.min(unsaltedSell, buy - 1));
+  const high = Math.max(buy, sellPrice, Math.round(basePrice * (1 + volatility * 0.1)));
   const low = Math.max(
     1,
     Math.min(
       buy,
-      sell,
+      sellPrice,
       Math.round(basePrice * Math.max(0.65, 1 - volatility * 0.2))
     )
   );
   const trend = determineTrend(basePrice, commodity.basePrice);
 
   touchPriceIntel(systemId);
-  return { base: basePrice, buy, sell, high, low, trend };
+  return { base: basePrice, buy, sell: sellPrice, high, low, trend };
 }
 
 export function applyTemporaryMarketModifier(

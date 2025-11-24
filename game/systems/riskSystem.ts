@@ -1,4 +1,4 @@
-import { content } from "../core/engine";
+import { content, getShipById } from "../core/engine";
 import type { GameState } from "../core/state";
 import { devTune, getCombatTune } from "../core/state";
 import { getPassiveEffects } from "../core/passives";
@@ -45,7 +45,9 @@ export function computePirateChance(ctx: PirateRiskContext): number {
   }
 
   const cargoValue = getCargoValue(state, systemId);
-  const cargoRisk = Math.min(0.15, cargoValue / 5000) * Math.max(0, combatTune.pirateCargoValueSensitivity ?? 1);
+  const shipValue = getShipById(state.ship.templateId)?.cost ?? 0;
+  const assetValue = cargoValue + shipValue;
+  const cargoRisk = Math.min(0.15, assetValue / 5000) * Math.max(0, combatTune.pirateCargoValueSensitivity ?? 1);
   const marginBonus = computeMarginBonus(state, systemId);
   const sessionRisk = sessionFactor * 0.03;
 
