@@ -1739,6 +1739,10 @@ body {
   color: var(--text-muted);
 }
 
+.market-priority {
+  margin-top: 8px;
+}
+
 .insight-icon {
   font-size: 0.95rem;
 }

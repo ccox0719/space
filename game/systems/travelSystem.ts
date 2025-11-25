@@ -214,16 +214,16 @@ function computeScanDetectionChance(
     base *= 0.65;
   }
   if (system.tags.includes("restricted")) {
-    base += 0.12;
+    base += 0.08;
   }
   if (system.tags.includes("checkpoint") || system.tags.includes("trade_lane")) {
-    base += 0.08;
+    base += 0.05;
   }
   if (routeType === "trade_lane") {
     base += 0.06;
   }
 
-  const severity = 1 + Math.min(1.5, summary.illegalUnits * 0.1 + summary.restrictedUnits * 0.04);
+  const severity = 1 + Math.min(1.0, summary.illegalUnits * 0.06 + summary.restrictedUnits * 0.025);
   const scanMultiplier = Math.max(0, passive.scanDetectionMultiplier ?? 1);
   const tolerance = Math.max(0.5, passive.illegalTolerance ?? 1);
   const baseChance = clamp(base * severity * scanMultiplier / tolerance, 0, 0.95);

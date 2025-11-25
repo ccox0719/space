@@ -59,6 +59,11 @@
         "size": "small",
         "type": "projectile"
       }
+      ,
+      {
+        "size": "small",
+        "type": "energy"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 38,
@@ -94,6 +99,11 @@
       {
         "size": "small",
         "type": "energy"
+      }
+      ,
+      {
+        "size": "small",
+        "type": "projectile"
       }
     ],
     "moduleSlots": 4,
@@ -170,6 +180,11 @@
         "size": "small",
         "type": "projectile"
       }
+      ,
+      {
+        "size": "small",
+        "type": "energy"
+      }
     ],
     "moduleSlots": 3,
     "powerGrid": 40,
@@ -205,6 +220,11 @@
       {
         "size": "small",
         "type": "energy"
+      }
+      ,
+      {
+        "size": "small",
+        "type": "projectile"
       }
     ],
     "moduleSlots": 3,

@@ -352,7 +352,6 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
     <section class="data-panel market-container">
       <aside class="market-sidebar">
             ${summaryCard}
-            ${renderTradeStrategyPanel()}
     ${renderMarketEvents(system.id)}
           </aside>
           <div class="market-list">
@@ -360,6 +359,10 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
             ${rows}
             ${detailPanel}
           </div>
+        </section>
+        <section class="market-priority">
+          <h2 class="panel-title small">Priority Paths</h2>
+          ${renderTradeStrategyPanel()}
         </section>
         <section class="market-footer">
           ${renderMarketInsights(system, highTrend, lowTrend, bestTrade.entry)}

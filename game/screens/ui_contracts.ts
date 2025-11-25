@@ -81,36 +81,51 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
     : available[0]
     ? [available[0].id]
     : [];
-  const availableList =
-    available.length > 0
-      ? `
-        <div class="contract-list">
-          ${available
-            .map((mission) => {
-              const systemName = formatMissionSystem(mission.requirements?.travel?.systemId);
-              const systemRange = formatMissionRange(mission.requirements?.travel?.systemId);
-              const rowClasses = ["contract-row"];
-              if (selectionForRows.includes(mission.id)) {
-                rowClasses.push("contract-row--active");
-              }
-              return `
-                <article class="${rowClasses.join(" ")}" onclick="acceptContract('${mission.id}')">
-                  <div class="contract-row__main">
-                    <span class="contract-row__name">${mission.name}</span>
-                    <span class="contract-type">${mission.type}</span>
-                  </div>
-                  <p class="muted">${mission.description}</p>
-                  <div class="contract-row__info">
-                    <span>System: ${systemName}${systemRange ? ` - ${systemRange}` : ""}</span>
-                    <span>Reward: ${formatReward(mission.reward)}</span>
-                  </div>
-                </article>
-              `;
-            })
-            .join("")}
-        </div>
-      `
-      : "<p class=\"muted\">No available missions.</p>";
+  const groupedAvailable = available.reduce((map, mission) => {
+    const systemId = mission.requirements?.travel?.systemId || "unknown";
+    const systemName = formatMissionSystem(systemId);
+    const key = systemName;
+    const items = map.get(key) ?? [];
+    items.push(mission);
+    map.set(key, items);
+    return map;
+  }, new Map<string, typeof available>());
+
+  const formatAvailableSection = (title: string, missions: typeof available) => {
+    if (!missions.length) return "";
+    return `
+      <div class="contract-list contract-section">
+        <h3 class="panel-title tiny">${title}</h3>
+        ${missions
+          .map((mission) => {
+            const rowClasses = ["contract-row"];
+            if (selectionForRows.includes(mission.id)) {
+              rowClasses.push("contract-row--active");
+            }
+            return `
+              <article class="${rowClasses.join(" ")}" onclick="acceptContract('${mission.id}')">
+                <div class="contract-row__main">
+                  <span class="contract-row__name">${mission.name}</span>
+                  <span class="contract-type">${mission.type}</span>
+                </div>
+                <p class="muted">${mission.description}</p>
+                <div class="contract-row__info">
+                  <span>System: ${title}</span>
+                  <span>Reward: ${formatReward(mission.reward)}</span>
+                </div>
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  };
+
+  const availableList = groupedAvailable.size
+    ? Array.from(groupedAvailable.entries())
+        .map(([systemName, missions]) => formatAvailableSection(systemName, missions))
+        .join("")
+    : "<p class=\"muted\">No available missions.</p>";
 
   return `
     <div class="app-root">
