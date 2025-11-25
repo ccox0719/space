@@ -92,5 +92,15 @@
       "sellBonus": 1.05,
       "incomeMultiplier": 1.05
     }
+  },
+  {
+    "id": "customs_liaison",
+    "name": "Customs Liaison",
+    "description": "Embedded liaison smooths paperwork and lowers local tariffs on your trades.",
+    "cost": 2000,
+    "effects": {
+      "marketTax": 0.92,
+      "buyBonus": 0.97
+    }
   }
 ]

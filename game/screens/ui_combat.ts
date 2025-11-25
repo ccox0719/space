@@ -77,6 +77,8 @@ export function CombatScreen(): string {
   const lowHull = ship.hp / Math.max(1, ship.maxHp) <= 0.35;
   const lastLog = (c.log[c.log.length - 1] || "").toLowerCase();
   const wasHit = lastLog.includes("hits you") || lastLog.includes("damage");
+  const rawLastAction = c.log[c.log.length - 1] || "Awaiting orders.";
+  const lastAction = escapeHtml(rawLastAction);
   const rootClasses = ["app-root", "combat-root"];
   if (lowHull) rootClasses.push("low-hull");
   if (wasHit) rootClasses.push("hit-flash");
@@ -163,18 +165,24 @@ export function CombatScreen(): string {
       <main class="app-main">
         <section class="data-panel">
           <h1 class="panel-title">Combat: ${c.enemyName}</h1>
-          <p class="muted">Current stance: <strong>${c.playerStance}</strong>. ${calledShotHint}</p>
 
           <div class="panel-row">
-            <div class="panel-card">
-              <p class="label">Your Ship</p>
-              <p class="value-inline">Fuel ${ship.fuel}/${ship.maxFuel}</p>
-              <div class="status-chips">${playerChips || `<span class="muted">No active buffs</span>`}</div>
-            </div>
+          <div class="panel-card">
+            <p class="label">Your Ship</p>
+            <p class="value-inline">${ship.name}</p>
+            <p class="muted">Stance: <strong>${c.playerStance}</strong></p>
+            <p class="muted">Last action: <strong>${lastAction}</strong></p>
+            <p class="muted small">${calledShotHint}</p>
+            <p class="value-inline">Fuel ${ship.fuel}/${ship.maxFuel}</p>
+            <div class="status-chips">${playerChips || `<span class="muted">No active buffs</span>`}</div>
+          </div>
             <div class="panel-card enemy-reticle">
               <div class="reticle-grid"></div>
               <p class="label">Enemy</p>
               <p class="value-inline">${c.enemyName}</p>
+              <p class="muted">
+                Max adversaries: <strong>${c.enemyCount ?? 1}</strong>
+              </p>
               <div class="status-chips">${enemyChips || `<span class="muted">No active debuffs</span>`}</div>
             </div>
           </div>
@@ -269,4 +277,11 @@ function buildEnemyChips(combat: NonNullable<typeof gameState.combat>): string {
     chips.push('<span class="buff-chip muted-chip">Systems nominal</span>');
   }
   return chips.join("");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

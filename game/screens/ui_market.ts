@@ -17,11 +17,27 @@ import {
   getNeighborIntel
 } from "../systems/economySystem";
 import { getActiveContracts } from "../systems/missionSystem";
+import {
+  getStrategyConfig,
+  getStrategyProgress,
+  investInStrategy,
+  TradeStrategy
+} from "../systems/tradeStrategySystem";
 
 const TREND_ICONS: Record<MarketPriceQuote["trend"], string> = {
   high: "^",
   low: "v",
   stable: "-"
+};
+
+type MarketEntry = {
+  commodity: ReturnType<typeof getCommodityById> extends infer R ? NonNullable<R> : never;
+  quote: MarketPriceQuote;
+  tags: string;
+  cargoQty: number;
+  metaLine: string;
+  maxBuyable: number;
+  profit: number;
 };
 
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
@@ -32,8 +48,8 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
     return `
       <div class="app-root">
         <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
+            <div class="app-title">
+            <span class="app-game-title">The Veil</span>
             <span class="app-location">Market</span>
           </div>
         </header>
@@ -55,9 +71,9 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
     return `
       <div class="app-root">
         <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
-            <span class="app-location">${system.name}</span>
+            <div class="app-title">
+            <span class="app-game-title">The Veil</span>
+            <span class="app-location">Market — ${system.name}</span>
           </div>
         </header>
         <main class="app-main">
@@ -98,27 +114,28 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
         deliverable: prev.deliverable || (inSystem && hasCargo)
       });
     });
-  const entries = commodities.map((commodity) => {
+  const entries: MarketEntry[] = commodities.map((commodity) => {
     const quote = getBuySellPrices(system.id, commodity.id);
     const tags = formatTags(commodity.tradeTags?.length ? commodity.tradeTags : commodity.tags);
     const cargoQty = getCargoCount(commodity.id);
     const metaLine = buildMetaLine(commodity, cargoQty);
     const maxBuyable = computeMaxBuyable(quote.buy, cargoLoad, commodity.id);
-    return {
-      commodity,
-      quote,
-      tags,
-      cargoQty,
-      metaLine,
-      maxBuyable,
-      profit: quote.sell - quote.buy
-    };
-  });
-  const bestTradeId =
-    entries.reduce(
-      (best, entry) => (entry.profit > best.value ? { id: entry.commodity.id, value: entry.profit } : best),
-      { id: entries[0]?.commodity.id ?? "", value: Number.NEGATIVE_INFINITY }
-    ).id;
+      return {
+        commodity,
+        quote,
+        tags,
+        cargoQty,
+        metaLine,
+        maxBuyable,
+        profit: quote.sell - quote.buy
+      };
+    });
+  const bestTrade = entries.reduce(
+    (best, entry) =>
+      entry.profit > best.profit ? { profit: entry.profit, entry } : best,
+    { profit: Number.NEGATIVE_INFINITY, entry: entries[0] }
+  );
+  const bestTradeId = bestTrade.entry?.commodity.id ?? "";
   const selectedCommodityId =
     typeof params.selectedCommodityId === "string" ? params.selectedCommodityId : null;
   const selectedEntry =
@@ -126,40 +143,87 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
     entries.find((entry) => entry.commodity.id === bestTradeId) ||
     entries[0];
 
-  const rows = entries
-    .map(({ commodity, quote, tags, cargoQty }, idx) => {
-      const isSelected = selectedEntry?.commodity.id === commodity.id;
-      const isBestTrade = commodity.id === bestTradeId;
-      const buyDisabled = canBuy(system.id, commodity.id, 1) ? "" : " disabled";
-      const sellDisabled = canSell(system.id, commodity.id, 1) ? "" : " disabled";
-      const contractInfo = contractTargets.get(commodity.id);
-      const rowClasses = ["market-row"];
-      if (isSelected) rowClasses.push("market-row--highlight");
-      const contractPill = contractInfo
-        ? `<span class="contract-pill contract-pill--target${contractInfo.deliverable ? " ready" : ""}">${
-            contractInfo.deliverable ? "Deliver now" : "Contract target"
-          }</span>`
-        : "";
-      const bestMarginPill = isBestTrade ? `<span class="contract-pill">Top margin</span>` : "";
+  const highTrend = entries.reduce(
+    (best, entry) => {
+      const delta = entry.quote.high - entry.quote.buy;
+      return delta > best.delta
+        ? { delta, entry }
+        : best;
+    },
+    { delta: -Infinity as number, entry: entries[0] }
+  ).entry;
+  const lowTrend = entries.reduce(
+    (best, entry) => {
+      const delta = entry.quote.buy - entry.quote.low;
+      return delta > best.delta ? { delta, entry } : best;
+    },
+    { delta: -Infinity as number, entry: entries[0] }
+  ).entry;
+
+  const legalityOrder: CommodityLegality[] = ["legal", "restricted", "illegal"];
+  let rowIndex = 0;
+  const rows = legalityOrder
+    .map((status) => {
+      const groupEntries = entries.filter(
+        (entry) => getCommodityLegalStatus(entry.commodity.legalStatus) === status
+      );
+      if (!groupEntries.length) return "";
+      const groupLabel = formatLegality(status);
+      const header = `
+        <div class="market-group__header">
+          <div>
+            <p class="market-group__label">${groupLabel} goods</p>
+            <p class="muted market-group__count">${groupEntries.length} items</p>
+          </div>
+          <span class="market-status market-status--${status}">${groupLabel}</span>
+        </div>
+      `;
+      const groupRows = groupEntries
+        .map(({ commodity, quote, tags, cargoQty }) => {
+          const isSelected = selectedEntry?.commodity.id === commodity.id;
+          const contractInfo = contractTargets.get(commodity.id);
+          const rowClasses = ["market-row"];
+          if (isSelected) rowClasses.push("market-row--highlight");
+          const entryStatus = getCommodityLegalStatus(commodity.legalStatus);
+          rowClasses.push(`market-row--${entryStatus}`);
+          const contractPill = contractInfo
+            ? `<span class="contract-pill contract-pill--target${contractInfo.deliverable ? " ready" : ""}">${
+                contractInfo.deliverable ? "Deliver now" : "Contract target"
+              }</span>`
+            : "";
+          const statusPill = `<span class="market-row__status market-row__status--${entryStatus}">${formatLegality(
+            entryStatus
+          )}</span>`;
+          const trend = `${TREND_ICONS[quote.trend]} ${quote.trend}`;
+          const idx = rowIndex++;
+          return `
+            <article class="${rowClasses.join(" ")}" style="--row-index:${idx};" onclick="selectMarketCommodity('${commodity.id}')">
+              <div class="market-row__main">
+                <span class="market-row__name">${commodity.name}</span>
+                <span class="market-row__info">
+                  BUY ${quote.buy} A | SELL ${quote.sell} A | Held ${cargoQty}
+                </span>
+              </div>
+              <div class="market-row__meta">
+                <span class="market-row__trend">${trend}</span>
+                <div class="market-row__meta-line">
+                  <span>${tags || "Local goods"}</span>
+                  ${statusPill}
+                  ${contractPill}
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
       return `
-        <article class="${rowClasses.join(" ")}" style="--row-index:${idx};" onclick="selectMarketCommodity('${commodity.id}')">
-          <div class="market-row__main">
-            <span class="market-row__name">${commodity.name}</span>
-            <span class="market-row__info">
-              BUY ${quote.buy} · SELL ${quote.sell} · Held ${cargoQty}
-            </span>
-          </div>
-          <div class="market-row__meta">
-            <span class="market-row__trend">${TREND_ICONS[quote.trend]} ${quote.trend}</span>
-            <span>${tags || "Local goods"}</span>
-            ${bestMarginPill}
-            ${contractPill}
-          </div>
-        </article>
+        <section class="market-group">
+          ${header}
+          ${groupRows}
+        </section>
       `;
     })
     .join("");
-
   const hasCargo = cargoLoad > 0;
   const summaryCard = `
     <div class="panel-card market-summary-card">
@@ -276,29 +340,30 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
-          <span class="app-location">Market · ${system.name}</span>
-        </div>
-        <div class="app-meta">
-          <span>Day ${gameState.time.day}</span>
-          <span>Turn ${formatTurn(gameState.time.turn)}</span>
+      <header class="app-header app-header--market">
+        <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
+          <span class="app-location">Market — ${system.name}</span>
         </div>
       </header>
 
       <main class="app-main">
-        <section class="data-panel market-container">
-          <aside class="market-sidebar">
+    <section class="data-panel market-container">
+      <aside class="market-sidebar">
             ${summaryCard}
-            ${renderMarketEvents(system.id)}
-            ${renderIntelSection(system)}
+            ${renderTradeStrategyPanel()}
+    ${renderMarketEvents(system.id)}
           </aside>
           <div class="market-list">
             ${rows}
             ${detailPanel}
           </div>
         </section>
+        <section class="market-footer">
+          ${renderMarketInsights(system, highTrend, lowTrend, bestTrade.entry)}
+        </section>
+        ${renderTrendGraph(entries)}
       </main>
 
       <footer class="app-footer">
@@ -347,7 +412,12 @@ function renderMarketEvents(systemId: string): string {
   `;
 }
 
-function renderIntelSection(system: ReturnType<typeof getSystemById>): string {
+function renderMarketInsights(
+  system: ReturnType<typeof getSystemById>,
+  highTrendEntry?: MarketEntry,
+  lowTrendEntry?: MarketEntry,
+  hotTipEntry?: MarketEntry
+): string {
   const intel = getNeighborIntel();
   const intelCost = getNeighborIntelCost();
   const neighbors =
@@ -355,28 +425,218 @@ function renderIntelSection(system: ReturnType<typeof getSystemById>): string {
       .map((entry) => getSystemById(entry.id))
       .filter((s): s is NonNullable<typeof system> => !!s && intel[s.id]) || [];
 
-  const lines = neighbors
+  const intelLines = neighbors
     .map((n) => {
       const ops = summarizeNeighborIntel(system?.id, n.id);
       const age = gameState.time.turn - (intel[n.id]?.turn ?? gameState.time.turn);
       const overText = ops.over
         ? `${ops.over.id} overpriced (+${Math.round(ops.over.delta * 100)}%)`
-        : "no strong overpay";
+        : "overpay unknown";
       const underText = ops.under
         ? `${ops.under.id} underpriced (${Math.round(ops.under.delta * 100)}% cheaper)`
-        : "no standout bargains";
-      return `<p class="muted">${n.name} (age ${age}t): Sell -> ${overText} | Buy -> ${underText}</p>`;
+        : "no bargain yet";
+      return `<p class="muted">${n.name} - age ${age}t - Sell ${overText} - Buy ${underText}</p>`;
     })
     .join("");
 
+  const highLine = highTrendEntry
+    ? `<p class="muted">
+        ${highTrendEntry.commodity.name} high runs ${Math.round(
+          highTrendEntry.quote.high - highTrendEntry.quote.buy
+        )} above buy (${highTrendEntry.quote.high})
+      </p>`
+    : "";
+  const lowLine = lowTrendEntry
+    ? `<p class="muted">
+        ${lowTrendEntry.commodity.name} low sits ${Math.round(
+          lowTrendEntry.quote.buy - lowTrendEntry.quote.low
+        )} below buy (${lowTrendEntry.quote.low})
+      </p>`
+    : "";
+
+  const logEntries = gameState.notifications
+    .filter((note) => {
+      const normalized = note.toLowerCase();
+      return (
+        normalized.includes("market") ||
+        normalized.startsWith("bought") ||
+        normalized.startsWith("sold")
+      );
+    })
+    .slice(-6)
+    .reverse();
+
+  const logLines = logEntries.map((note) => `<p class="muted">${note}</p>`).join("");
+
+  const hotTip = hotTipEntry
+    ? `<p>Consider ${hotTipEntry.commodity.name}. Buy @ ${hotTipEntry.quote.buy} A�, sell @ ${hotTipEntry.quote.high} A� (high).</p><p class="muted">Profit spread: +${hotTipEntry.profit}</p>`
+    : `<p class="muted">No hot tip available.</p>`;
+
+  return `
+    <div class="panel-card market-insights-card">
+      <p class="label">Market Insights</p>
+      <div class="insight-section">
+        <p class="insight-title">Intel Tools</p>
+        <p class="muted">System: ${system?.name || "Unknown"}</p>
+        <p class="muted">Neighbor Intel ${intelCost} cr - highlights over/under priced goods (actuals drift on arrival).</p>
+        <div class="app-actions">
+          <button class="btn btn-primary" onclick="purchaseNeighborIntel()">Buy Neighbor Intel (${intelCost})</button>
+        </div>
+        ${intelLines || `<p class="muted">No neighbor intel yet.</p>`}
+      </div>
+      <div class="insight-section">
+        <p class="insight-title">Trending</p>
+        ${highLine || lowLine ? `${highLine}${lowLine}` : `<p class="muted">No strong pulses yet.</p>`}
+      </div>
+      <div class="insight-section">
+        <p class="insight-title">Hot Tip</p>
+        ${hotTip}
+      </div>
+      <div class="insight-section">
+        <p class="insight-title">Market Log</p>
+        ${logLines || `<p class="muted">No market-relevant log entries yet.</p>`}
+      </div>
+    </div>
+  `;
+}
+
+const TRADE_STRATEGIES: TradeStrategy[] = ["taxEvasion", "smuggling", "bribery"];
+
+function renderTradeStrategyPanel(): string {
+  const cards = TRADE_STRATEGIES.map((strategy) => renderTradeStrategyCard(strategy)).join("");
+  return `
+    <div class="panel-card strategy-panel">
+      <p class="label">Profit Paths</p>
+      <div class="strategy-panel__cards">
+        ${cards}
+      </div>
+    </div>
+  `;
+}
+
+function renderTradeStrategyCard(strategy: TradeStrategy): string {
+  const config = getStrategyConfig(strategy);
+  const progress = Math.round(getStrategyProgress(strategy));
+  const progressLabel = `${progress}%`;
+  return `
+    <div class="strategy-card strategy-card--${strategy}">
+      <div class="strategy-card__header">
+        <strong>${config.name}</strong>
+        <span>${progressLabel}</span>
+      </div>
+      <div class="strategy-progress">
+        <div class="strategy-progress__fill" style="width:${progress}%"></div>
+      </div>
+      <p class="muted strategy-card__benefit">Invest ${config.cost} cr — ${config.benefit}.</p>
+      <div class="strategy-card__actions">
+        <button class="btn btn-chip" onclick="pursueTradeStrategy('${strategy}')">
+          Invest ${config.cost} cr
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTrendSection(
+  highTrendEntry?: MarketEntry,
+  lowTrendEntry?: MarketEntry
+): string {
+  if (!highTrendEntry && !lowTrendEntry) return "";
+  const highLine = highTrendEntry
+    ? `<p class="muted">
+        ${highTrendEntry.commodity.name} high runs ${Math.round(
+          highTrendEntry.quote.high - highTrendEntry.quote.buy
+        )} above buy (${highTrendEntry.quote.high})
+      </p>`
+    : "";
+  const lowLine = lowTrendEntry
+    ? `<p class="muted">
+        ${lowTrendEntry.commodity.name} low sits ${Math.round(
+          lowTrendEntry.quote.buy - lowTrendEntry.quote.low
+        )} below buy (${lowTrendEntry.quote.low})
+      </p>`
+    : "";
   return `
     <div class="panel-card">
-      <p class="label">Intel Tools</p>
-      <p class="muted">Buy neighbor price intel (${intelCost} cr, varies with rep). Highlights likely over/under priced goods; actuals may drift when you arrive.</p>
-      <div class="app-actions">
-        <button class="btn btn-primary" onclick="purchaseNeighborIntel()">Buy Neighbor Intel (${intelCost})</button>
-      </div>
-      ${lines || `<p class="muted">No neighbor intel purchased yet.</p>`}
+      <p class="label">Trending</p>
+      ${highLine}
+      ${lowLine}
+    </div>
+  `;
+}
+
+function renderTrendGraph(entries: MarketEntry[]): string {
+  if (!entries.length) return "";
+  const highs = entries.map((entry) => ({
+    label: entry.commodity.name,
+    value: entry.quote.high
+  }));
+  const lows = entries.map((entry) => ({
+    label: entry.commodity.name,
+    value: entry.quote.low
+  }));
+  const maxHigh = Math.max(...highs.map((h) => h.value));
+  const minLow = Math.min(...lows.map((l) => l.value));
+  const maxRange = Math.max(1, maxHigh - minLow);
+  const width = 280;
+  const height = 120;
+  const highPoints = highs
+    .map((h, idx) => {
+      const x = (idx / Math.max(1, highs.length - 1)) * width;
+      const y = height - (h.value / maxHigh) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const lowPoints = lows
+    .map((l, idx) => {
+      const x = (idx / Math.max(1, lows.length - 1)) * width;
+      const y = height - ((l.value - minLow) / maxRange) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const rows = highs
+    .slice(0, 6)
+    .map(
+      (h) =>
+        `<div class="trend-line">
+           <span class="trend-label">${h.label}</span>
+           <span class="trend-value">High ${h.value}</span>
+         </div>`
+    )
+    .join("");
+  return `
+    <div class="panel-card trend-graph-card">
+      <details>
+        <summary class="label">Price Graph (Highs &amp; Lows)</summary>
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <polyline
+            fill="none"
+            stroke="rgba(66, 224, 198, 0.6)"
+            stroke-width="2"
+            points="${highPoints}"
+          />
+          <polyline
+            fill="none"
+            stroke="rgba(248, 113, 113, 0.6)"
+            stroke-width="2"
+            points="${lowPoints}"
+          />
+        </svg>
+      <div class="market-trend-rows">${rows}</div>
+    </details>
+  </div>
+`;
+}
+
+function renderTradeNudge(entry?: MarketEntry): string {
+  if (!entry) return "";
+  return `
+    <div class="panel-card trade-nudge">
+      <p class="label">Hot Tip</p>
+      <p>
+        Consider ${entry.commodity.name}. Buy @ ${entry.quote.buy}, sell @ ${entry.quote.high} (high).
+      </p>
+      <p class="muted">Profit spread: +${entry.profit}</p>
     </div>
   `;
 }
@@ -449,6 +709,13 @@ function formatLegality(status: string): string {
   return map[status] ?? titleCase(status);
 }
 
+function getCommodityLegalStatus(status?: string): CommodityLegality {
+  if (status === "restricted" || status === "illegal") {
+    return status;
+  }
+  return "legal";
+}
+
 declare global {
   interface Window {
     selectMarketCommodity: (commodityId: string) => void;
@@ -458,6 +725,7 @@ declare global {
     sellAllCommodityAction: (commodityId: string) => void;
     sellAllCargoAction: () => void;
     purchaseNeighborIntel: () => void;
+    pursueTradeStrategy: (strategy: TradeStrategy) => void;
   }
 }
 
@@ -561,6 +829,18 @@ window.purchaseNeighborIntel = () => {
   const msgEl = document.getElementById("market-message");
   if (msgEl) {
     msgEl.textContent = result.message;
+  }
+  nav("market");
+};
+
+window.pursueTradeStrategy = (strategy: TradeStrategy) => {
+  const config = getStrategyConfig(strategy);
+  const success = investInStrategy(strategy);
+  const msgEl = document.getElementById("market-message");
+  if (msgEl) {
+    msgEl.textContent = success
+      ? `Invested in ${config.name}.`
+      : `Need ${config.cost} credits to unlock ${config.name}.`;
   }
   nav("market");
 };

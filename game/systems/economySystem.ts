@@ -5,6 +5,7 @@ import { content, getSystemById } from "../core/engine";
 import type { CommodityDef, SystemDef } from "../core/contentTypes";
 import { recordDelivery } from "./missionSystem";
 import { getReputation } from "./reputationSystem";
+import { incrementTradeStrategyProgress } from "./tradeStrategySystem";
 
 const MARKET_GLOBAL_MODIFIER = "__global__";
 const DEFAULT_SPREAD = { buyMultiplier: 1, sellMultiplier: 0.85 };
@@ -501,6 +502,10 @@ export function buyCommodity(
   const cargo = ensureCargo();
   cargo[commodityId] = (cargo[commodityId] || 0) + amount;
   applyTradeVolumeDrift(systemId, commodityId, amount, price, "buy");
+  const commodity = getCommodityById(commodityId);
+  gameState.notifications.push(
+    `Bought ${amount} ${commodity?.name || commodityId} @ ${price} each for ${total} cr.`
+  );
   return true;
 }
 
@@ -519,6 +524,20 @@ export function sellCommodity(
   addCommodityTrade(commodityId, amount, total);
   applyTradeVolumeDrift(systemId, commodityId, amount, price, "sell");
   recordDelivery(commodityId, amount, systemId);
+  const commodity = getCommodityById(commodityId);
+  if (commodity) {
+    const system = getSystemById(systemId);
+    const taxRate = Math.max(0, system?.marketProfile?.taxRate ?? 0);
+    if (taxRate > 0 && total > 0) {
+      incrementTradeStrategyProgress("taxEvasion", Math.max(1, Math.round(total * taxRate * 0.01)));
+    }
+    if (commodity.legalStatus && commodity.legalStatus !== "legal") {
+      incrementTradeStrategyProgress("smuggling", Math.max(1, Math.round(total * 0.003)));
+    }
+  }
+  gameState.notifications.push(
+    `Sold ${amount} ${commodity?.name || commodityId} @ ${price} each for ${total} cr.`
+  );
   return true;
 }
 

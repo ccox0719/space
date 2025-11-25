@@ -2,7 +2,6 @@ import { getCurrentSystem, getNeighbors } from "../systems/travelSystem";
 import { getBaseInSystem, getBaseTag } from "../systems/baseAssaultSystem";
 import type { NeighborRoute } from "../systems/travelSystem";
 import { gameState } from "../core/state";
-import { formatTurn } from "../core/formatters";
 import { getSystemById } from "../core/engine";
 import { navigation, type ActiveRoute } from "../core/navigation";
 import {
@@ -55,9 +54,10 @@ export function TravelScreen(): string {
   if (!current) {
     return `
       <div class="app-root">
-        <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
+        <header class="app-header app-header--market">
+          <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+          <div class="app-title app-title--centered">
+            <span class="app-game-title">The Veil</span>
             <span class="app-location">Loading system...</span>
           </div>
         </header>
@@ -135,14 +135,11 @@ export function TravelScreen(): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
-          <span class="app-location">${current.name}</span>
-        </div>
-        <div class="app-meta">
-          <span>Day ${gameState.time.day}</span>
-          <span>Turn ${formatTurn(gameState.time.turn)}</span>
+      <header class="app-header app-header--market">
+        <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
+          <span class="app-location">Travel — ${current.name}</span>
         </div>
       </header>
 

@@ -11,7 +11,6 @@ import {
 import { getWeaponById } from "../systems/weaponSystem";
 import { getSystemById } from "../core/engine";
 import { gameState } from "../core/state";
-import { formatTurn } from "../core/formatters";
 import { getStarMap, getHopDistance } from "../core/map";
 
 function parseMissionIds(value: unknown): string[] {
@@ -115,14 +114,11 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
+      <header class="app-header app-header--market">
+        <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
           <span class="app-location">Contracts</span>
-        </div>
-        <div class="app-meta">
-          <span>Day ${gameState.time.day}</span>
-          <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>
       </header>
 

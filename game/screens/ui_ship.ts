@@ -1,5 +1,4 @@
 import { gameState } from "../core/state";
-import { formatTurn } from "../core/formatters";
 import { getCurrentShipTemplate, repairShip, refuelShip } from "../systems/shipSystem";
 import { getInstalledComponents } from "../systems/componentSystem";
 import { getWeaponById, getWeaponHint } from "../systems/weaponSystem";
@@ -43,14 +42,11 @@ export function ShipScreen(): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
-          <span class="app-location">Ship: ${ship.name}</span>
-        </div>
-        <div class="app-meta">
-          <span>Day ${gameState.time.day}</span>
-          <span>Turn ${formatTurn(gameState.time.turn)}</span>
+      <header class="app-header app-header--market">
+        <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
+          <span class="app-location">Ship — ${ship.name}</span>
         </div>
       </header>
 

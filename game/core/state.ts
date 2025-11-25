@@ -52,6 +52,12 @@ export interface IntelState {
   systems: SystemIntel[];
 }
 
+export interface TradeStrategyState {
+  taxEvasion: number;
+  smuggling: number;
+  bribery: number;
+}
+
 export interface RunStats {
   daysSurvived: number;
   jumpsMade: number;
@@ -288,6 +294,7 @@ export interface GameState {
   };
   lastBattleResult?: import("./contentTypes").BattleResult | null;
   marketState: MarketState;
+  tradeStrategy: TradeStrategyState;
   intel: IntelState;
   runStats: RunStats;
   gameOver: GameOverState;
@@ -390,12 +397,17 @@ export function newGameState(): GameState {
       weapons: ["laser_mk1"]
     },
     lastBattleResult: null,
-  marketState: {
+    marketState: {
       temporaryModifiers: {},
       activeEvents: [],
       localAdjustments: {},
       priceIntel: {},
       initialDriftSeeded: false
+    },
+    tradeStrategy: {
+      taxEvasion: 0,
+      smuggling: 0,
+      bribery: 0
     },
     intel: {
       systems: []

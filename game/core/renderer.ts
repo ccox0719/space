@@ -86,35 +86,51 @@ const DEV_CONTROL_SECTIONS: { title: string; controls: DevControl[] }[] = [
       }
     ]
   },
-  {
-    title: "Combat",
-    controls: [
-      {
-        path: "combat.enemyHpMultiplier",
-        label: "Enemy HP Multiplier",
-        min: 0.25,
-        max: 5,
-        step: 0.05,
-        formatter: (value) => `${value.toFixed(2)}x`
-      },
-      {
-        path: "combat.enemyDamageMultiplier",
-        label: "Enemy Damage Multiplier",
-        min: 0.25,
-        max: 5,
-        step: 0.05,
-        formatter: (value) => `${value.toFixed(2)}x`
-      },
-      {
-        path: "combat.creditsRewardMultiplier",
-        label: "Combat Credits Reward",
-        min: 0.1,
-        max: 5,
-        step: 0.1,
-        formatter: (value) => `${value.toFixed(2)}x`
-      }
-    ]
-  },
+{
+  title: "Combat",
+  controls: [
+    {
+      path: "combat.enemyHpMultiplier",
+      label: "Enemy HP Multiplier",
+      min: 0.25,
+      max: 5,
+      step: 0.05,
+      formatter: (value) => `${value.toFixed(2)}x`
+    },
+    {
+      path: "combat.enemyDamageMultiplier",
+      label: "Enemy Damage Multiplier",
+      min: 0.25,
+      max: 5,
+      step: 0.05,
+      formatter: (value) => `${value.toFixed(2)}x`
+    },
+    {
+      path: "combat.creditsRewardMultiplier",
+      label: "Combat Credits Reward",
+      min: 0.1,
+      max: 5,
+      step: 0.1,
+      formatter: (value) => `${value.toFixed(2)}x`
+    },
+    {
+      path: "combat.enemyCountMin",
+      label: "Min Enemy Count",
+      min: 1,
+      max: 10,
+      step: 1,
+      formatter: (value) => `${value.toFixed(0)}`
+    },
+    {
+      path: "combat.enemyCountMax",
+      label: "Max Enemy Count",
+      min: 1,
+      max: 10,
+      step: 1,
+      formatter: (value) => `${value.toFixed(0)}`
+    }
+  ]
+},
   {
     title: "Economy",
     controls: [
@@ -294,6 +310,25 @@ function renderDevControlSections(): string {
   }).join("");
 }
 
+function reportDevSettings(payload: string): void {
+  const handleCopyError = () => {
+    window.prompt("Dev settings snapshot (copy manually):", payload);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard
+      .writeText(payload)
+      .then(() => {
+        alert("Dev settings copied to clipboard.");
+      })
+      .catch(() => {
+        handleCopyError();
+      });
+  } else {
+    handleCopyError();
+  }
+  console.log("Dev settings report:", payload);
+}
+
 export function render() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -362,18 +397,6 @@ export function render() {
       break;
   }
 
-  const backButton =
-    navigation.current !== "main" &&
-    navigation.current !== "event" &&
-    navigation.current !== "combat" &&
-    navigation.current !== "mining"
-      ? `
-        <div class="menu-back">
-          <button class="btn btn-ghost btn-small" onclick="nav('main')">Back</button>
-        </div>
-      `
-      : "";
-
   const devPanel = `
     <div id="devPanel" class="dev-panel hidden">
       <div class="dev-panel-header">
@@ -389,6 +412,7 @@ export function render() {
             <button class="btn btn-primary" id="devAddCredits">+1000 Credits</button>
             <button class="btn btn-primary" id="devFillCargo">Fill Cargo</button>
             <button class="btn btn-primary" id="devGodMode">Toggle God Mode</button>
+            <button class="btn btn-primary" id="devReportSettings">Report Dev Settings</button>
             <button class="btn btn-ghost" id="devPersistEvents">Save Event Cache</button>
             <button class="btn btn-ghost" id="devClearEvents">Clear Event Cache</button>
             <button class="btn btn-ghost" id="devHardReset">Hard Reset Game</button>
@@ -406,7 +430,7 @@ export function render() {
     </div>
   `;
 
-  app.innerHTML = `${backButton}${html}${devPanel}`;
+  app.innerHTML = `${html}${devPanel}`;
   wireDevPanel();
 }
 
@@ -422,6 +446,7 @@ function wireDevPanel() {
   const btnCredits = document.getElementById("devAddCredits");
   const btnCargo = document.getElementById("devFillCargo");
   const btnGod = document.getElementById("devGodMode");
+  const btnReportSettings = document.getElementById("devReportSettings");
   const btnResetMiningSession = document.getElementById("devResetMiningSession");
   const btnSpikeThreat = document.getElementById("devSpikeThreat");
   const btnLogMining = document.getElementById("devLogMiningGrid");
@@ -523,6 +548,19 @@ function wireDevPanel() {
     alert(`God Mode: ${devGodMode ? "On" : "Off"}`);
   });
 
+  btnReportSettings?.addEventListener("click", () => {
+    const payload = JSON.stringify(
+      {
+        timestamp: new Date().toISOString(),
+        devTune
+      },
+      null,
+      2
+    );
+    reportDevSettings(payload);
+    panel?.classList.add("hidden");
+  });
+
   btnResetMiningSession?.addEventListener("click", () => {
     startMiningSession(gameState, gameState.location.systemId, gameState.miningSession?.beltId);
     panel?.classList.add("hidden");
@@ -571,7 +609,11 @@ function wireDevPanel() {
       if (e.key === "`") {
         togglePanel();
       }
-      if (e.key === "Escape" && navigation.current !== "main") {
+      if (
+        e.key === "Escape" &&
+        navigation.current !== "main" &&
+        navigation.current !== "event"
+      ) {
         window.nav?.("main");
       }
     });

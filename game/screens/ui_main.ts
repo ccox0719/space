@@ -28,14 +28,10 @@ export function MainScreen(): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
+      <header class="app-header app-header--market">
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
           <span class="app-location">${system?.name ?? s.location.systemId}</span>
-        </div>
-        <div class="app-meta">
-          <span>Day ${s.time.day}</span>
-          <span>Turn ${formatTurn(s.time.turn)}</span>
         </div>
       </header>
 
@@ -105,25 +101,32 @@ export function MainScreen(): string {
           </div>
           ${lastNote ? `<p class="muted">Log: ${lastNote}</p>` : ""}
           <div class="panel-row">
-            <div class="panel-card">
-              <p class="label">Fuel / Cargo</p>
-              <div class="fuel-cargo-grid">
-                <div class="mini-stat">
-                  <i class="bi bi-fuel-pump"></i>
-                  <div>
-                    <span>Fuel</span>
-                    <strong>${s.ship.fuel}/${s.ship.maxFuel}</strong>
-                  </div>
+          <div class="panel-card">
+            <p class="label">Fuel / Cargo</p>
+            <div class="fuel-cargo-grid">
+              <div class="mini-stat">
+                <i class="bi bi-fuel-pump"></i>
+                <div>
+                  <span>Fuel</span>
+                  <strong>${s.ship.fuel}/${s.ship.maxFuel}</strong>
                 </div>
-                <div class="mini-stat">
-                  <i class="bi bi-boxes"></i>
-                  <div>
-                    <span>Cargo</span>
-                    <strong>${cargoLoad}/${s.ship.cargoCapacity}</strong>
-                  </div>
+              </div>
+              <div class="mini-stat">
+                <i class="bi bi-boxes"></i>
+                <div>
+                  <span>Cargo</span>
+                  <strong>${cargoLoad}/${s.ship.cargoCapacity}</strong>
+                </div>
+              </div>
+              <div class="mini-stat">
+                <span class="pill-icon icon-credits"></span>
+                <div>
+                  <span>Cycle</span>
+                  <strong>Day ${s.time.day} · Turn ${formatTurn(s.time.turn)}</strong>
                 </div>
               </div>
             </div>
+          </div>
             <div class="panel-card">
           <p class="label">Location</p>
           <p class="value-inline" id="location-description">${shortLocationDescription}</p>
@@ -147,7 +150,7 @@ export function MainScreen(): string {
       </main>
 
       <nav class="app-menu" aria-label="Primary menu">
-        <div class="menu-group">
+        <div class="menu-group menu-group--system">
           <span class="menu-group__label">Primary</span>
           <div class="menu-group__actions">
             <button class="btn btn-primary" onclick="nav('travel')">Travel</button>
@@ -157,21 +160,21 @@ export function MainScreen(): string {
             <button class="btn btn-primary" onclick="nav('ship')">Ship</button>
           </div>
         </div>
-        <div class="menu-group">
-          <span class="menu-group__label">System</span>
-          <div class="menu-group__actions">
-            <button class="btn btn-primary" onclick="nav('market')" id="navMarket">
-              Market
-            </button>
-            ${systemHasTag(s.location.systemId, "shipyard")
-              ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
-              : ``}
+        <div class="menu-row">
+          <div class="menu-group menu-group--tools">
+            <span class="menu-group__label">System</span>
+            <div class="menu-group__actions">
+              <button class="btn btn-primary" onclick="nav('market')" id="navMarket">Market</button>
+              ${systemHasTag(s.location.systemId, "shipyard")
+                ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
+                : ``}
+            </div>
           </div>
-        </div>
-        <div class="menu-group">
-          <span class="menu-group__label">Tools</span>
-          <div class="menu-group__actions">
-            <button class="btn btn-ghost" id="navDev">Dev Tools</button>
+          <div class="menu-group">
+            <span class="menu-group__label">Tools</span>
+            <div class="menu-group__actions">
+              <button class="btn btn-ghost btn-small btn-inconspicuous" id="navDev">Dev</button>
+            </div>
           </div>
         </div>
       </nav>

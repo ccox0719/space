@@ -20,6 +20,7 @@ import { checkContractsOnArrival } from "./missionSystem";
 import { adjustWanted } from "./wantedSystem";
 import { getBuySellPrices, getCommodityById } from "./economySystem";
 import { getPassiveEffects } from "../core/passives";
+import { getTradeStrategyEffects } from "./tradeStrategySystem";
 
 declare global {
   interface Window {
@@ -225,7 +226,9 @@ function computeScanDetectionChance(
   const severity = 1 + Math.min(1.5, summary.illegalUnits * 0.1 + summary.restrictedUnits * 0.04);
   const scanMultiplier = Math.max(0, passive.scanDetectionMultiplier ?? 1);
   const tolerance = Math.max(0.5, passive.illegalTolerance ?? 1);
-  return clamp(base * severity * scanMultiplier / tolerance, 0, 0.95);
+  const baseChance = clamp(base * severity * scanMultiplier / tolerance, 0, 0.95);
+  const { detectionReduction } = getTradeStrategyEffects();
+  return Math.max(0, baseChance - detectionReduction);
 }
 
 function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile): boolean {
@@ -233,6 +236,9 @@ function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile):
   if (!summary) return false;
   const passive = getPassiveEffects();
   const detectionChance = computeScanDetectionChance(summary, system, profile.routeType, passive);
+  gameState.notifications.push(
+    `Warning: checkpoint scan imminent (${Math.round(detectionChance * 100)}% detection chance).`
+  );
   if (Math.random() > detectionChance) {
     return false;
   }
@@ -254,15 +260,17 @@ function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile):
   const baseFine = Math.max(25, Math.round(summary.estimatedValue * 0.35));
   const bonusFine = (summary.illegalUnits || 0) * 15 + (summary.restrictedUnits || 0) * 8;
   const fine = baseFine + bonusFine;
-  gameState.player.credits = Math.max(
-    0,
-    gameState.player.credits - fine
-  );
+  const { fineDiscount } = getTradeStrategyEffects();
+  const discount = Math.round(fine * fineDiscount);
+  const finalFine = Math.max(0, fine - discount);
+  gameState.player.credits = Math.max(0, gameState.player.credits - finalFine);
   const wantedGain = 3 + Math.min(12, Math.round(summary.illegalUnits * 0.5 + summary.restrictedUnits * 0.25));
-  adjustWanted(wantedGain);
+  const wantedReduction = Math.round(wantedGain * fineDiscount * 0.6);
+  const finalWanted = Math.max(0, wantedGain - wantedReduction);
+  adjustWanted(finalWanted);
 
   gameState.notifications.push(
-    `Checkpoint scans flag contraband. Seized ${seizedUnits} units, fined ${fine} credits, wanted +${wantedGain}.`
+    `Checkpoint scans flag contraband. Seized ${seizedUnits} units, fined ${finalFine} credits, wanted +${finalWanted}.`
   );
   return true;
 }
@@ -300,12 +308,21 @@ export function travelTo(targetSystemId: string): void {
 
   const route = getNeighborRoute(current, targetSystemId);
   if (!route) {
-    console.warn(`System ${targetSystemId} is not a neighbor of ${current.id}`);
+    const msg = `No direct route from ${current.name} to ${targetSystemId}.`;
+    console.warn(msg);
+    gameState.notifications.push(msg);
+    navigation.go("main", { message: msg });
     return;
   }
 
   const target = findSystem(targetSystemId);
-  if (!target) return;
+  if (!target) {
+    const msg = `Destination ${targetSystemId} is unknown.`;
+    console.warn(msg);
+    gameState.notifications.push(msg);
+    navigation.go("main", { message: msg });
+    return;
+  }
 
   const profile = computeRouteProfile(current, target, route);
   const fuelMultiplier = Math.max(0, devTune.fuelCostMultiplier ?? 1);
@@ -451,9 +468,12 @@ function maybeTriggerNavyIntercept(target: SystemDef): boolean {
   const securityMod = target.security === "high" ? 1.15 : target.security === "low" ? 0.65 : 1;
   const passive = getPassiveEffects();
   const contraband = getContrabandSummary(target);
+  const { detectionReduction, fineDiscount } = getTradeStrategyEffects();
   const contrabandPressure = contraband ? 1 + Math.min(1.2, contraband.totalUnits * 0.02) : 1;
+  const adjustedPressure = Math.max(0.6, contrabandPressure * Math.max(0, 1 - fineDiscount * 0.8));
   const scanMod = Math.max(0, passive.scanDetectionMultiplier ?? 1) / Math.max(0.5, passive.illegalTolerance ?? 1);
-  const chance = Math.min(1, base * encounterScale * securityMod * contrabandPressure * scanMod);
+  const rawChance = base * encounterScale * securityMod * adjustedPressure * scanMod;
+  const chance = Math.min(1, Math.max(0, rawChance * Math.max(0, 1 - detectionReduction * 0.6)));
   if (Math.random() <= chance) {
     markEncounterStarted();
     const message = `Patrol intercepts you near ${target.name}!`;

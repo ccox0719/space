@@ -36,9 +36,10 @@ export function ShipyardScreen(): string {
   if (!systemHasTag(gameState.location.systemId, "shipyard")) {
     return `
       <div class="app-root">
-        <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
+        <header class="app-header app-header--market">
+          <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+          <div class="app-title app-title--centered">
+            <span class="app-game-title">The Veil</span>
             <span class="app-location">Shipyard</span>
           </div>
         </header>
@@ -209,14 +210,11 @@ export function ShipyardScreen(): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
+      <header class="app-header app-header--market">
+        <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
           <span class="app-location">Shipyard</span>
-        </div>
-        <div class="app-meta">
-          <span>Day ${gameState.time.day}</span>
-          <span>Credits ${gameState.player.credits}</span>
         </div>
       </header>
 

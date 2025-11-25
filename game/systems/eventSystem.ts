@@ -188,6 +188,36 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
     gameState.notifications.push(`Event flag: ${outcomes.flag}`);
   }
 
+  if (outcomes.market) {
+    const market = outcomes.market;
+    const multiplier = Math.max(0, market.multiplier);
+    const duration = Math.max(1, Math.floor(market.duration ?? 2));
+    applyTemporaryMarketModifier(market.commodityId, multiplier, duration);
+    const systemId = gameState.location?.systemId;
+    const commodity =
+      market.commodityId && content?.commodities
+        ? content.commodities.find((c) => c.id === market.commodityId)
+        : undefined;
+    const label = `${commodity?.name || "Local goods"} ${
+      multiplier >= 1 ? "surge" : "slip"
+    }`;
+    if (systemId && gameState.marketState) {
+      gameState.marketState.activeEvents.push({
+        systemId,
+        commodityId: market.commodityId ?? null,
+        multiplier,
+        expiresAtDay: gameState.time.day + duration,
+        expiresAtTurn: gameState.time.turn + duration * 2,
+        label
+      });
+    }
+    gameState.notifications.push(
+      `Market shift in ${systemId ?? "this system"}: ${commodity?.name || "local goods"} x${multiplier.toFixed(
+        2
+      )} for ${duration} turns.`
+    );
+  }
+
   if (outcomes.modifyReputation) {
     adjustReputationBatch({
       [outcomes.modifyReputation.faction]: outcomes.modifyReputation.amount

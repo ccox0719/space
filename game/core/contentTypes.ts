@@ -92,6 +92,11 @@ export interface EventOutcome {
   cargoLoss?: Record<string, number>;
   turnDelta?: number;
   flag?: string;
+  market?: {
+    commodityId?: string;
+    multiplier: number;
+    duration?: number;
+  };
 }
 
 export interface EventChoice {
