@@ -13,6 +13,7 @@ import {
   sellCommodity,
   getActiveEventsForSystem,
   captureNeighborIntel,
+  getNeighborIntelCost,
   getNeighborIntel
 } from "../systems/economySystem";
 import { getActiveContracts } from "../systems/missionSystem";
@@ -126,7 +127,7 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
     entries[0];
 
   const rows = entries
-    .map(({ commodity, quote, tags, cargoQty }) => {
+    .map(({ commodity, quote, tags, cargoQty }, idx) => {
       const isSelected = selectedEntry?.commodity.id === commodity.id;
       const isBestTrade = commodity.id === bestTradeId;
       const buyDisabled = canBuy(system.id, commodity.id, 1) ? "" : " disabled";
@@ -135,13 +136,13 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
       const rowClasses = ["market-row"];
       if (isSelected) rowClasses.push("market-row--highlight");
       const contractPill = contractInfo
-        ? `<span class="contract-pill${contractInfo.deliverable ? " ready" : ""}">${
-            contractInfo.deliverable ? "Deliver now" : "Needed"
+        ? `<span class="contract-pill contract-pill--target${contractInfo.deliverable ? " ready" : ""}">${
+            contractInfo.deliverable ? "Deliver now" : "Contract target"
           }</span>`
         : "";
       const bestMarginPill = isBestTrade ? `<span class="contract-pill">Top margin</span>` : "";
       return `
-        <article class="${rowClasses.join(" ")}" onclick="selectMarketCommodity('${commodity.id}')">
+        <article class="${rowClasses.join(" ")}" style="--row-index:${idx};" onclick="selectMarketCommodity('${commodity.id}')">
           <div class="market-row__main">
             <span class="market-row__name">${commodity.name}</span>
             <span class="market-row__info">
@@ -348,6 +349,7 @@ function renderMarketEvents(systemId: string): string {
 
 function renderIntelSection(system: ReturnType<typeof getSystemById>): string {
   const intel = getNeighborIntel();
+  const intelCost = getNeighborIntelCost();
   const neighbors =
     system?.neighbors
       .map((entry) => getSystemById(entry.id))
@@ -370,9 +372,9 @@ function renderIntelSection(system: ReturnType<typeof getSystemById>): string {
   return `
     <div class="panel-card">
       <p class="label">Intel Tools</p>
-      <p class="muted">Buy neighbor price intel (100 cr). Highlights likely over/under priced goods; actuals may drift when you arrive.</p>
+      <p class="muted">Buy neighbor price intel (${intelCost} cr, varies with rep). Highlights likely over/under priced goods; actuals may drift when you arrive.</p>
       <div class="app-actions">
-        <button class="btn btn-primary" onclick="purchaseNeighborIntel()">Buy Neighbor Intel</button>
+        <button class="btn btn-primary" onclick="purchaseNeighborIntel()">Buy Neighbor Intel (${intelCost})</button>
       </div>
       ${lines || `<p class="muted">No neighbor intel purchased yet.</p>`}
     </div>

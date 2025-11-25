@@ -1,4 +1,6 @@
 import { navigation } from "./navigation";
+import type { ScreenID } from "./navigation";
+import { getCurrentSystem } from "../systems/travelSystem";
 import { MainScreen } from "../screens/ui_main";
 import { TravelScreen } from "../screens/ui_travel";
 import { MarketScreen } from "../screens/ui_market";
@@ -22,6 +24,7 @@ import {
   resetCombatTuning
 } from "./state";
 import { persistCurrentEvents, clearEventCache } from "../systems/eventSystem";
+import { drawPixelBackground, setPixelScene } from "../systems/pixelBackgroundSystem";
 
 type DevControl = {
   path: string;
@@ -202,6 +205,24 @@ const DEV_CONTROL_MAP = DEV_CONTROL_SECTIONS.flatMap((section) => section.contro
   return acc;
 }, {} as Record<string, DevControl>);
 
+type PixelScene = Parameters<typeof setPixelScene>[0];
+
+const SCREEN_PIXEL_SCENES: Record<ScreenID, PixelScene> = {
+  main: "space",
+  travel: "space",
+  market: "hangar",
+  contracts: "ops",
+  ship: "space",
+  weapon_slots: "space",
+  weapon_select: "space",
+  event: "space",
+  combat: "combat",
+  shipyard: "hangar",
+  ship_select: "space",
+  mining: "mining",
+  gameover: "space"
+};
+
 function getDevValue(path: string): number {
   const parts = path.split(".");
   let current: any = devTune;
@@ -277,7 +298,27 @@ export function render() {
   const app = document.getElementById("app");
   if (!app) return;
 
+  const scene = SCREEN_PIXEL_SCENES[navigation.current] ?? "space";
+  setPixelScene(scene);
+
   let html = "";
+
+  // Keep the pixel background fresh on render transitions.
+  drawPixelBackground(null, performance.now());
+
+  // Auto-provision a mining session when the player is in a mining-tagged system,
+  // so "Mining" is always actionable after travel.
+  if (
+    navigation.current === "mining" &&
+    !gameState.miningSession &&
+    gameState.location?.systemId
+  ) {
+    const system = getCurrentSystem();
+    const tags = new Set(system?.tags ?? []);
+    if (tags.has("mining_belt") || tags.has("mining")) {
+      startMiningSession(gameState, gameState.location.systemId);
+    }
+  }
 
   switch (navigation.current) {
     case "main":

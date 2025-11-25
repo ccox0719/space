@@ -74,6 +74,12 @@ export function CombatScreen(): string {
 
   const ship = gameState.ship;
   const logHtml = c.log.map((line) => `<div class="log-line">${line}</div>`).join("");
+  const lowHull = ship.hp / Math.max(1, ship.maxHp) <= 0.35;
+  const lastLog = (c.log[c.log.length - 1] || "").toLowerCase();
+  const wasHit = lastLog.includes("hits you") || lastLog.includes("damage");
+  const rootClasses = ["app-root", "combat-root"];
+  if (lowHull) rootClasses.push("low-hull");
+  if (wasHit) rootClasses.push("hit-flash");
 
   const weaponRows = ship.hardpoints
     .map((hp, idx) => {
@@ -119,8 +125,11 @@ export function CombatScreen(): string {
     ? "Shields are down—called shots will score more consistently. Aim for the hull!"
     : "Called shots trade accuracy; wait until shields drop for the best payout.";
 
+  const playerChips = buildPlayerChips(c);
+  const enemyChips = buildEnemyChips(c);
+
   return `
-    <div class="app-root">
+    <div class="${rootClasses.join(" ")}">
       <header class="app-header">
         <div class="app-title">
           <span class="app-game-title">Echoes Fleet</span>
@@ -134,19 +143,19 @@ export function CombatScreen(): string {
 
       <section class="app-stats">
         <div class="stat-pill">
-          <span class="stat-label">Hull</span>
+          <span class="stat-label"><span class="pill-icon icon-hull"></span>Hull</span>
           <span class="stat-value">${ship.hp}/${ship.maxHp}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label">Shields</span>
+          <span class="stat-label"><span class="pill-icon icon-shields"></span>Shields</span>
           <span class="stat-value">${ship.shields}/${ship.maxShields}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label">Enemy Hull</span>
+          <span class="stat-label"><span class="pill-icon icon-hull"></span>Enemy Hull</span>
           <span class="stat-value">${c.enemyHp}/${c.enemyMaxHp}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label">Enemy Shields</span>
+          <span class="stat-label"><span class="pill-icon icon-shields"></span>Enemy Shields</span>
           <span class="stat-value">${c.enemyShields}/${c.enemyMaxShields}</span>
         </div>
       </section>
@@ -160,10 +169,13 @@ export function CombatScreen(): string {
             <div class="panel-card">
               <p class="label">Your Ship</p>
               <p class="value-inline">Fuel ${ship.fuel}/${ship.maxFuel}</p>
+              <div class="status-chips">${playerChips || `<span class="muted">No active buffs</span>`}</div>
             </div>
-            <div class="panel-card">
+            <div class="panel-card enemy-reticle">
+              <div class="reticle-grid"></div>
               <p class="label">Enemy</p>
               <p class="value-inline">${c.enemyName}</p>
+              <div class="status-chips">${enemyChips || `<span class="muted">No active debuffs</span>`}</div>
             </div>
           </div>
 
@@ -221,4 +233,40 @@ export function CombatScreen(): string {
 
     </div>
   `;
+}
+
+function buildPlayerChips(combat: NonNullable<typeof gameState.combat>): string {
+  const chips: string[] = [];
+  chips.push(`<span class="buff-chip buff">Stance: ${combat.playerStance}</span>`);
+  if (combat.playerBracing) {
+    chips.push('<span class="buff-chip buff">Bracing</span>');
+  }
+  if (combat.playerStatus.shieldBoost > 0) {
+    chips.push(
+      `<span class="buff-chip buff">Shield +${combat.playerStatus.shieldBoost} (${combat.playerStatus.shieldTurns}t)</span>`
+    );
+  }
+  if (combat.playerStatus.maneuverBonus > 0) {
+    chips.push(
+      `<span class="buff-chip buff">Evasion +${combat.playerStatus.maneuverBonus} (${combat.playerStatus.maneuverTurns}t)</span>`
+    );
+  }
+  if (!combat.canEscape) {
+    chips.push('<span class="buff-chip debuff">Escape blocked</span>');
+  }
+  return chips.join("");
+}
+
+function buildEnemyChips(combat: NonNullable<typeof gameState.combat>): string {
+  const chips: string[] = [];
+  if (combat.enemyStatus.weaponJammedTurns > 0) {
+    chips.push(`<span class="buff-chip debuff">Weapons jammed (${combat.enemyStatus.weaponJammedTurns}t)</span>`);
+  }
+  if (combat.enemyShields <= 0) {
+    chips.push('<span class="buff-chip debuff">Shields down</span>');
+  }
+  if (chips.length === 0 && combat.enemyShields > 0) {
+    chips.push('<span class="buff-chip muted-chip">Systems nominal</span>');
+  }
+  return chips.join("");
 }

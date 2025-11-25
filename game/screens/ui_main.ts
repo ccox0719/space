@@ -36,19 +36,19 @@ export function MainScreen(): string {
 
       <section class="app-stats">
         <div class="stat-pill">
-          <span class="stat-label">Credits</span>
+          <span class="stat-label"><span class="pill-icon icon-credits"></span>Credits</span>
           <span class="stat-value">${s.player.credits}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label">Fuel</span>
+          <span class="stat-label"><span class="pill-icon icon-fuel"></span>Fuel</span>
           <span class="stat-value">${s.ship.fuel}/${s.ship.maxFuel}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label">Cargo</span>
+          <span class="stat-label"><span class="pill-icon icon-cargo"></span>Cargo</span>
           <span class="stat-value">${cargoLoad}/${s.ship.cargoCapacity}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label">Wanted</span>
+          <span class="stat-label"><span class="pill-icon icon-danger"></span>Wanted</span>
           <span class="stat-value">${s.player.wanted}</span>
         </div>
       </section>

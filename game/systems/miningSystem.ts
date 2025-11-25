@@ -537,7 +537,8 @@ export function performMiningAction(
   const added = addCargoWithCapacity(state, minedCommodityId, minedAmount);
   recordOreGain(session, minedCommodityId, added);
   const localPrice = Math.max(1, getLocalPrice(session.systemId, minedCommodityId));
-  const approxValue = localPrice * added;
+  const payoutMult = Math.max(0, (passive.miningPayoutMultiplier ?? 1));
+  const approxValue = localPrice * added * payoutMult;
   session.minesTaken += 1;
   session.totalValueMined += approxValue;
 

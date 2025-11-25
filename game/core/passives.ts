@@ -1,7 +1,17 @@
 import { getCombatTune, getShipPassive } from "./state";
+import { getComponentPassiveEffects } from "../systems/componentSystem";
 
 export function getPassiveEffects(): Record<string, number> {
-  return getShipPassive();
+  const shipPassive = getShipPassive();
+  const componentPassive = getComponentPassiveEffects();
+  const allKeys = new Set([...Object.keys(shipPassive), ...Object.keys(componentPassive)]);
+  const merged: Record<string, number> = {};
+  for (const key of allKeys) {
+    const a = typeof shipPassive[key] === "number" ? (shipPassive[key] as number) : 1;
+    const b = typeof componentPassive[key] === "number" ? (componentPassive[key] as number) : 1;
+    merged[key] = a * b;
+  }
+  return merged;
 }
 
 export function getIncomeMultiplier(): number {

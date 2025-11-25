@@ -112,9 +112,9 @@ export function ShipSelectScreen(): string {
           <p class="muted">Passive: ${ship.passive.name}</p>
           ${
             passiveLines.length
-              ? `<ul class="passive-summary__list">${passiveLines
-                  .map((line) => `<li>${line}</li>`)
-                  .join("")}</ul>`
+              ? `<div class="passive-summary__list">${passiveLines
+                  .map((line) => `<span>${line}</span>`)
+                  .join("")}</div>`
               : ""
           }
         </div>
@@ -122,10 +122,15 @@ export function ShipSelectScreen(): string {
         : "";
 
       return `
-      <div class="panel-card">
-        <p class="label">${ship.roleHint}</p>
-        <p class="value-inline"><strong>${ship.name}</strong></p>
-        <p class="muted">${ship.description}</p>
+      <div class="panel-card starter-card">
+        <div class="starter-card-head">
+          ${renderStarterIcon(ship.id, ship.roleHint ?? ship.name)}
+          <div>
+            <p class="label">${ship.roleHint}</p>
+            <p class="value-inline"><strong>${ship.name}</strong></p>
+            <p class="muted">${ship.description}</p>
+          </div>
+        </div>
         ${passiveBlock}
         <p class="muted">Hull ${ship.hull} | Shields ${ship.shields} | Fuel ${ship.fuel} | Cargo ${ship.cargo}</p>
         <button class="btn btn-primary" onclick="chooseStarter('${ship.id}')">Choose ${ship.name}</button>
@@ -157,10 +162,192 @@ export function ShipSelectScreen(): string {
         </section>
       </main>
 
-      <footer class="app-footer">
-        <button class="btn btn-ghost btn-small" onclick="nav('main')">Skip</button>
-        <button class="btn btn-ghost btn-small" id="navDev">Dev</button>
-      </footer>
-    </div>
+  <footer class="app-footer">
+    <button class="btn btn-ghost btn-small" onclick="nav('main')">Skip</button>
+    <button class="btn btn-ghost btn-small" id="navDev">Dev</button>
+  </footer>
+</div>
+`;
+}
+
+type StarterDot = { x: number; y: number; c: "a" | "b" | "c" };
+
+const STARTER_PALETTES: Array<{ a: string; b: string; c: string }> = [
+  { a: "#00f0ff", b: "#0084d6", c: "#031624" },
+  { a: "#ffd166", b: "#ff8f49", c: "#2c1d0a" },
+  { a: "#bde0fe", b: "#6fb5ff", c: "#0b1a32" },
+  { a: "#ff8ce5", b: "#b14dff", c: "#2d0a46" }
+];
+
+const STARTER_SHAPES: Record<string, StarterDot[][]> = {
+  fighter: [
+    [
+      { x: 4, y: 1, c: "b" },
+      { x: 5, y: 1, c: "a" },
+      { x: 6, y: 1, c: "b" },
+      { x: 3, y: 2, c: "b" },
+      { x: 4, y: 2, c: "a" },
+      { x: 5, y: 2, c: "a" },
+      { x: 6, y: 2, c: "a" },
+      { x: 7, y: 2, c: "b" },
+      { x: 2, y: 3, c: "c" },
+      { x: 3, y: 3, c: "a" },
+      { x: 4, y: 3, c: "b" },
+      { x: 5, y: 3, c: "a" },
+      { x: 6, y: 3, c: "b" },
+      { x: 7, y: 3, c: "a" },
+      { x: 8, y: 3, c: "c" },
+      { x: 4, y: 4, c: "b" },
+      { x: 5, y: 4, c: "a" },
+      { x: 6, y: 4, c: "b" },
+      { x: 5, y: 5, c: "a" }
+    ],
+    [
+      { x: 3, y: 0, c: "a" },
+      { x: 4, y: 0, c: "b" },
+      { x: 5, y: 0, c: "a" },
+      { x: 6, y: 0, c: "b" },
+      { x: 4, y: 1, c: "a" },
+      { x: 5, y: 1, c: "b" },
+      { x: 5, y: 2, c: "a" },
+      { x: 4, y: 2, c: "a" },
+      { x: 6, y: 2, c: "a" },
+      { x: 5, y: 3, c: "c" }
+    ]
+  ],
+  mining: [
+    [
+      { x: 3, y: 2, c: "b" },
+      { x: 4, y: 2, c: "a" },
+      { x: 5, y: 2, c: "a" },
+      { x: 6, y: 2, c: "b" },
+      { x: 2, y: 3, c: "c" },
+      { x: 3, y: 3, c: "a" },
+      { x: 4, y: 3, c: "b" },
+      { x: 5, y: 3, c: "b" },
+      { x: 6, y: 3, c: "a" },
+      { x: 7, y: 3, c: "a" },
+      { x: 3, y: 4, c: "b" },
+      { x: 4, y: 4, c: "a" },
+      { x: 5, y: 4, c: "a" },
+      { x: 6, y: 4, c: "b" },
+      { x: 5, y: 5, c: "c" }
+    ],
+    [
+      { x: 2, y: 3, c: "b" },
+      { x: 3, y: 3, c: "b" },
+      { x: 4, y: 3, c: "a" },
+      { x: 5, y: 3, c: "b" },
+      { x: 6, y: 3, c: "a" },
+      { x: 7, y: 3, c: "b" },
+      { x: 5, y: 4, c: "c" },
+      { x: 4, y: 4, c: "a" },
+      { x: 5, y: 5, c: "a" },
+      { x: 6, y: 4, c: "a" }
+    ]
+  ],
+  cargo: [
+    [
+      { x: 2, y: 3, c: "b" },
+      { x: 3, y: 3, c: "a" },
+      { x: 4, y: 3, c: "a" },
+      { x: 5, y: 3, c: "a" },
+      { x: 6, y: 3, c: "a" },
+      { x: 7, y: 3, c: "b" },
+      { x: 2, y: 4, c: "b" },
+      { x: 3, y: 4, c: "c" },
+      { x: 4, y: 4, c: "a" },
+      { x: 5, y: 4, c: "a" },
+      { x: 6, y: 4, c: "c" },
+      { x: 7, y: 4, c: "b" },
+      { x: 3, y: 5, c: "b" },
+      { x: 4, y: 5, c: "a" },
+      { x: 5, y: 5, c: "b" }
+    ],
+    [
+      { x: 3, y: 2, c: "b" },
+      { x: 4, y: 2, c: "a" },
+      { x: 5, y: 2, c: "a" },
+      { x: 6, y: 2, c: "b" },
+      { x: 2, y: 3, c: "b" },
+      { x: 3, y: 3, c: "c" },
+      { x: 4, y: 3, c: "a" },
+      { x: 5, y: 3, c: "a" },
+      { x: 6, y: 3, c: "c" },
+      { x: 7, y: 3, c: "b" },
+      { x: 3, y: 4, c: "b" },
+      { x: 4, y: 4, c: "a" },
+      { x: 5, y: 4, c: "a" },
+      { x: 6, y: 4, c: "b" }
+    ]
+  ]
+};
+function hashString(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h << 5) - h + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function pickStarterPalette(seed: string) {
+  return STARTER_PALETTES[hashString(seed) % STARTER_PALETTES.length];
+}
+
+function decorateStarterShape(base: StarterDot[], seed: string) {
+  const rng = ((): (() => number) => {
+    let val = hashString(seed);
+    return () => {
+      val = (val * 1664525 + 1013904223) | 0;
+      return (val >>> 0) / 0xffffffff;
+    };
+  })();
+  const copy = [...base];
+  const maxY = Math.max(...base.map((p) => p.y));
+  const minY = Math.min(...base.map((p) => p.y));
+  if (rng() > 0.5) {
+    copy.push({ x: base[0]?.x ?? 4, y: minY - 1, c: "a" });
+  }
+  copy.push({ x: base[base.length - 1]?.x ?? 5, y: maxY + 1, c: rng() > 0.5 ? "b" : "c" });
+  return copy;
+}
+
+function centerStarterPixels(pixels: StarterDot[], size = 12): StarterDot[] {
+  const minX = Math.min(...pixels.map((p) => p.x));
+  const maxX = Math.max(...pixels.map((p) => p.x));
+  const minY = Math.min(...pixels.map((p) => p.y));
+  const maxY = Math.max(...pixels.map((p) => p.y));
+  const spanX = maxX - minX + 1;
+  const spanY = maxY - minY + 1;
+  const offsetX = Math.floor((size - spanX) / 2) - minX;
+  const offsetY = Math.floor((size - spanY) / 2) - minY;
+  return pixels.map((p) => ({ ...p, x: p.x + offsetX, y: p.y + offsetY }));
+}
+
+function resolveStarterShape(shipId: string, hint: string): StarterDot[] {
+  const normalized = hint?.toLowerCase() ?? "fighter";
+  const group = Object.keys(STARTER_SHAPES).find((role) => normalized.includes(role)) ?? "fighter";
+  const shapes = STARTER_SHAPES[group];
+  const idx = hashString(`${shipId}-${hint}`) % shapes.length;
+  return shapes[idx];
+}
+
+function renderStarterIcon(shipId: string, hint: string): string {
+  const palette = pickStarterPalette(`${shipId}-${hint}`);
+  const shape = resolveStarterShape(shipId, hint);
+  const decorated = decorateStarterShape(shape, shipId + hint);
+  const pixels = centerStarterPixels(decorated);
+  const blocks = pixels
+    .map(
+      (p) =>
+        `<rect x="${p.x}" y="${p.y}" width="1" height="1" fill="${palette[p.c as keyof typeof palette]}" opacity="1" />`
+    )
+    .join("");
+  return `
+    <svg class="starter-icon" viewBox="0 0 12 12" role="img" aria-hidden="true">
+      <rect x="0" y="0" width="12" height="12" fill="rgba(255,255,255,0.06)" />
+      ${blocks}
+    </svg>
   `;
 }

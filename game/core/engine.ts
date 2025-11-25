@@ -13,6 +13,12 @@ import { setLootTables } from "../systems/lootSystem";
 import { setMissions } from "../systems/missionSystem";
 import { autoEquipAvailableWeapons } from "../systems/weaponSystem";
 import { buildStarMapFromSystems, setStarMap } from "./map";
+import {
+  initPixelBackground,
+  updatePixelBackground,
+  drawPixelBackground,
+  setPixelScene
+} from "../systems/pixelBackgroundSystem";
 import type {
   SystemDef,
   ShipDef,
@@ -40,6 +46,10 @@ export type {
 } from "./contentTypes";
 
 export let content: GameContent | null = null;
+
+let pixelCanvas: HTMLCanvasElement | null = null;
+let pixelCtx: CanvasRenderingContext2D | null = null;
+let bgLastTime = performance.now();
 
 declare global {
   interface Window {
@@ -110,6 +120,19 @@ async function loadContent(): Promise<GameContent> {
   }
 
   const systems: SystemDef[] = await systemsResp.json();
+  for (const system of systems) {
+    // Normalize tags so every system always surfaces sensible badges.
+    const tags = new Set(system.tags ?? []);
+    if (system.region) tags.add(system.region);
+    if (system.security === "high") tags.add("secure");
+    if (system.security === "low") tags.add("lawless");
+    if (system.marketProfile?.blackMarket) tags.add("black_market");
+    const econ = system.economyTags ?? [];
+    if (econ.includes("mining")) tags.add("mining");
+    if (econ.includes("salvage")) tags.add("salvage");
+    if (econ.includes("checkpoint")) tags.add("checkpoint");
+    system.tags = Array.from(tags);
+  }
   const ships: ShipDef[] = await shipsResp.json();
   const components: ComponentDef[] = await componentsResp.json();
   const commodities: CommodityDef[] = await commoditiesResp.json();
@@ -156,6 +179,39 @@ async function loadContent(): Promise<GameContent> {
   };
 }
 
+function ensurePixelCanvas(): void {
+  if (pixelCanvas) return;
+  pixelCanvas = document.createElement("canvas");
+  pixelCanvas.id = "pixel-background";
+  pixelCanvas.style.position = "fixed";
+  pixelCanvas.style.top = "0";
+  pixelCanvas.style.left = "0";
+  pixelCanvas.style.width = "100vw";
+  pixelCanvas.style.height = "calc(100vw * 9 / 16)";
+  pixelCanvas.style.maxHeight = "100vh";
+  pixelCanvas.style.maxWidth = "calc(100vh * 16 / 9)";
+  pixelCanvas.style.objectFit = "contain";
+  pixelCanvas.style.zIndex = "0";
+  pixelCanvas.style.pointerEvents = "none";
+  pixelCanvas.style.background = "#02030b";
+  pixelCanvas.style.imageRendering = "pixelated";
+  pixelCanvas.style.display = "block";
+  document.body.insertBefore(pixelCanvas, document.body.firstChild || null);
+  pixelCtx = pixelCanvas.getContext("2d");
+  initPixelBackground(pixelCanvas);
+}
+
+function startPixelBackgroundLoop(): void {
+  const step = (now: number) => {
+    const dt = now - bgLastTime;
+    bgLastTime = now;
+    updatePixelBackground(dt);
+    drawPixelBackground(pixelCtx, now);
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 /**
  * Initialize the runtime:
  * - load content
@@ -166,6 +222,7 @@ async function loadContent(): Promise<GameContent> {
 export async function initGame() {
   // Load content
   content = await loadContent();
+  ensurePixelCanvas();
   const starMap = buildStarMapFromSystems(content.systems);
 
   // New game state (later you can check for saves)
@@ -211,6 +268,11 @@ export async function initGame() {
 
   // Initial render
   render();
+  startPixelBackgroundLoop();
+}
+
+export function setBackgroundScene(mode: Parameters<typeof setPixelScene>[0]): void {
+  setPixelScene(mode);
 }
 
 export function getSystemById(id: string): SystemDef | null {

@@ -20,6 +20,22 @@ export function getInstalledComponents(): ComponentDef[] {
 }
 
 /**
+ * Aggregate passive-style effects from installed components (multiplicative).
+ */
+export function getComponentPassiveEffects(): Record<string, number> {
+  if (!content) return {};
+  const effects: Record<string, number> = {};
+  for (const comp of getInstalledComponents()) {
+    if (!comp.effects) continue;
+    for (const [key, value] of Object.entries(comp.effects)) {
+      if (typeof value !== "number") continue;
+      effects[key] = (effects[key] ?? 1) * value;
+    }
+  }
+  return effects;
+}
+
+/**
  * Attempt to buy & install a component.
  * Applies its effect immediately and records it on the ship.
  */
@@ -57,19 +73,22 @@ function applyComponentEffect(comp: ComponentDef) {
 
   switch (comp.effectType) {
     case "hull":
-      ship.maxHp += comp.value;
-      ship.hp += comp.value;
+      ship.maxHp += comp.value ?? 0;
+      ship.hp += comp.value ?? 0;
       break;
     case "shields":
-      ship.maxShields += comp.value;
-      ship.shields += comp.value;
+      ship.maxShields += comp.value ?? 0;
+      ship.shields += comp.value ?? 0;
       break;
     case "fuel":
-      ship.maxFuel += comp.value;
-      ship.fuel += comp.value;
+      ship.maxFuel += comp.value ?? 0;
+      ship.fuel += comp.value ?? 0;
       break;
     case "cargo":
-      ship.cargoCapacity += comp.value;
+      ship.cargoCapacity += comp.value ?? 0;
+      break;
+    default:
+      // Passive-style effects are handled via getComponentPassiveEffects.
       break;
   }
 }

@@ -104,7 +104,7 @@ export function TravelScreen(): string {
                 const travelTime = `${profile.travelTime} turn${profile.travelTime === 1 ? "" : "s"}`;
                 const laneLabel = formatLaneType(route.laneType);
                 const distanceText = `Distance: ${route.distance}`;
-                const tagLine = tagNotes.length ? tagNotes.join(" | ") : "No special tags";
+                const tagLine = tagNotes.join(" | ");
                 const rowClasses = ["travel-row"];
                 if (isFocused || isRouteTarget) rowClasses.push("travel-row--focused");
             return `
@@ -238,7 +238,45 @@ function formatTagNotes(system: { tags: string[]; faction: string }): string[] {
   if (system.tags.includes("restricted") || system.faction === "unity_church") {
     notes.push("Unity");
   }
-  return notes;
+  if (notes.length) {
+    return notes;
+  }
+  // Fallback: show raw tags prettified so we never display "No special tags".
+  return (system.tags || []).map(formatTagLabel);
+}
+
+function formatTagLabel(tag: string): string {
+  switch (tag) {
+    case "core":
+      return "Core";
+    case "border":
+      return "Border";
+    case "fringe":
+      return "Fringe";
+    case "pirate":
+      return "Pirate Space";
+    case "wildspace":
+      return "Wildspace";
+    case "mining_belt":
+      return "Mining";
+    case "black_market":
+      return "Black Market";
+    case "trade_lane":
+      return "Trade Lane";
+    case "checkpoint":
+      return "Checkpoint";
+    case "navy_base":
+      return "Navy Base";
+    case "anomaly":
+      return "Anomaly";
+    case "salvage":
+      return "Salvage";
+    default:
+      return tag
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+  }
 }
 
 function formatRisk(chance: number): string {

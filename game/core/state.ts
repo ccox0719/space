@@ -506,7 +506,7 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
     fleeSuccessBonus: 0,
     globalIncomeMultiplier: 1,
     globalDangerMultiplier: 1,
-    encounterChancePerJump: 100,
+    encounterChancePerJump: 70,
     nonPirateEventWeight: 1,
     showEncounterDebug: 0
   }
@@ -523,6 +523,25 @@ function mergeCombatTuning(
   };
 }
 
+function normalizeCombatDifficulty(combat: CombatDevTuning): CombatDevTuning {
+  const minFloor = 0.1;
+  return {
+    ...combat,
+    enemyHpMultiplier: Math.min(
+      DEFAULT_DEV_TUNE.combat.enemyHpMultiplier,
+      Math.max(minFloor, combat.enemyHpMultiplier ?? DEFAULT_DEV_TUNE.combat.enemyHpMultiplier)
+    ),
+    enemyDamageMultiplier: Math.min(
+      DEFAULT_DEV_TUNE.combat.enemyDamageMultiplier,
+      Math.max(minFloor, combat.enemyDamageMultiplier ?? DEFAULT_DEV_TUNE.combat.enemyDamageMultiplier)
+    ),
+    enemyAccuracyMultiplier: Math.min(
+      DEFAULT_DEV_TUNE.combat.enemyAccuracyMultiplier,
+      Math.max(minFloor, combat.enemyAccuracyMultiplier ?? DEFAULT_DEV_TUNE.combat.enemyAccuracyMultiplier)
+    )
+  };
+}
+
 export function loadDevTune(): void {
   if (typeof window === "undefined" || !window.localStorage) {
     devTune = { ...DEFAULT_DEV_TUNE };
@@ -531,7 +550,11 @@ export function loadDevTune(): void {
 
   const raw = window.localStorage.getItem(DEV_TUNE_KEY);
   if (!raw) {
-    devTune = { ...DEFAULT_DEV_TUNE };
+    devTune = {
+      ...DEFAULT_DEV_TUNE,
+      combat: normalizeCombatDifficulty(DEFAULT_DEV_TUNE.combat)
+    };
+    persistDevTune();
     return;
   }
 
@@ -553,10 +576,15 @@ export function loadDevTune(): void {
     devTune = {
       ...DEFAULT_DEV_TUNE,
       ...parsed,
-      combat: combatPayload
+      combat: normalizeCombatDifficulty(combatPayload)
     };
+    persistDevTune();
   } catch {
-    devTune = { ...DEFAULT_DEV_TUNE };
+    devTune = {
+      ...DEFAULT_DEV_TUNE,
+      combat: normalizeCombatDifficulty(DEFAULT_DEV_TUNE.combat)
+    };
+    persistDevTune();
   }
 }
 

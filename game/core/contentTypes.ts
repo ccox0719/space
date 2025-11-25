@@ -220,8 +220,10 @@ export interface ComponentDef {
   name: string;
   description: string;
   cost: number;
-  effectType: "hull" | "shields" | "fuel" | "cargo";
-  value: number;
+  effectType?: "hull" | "shields" | "fuel" | "cargo";
+  value?: number;
+  effects?: Record<string, number>;
+  slot?: string;
 }
 
 export type WeaponType = "energy" | "projectile" | "missile" | "hybrid";

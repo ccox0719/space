@@ -49,7 +49,7 @@
     "baseDanger": 1,
     "security": "high",
     "faction": "helion_republic",
-    "tags": ["core", "navy_base", "trade_lane"],
+    "tags": ["core", "navy_base", "trade_lane", "shipyard"],
     "economyTags": ["naval", "diplomatic"],
     "traits": ["repair_bay", "navy_presence_medium"],
     "neighbors": [
@@ -155,7 +155,7 @@
     "baseDanger": 2,
     "security": "medium",
     "faction": "helion_republic",
-    "tags": ["checkpoint", "trade_lane"],
+    "tags": ["checkpoint", "trade_lane", "frontier", "shipyard"],
     "economyTags": ["checkpoint", "logistics"],
     "traits": ["customs_watch", "trade_mandates"],
     "neighbors": [
@@ -196,7 +196,7 @@
     "baseDanger": 3,
     "security": "low",
     "faction": "frontier_clans",
-    "tags": ["mining_belt", "frontier"],
+    "tags": ["mining_belt", "frontier", "shipyard"],
     "economyTags": ["mining", "anomaly"],
     "traits": ["anomaly_rich", "frontier_outpost"],
     "neighbors": [
@@ -222,8 +222,8 @@
       "taxRate": 0.05
     },
     "eventWeights": {
-      "mining_rich_vein": 0.2,
-      "mining_fragment_field": 0.16,
+      "mining_rich_vein": 0.28,
+      "mining_fragment_field": 0.2,
       "pirate_ambush": 0.12,
       "anomaly_spike": 0.08,
       "derelict_ship": 0.05,
@@ -239,7 +239,7 @@
     "baseDanger": 3,
     "security": "low",
     "faction": "frontier_clans",
-    "tags": ["mining_belt", "salvage", "frontier"],
+    "tags": ["mining_belt", "salvage", "frontier", "shipyard"],
     "economyTags": ["mining", "salvage"],
     "traits": ["salvage_ring", "anomaly_field"],
     "neighbors": [
@@ -264,8 +264,8 @@
       "taxRate": 0.04
     },
     "eventWeights": {
-      "mining_rich_vein": 0.16,
-      "mining_fragment_field": 0.14,
+      "mining_rich_vein": 0.24,
+      "mining_fragment_field": 0.18,
       "pirate_ambush": 0.12,
       "smuggler_contact": 0.12,
       "derelict_ship": 0.08,
@@ -282,7 +282,7 @@
     "baseDanger": 4,
     "security": "low",
     "faction": "rift_syndicate",
-    "tags": ["pirate_stronghold", "anomaly", "black_market"],
+    "tags": ["pirate_stronghold", "anomaly", "black_market", "shipyard"],
     "economyTags": ["pirate", "salvage"],
     "traits": ["black_market_hub", "anomaly_gate"],
     "neighbors": [
@@ -326,7 +326,7 @@
     "baseDanger": 3,
     "security": "medium",
     "faction": "frontier_clans",
-    "tags": ["trade_post", "smuggling"],
+    "tags": ["trade_post", "smuggling", "frontier", "black_market", "shipyard"],
     "economyTags": ["trade_post", "smuggling"],
     "traits": ["smuggler_nexus", "hidden_market"],
     "neighbors": [
@@ -360,7 +360,7 @@
     "baseDanger": 4,
     "security": "low",
     "faction": "frontier_clans",
-    "tags": ["anomaly", "fringe"],
+    "tags": ["anomaly", "fringe", "mining_belt"],
     "economyTags": ["anomaly", "research"],
     "traits": ["temporal_flare", "unstable_field"],
     "neighbors": [
@@ -379,7 +379,8 @@
     },
     "eventWeights": {
       "anomaly_spike": 0.3,
-      "mining_fragment_field": 0.1,
+      "mining_fragment_field": 0.18,
+      "mining_rich_vein": 0.08,
       "derelict_ship": 0.05
     }
   },
@@ -392,7 +393,7 @@
     "baseDanger": 4,
     "security": "low",
     "faction": "frontier_clans",
-    "tags": ["anomaly", "salvage"],
+    "tags": ["anomaly", "salvage", "fringe"],
     "economyTags": ["anomaly", "salvage"],
     "traits": ["echo_field", "salvage_hub"],
     "neighbors": [
@@ -412,6 +413,7 @@
     },
     "eventWeights": {
       "anomaly_spike": 0.25,
+      "mining_fragment_field": 0.1,
       "derelict_ship": 0.1,
       "pirate_ambush": 0.1
     }
@@ -525,7 +527,7 @@
     "baseDanger": 3,
     "security": "medium",
     "faction": "helion_republic",
-    "tags": ["checkpoint", "smuggling"],
+    "tags": ["checkpoint", "smuggling", "frontier", "black_market", "shipyard"],
     "economyTags": ["checkpoint", "smuggling"],
     "traits": ["dual_watch", "black_market_tunnel"],
     "neighbors": [

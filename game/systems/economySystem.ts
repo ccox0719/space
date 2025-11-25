@@ -4,6 +4,7 @@ import type { GameState, MarketEvent, MarketIntelSnapshot } from "../core/state"
 import { content, getSystemById } from "../core/engine";
 import type { CommodityDef, SystemDef } from "../core/contentTypes";
 import { recordDelivery } from "./missionSystem";
+import { getReputation } from "./reputationSystem";
 
 const MARKET_GLOBAL_MODIFIER = "__global__";
 const DEFAULT_SPREAD = { buyMultiplier: 1, sellMultiplier: 0.85 };
@@ -412,9 +413,9 @@ export function captureNeighborIntel(): { success: boolean; message: string } {
     .map((entry) => getSystemById(entry.id))
     .filter((s): s is SystemDef => !!s) || [];
   if (!neighbors.length) return { success: false, message: "No neighboring systems to scan." };
-  const cost = 100;
+  const cost = getNeighborIntelCost();
   if (gameState.player.credits < cost) {
-    return { success: false, message: "Not enough credits for intel." };
+    return { success: false, message: `Intel costs ${cost} cr (rep-based). Not enough credits.` };
   }
   gameState.player.credits -= cost;
   const state = ensureMarketState();
@@ -430,11 +431,37 @@ export function captureNeighborIntel(): { success: boolean; message: string } {
     };
     state.priceIntel[system.id] = snapshot;
   });
-  return { success: true, message: "Purchased neighbor intel." };
+  return { success: true, message: `Purchased neighbor intel for ${cost} cr.` };
 }
 
 export function getNeighborIntel(): Record<string, MarketIntelSnapshot> {
   return ensureMarketState().priceIntel;
+}
+
+/**
+ * Compute intel cost based on local reputation with neighboring factions.
+ * Better rep lowers the price, bad rep raises it.
+ */
+export function getNeighborIntelCost(): number {
+  const current = getSystemById(gameState.location.systemId);
+  const neighbors =
+    current?.neighbors
+      .map((entry) => getSystemById(entry.id))
+      .filter((s): s is SystemDef => !!s) || [];
+  const baseCost = 80; // lowered base
+  const repSamples = neighbors
+    .map((n) => (n.faction ? getReputation(n.faction) : null))
+    .filter((v): v is number => typeof v === "number");
+  const avgRep = repSamples.length
+    ? repSamples.reduce((sum, v) => sum + v, 0) / repSamples.length
+    : 0;
+  const multiplier = clampCost(1 - avgRep / 200, 0.5, 1.4);
+  const cost = Math.round(baseCost * multiplier);
+  return clampCost(cost, 40, 140);
+}
+
+function clampCost(value: number, min = 0, max = Number.MAX_SAFE_INTEGER): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 export function canBuy(
