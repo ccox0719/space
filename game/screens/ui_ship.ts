@@ -56,19 +56,19 @@ export function ShipScreen(): string {
 
       <section class="app-stats">
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-hull"></span>Hull</span>
+          <span class="stat-label"><i class="bi bi-shield-fill"></i>Hull</span>
           <span class="stat-value">${ship.hp}/${ship.maxHp}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-shields"></span>Shields</span>
+          <span class="stat-label"><i class="bi bi-shield-shaded"></i>Shields</span>
           <span class="stat-value">${ship.shields}/${ship.maxShields}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-fuel"></span>Fuel</span>
+          <span class="stat-label"><i class="bi bi-fuel-pump"></i>Fuel</span>
           <span class="stat-value">${ship.fuel}/${ship.maxFuel}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-cargo"></span>Cargo</span>
+          <span class="stat-label"><i class="bi bi-boxes"></i>Cargo</span>
           <span class="stat-value">${cargoLoad}/${ship.cargoCapacity}</span>
         </div>
       </section>

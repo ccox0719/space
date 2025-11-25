@@ -194,7 +194,6 @@ function drawScene(
       break;
     default:
       drawSpaceBackdrops(ctx, time);
-      drawShip(ctx, time);
       break;
   }
 

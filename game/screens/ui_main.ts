@@ -17,6 +17,11 @@ window.nav = (screen: string, params: Record<string, unknown> = {}) => {
 export function MainScreen(): string {
   const s = gameState;
   const system = getSystemById(s.location.systemId);
+  const shortLocationDescription = (() => {
+    const raw = (system?.description ?? "Unknown space").trim();
+    const firstSentence = raw.split(".")[0];
+    return firstSentence === raw ? raw : `${firstSentence}.`;
+  })();
   const cargoLoad = Object.values(s.ship.cargo || {}).reduce((sum, qty) => sum + qty, 0);
   const lastNote = s.notifications[s.notifications.length - 1];
   const logEntries = (s.notifications || []).slice(-5).reverse();
@@ -30,46 +35,98 @@ export function MainScreen(): string {
         </div>
         <div class="app-meta">
           <span>Day ${s.time.day}</span>
-            <span>Turn ${formatTurn(s.time.turn)}</span>
+          <span>Turn ${formatTurn(s.time.turn)}</span>
         </div>
       </header>
 
-      <section class="app-stats">
-        <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-credits"></span>Credits</span>
-          <span class="stat-value">${s.player.credits}</span>
+      <section class="header-stats">
+        <div class="header-stat">
+          <i class="bi bi-cash-stack"></i>
+          <div>
+            <span>Credits</span>
+            <strong>${s.player.credits}</strong>
+          </div>
         </div>
-        <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-fuel"></span>Fuel</span>
-          <span class="stat-value">${s.ship.fuel}/${s.ship.maxFuel}</span>
+        <div class="header-stat">
+          <i class="bi bi-fuel-pump"></i>
+          <div>
+            <span>Fuel</span>
+            <strong>${s.ship.fuel}/${s.ship.maxFuel}</strong>
+          </div>
         </div>
-        <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-cargo"></span>Cargo</span>
-          <span class="stat-value">${cargoLoad}/${s.ship.cargoCapacity}</span>
+        <div class="header-stat">
+          <span class="pill-icon icon-cargo"></span>
+          <div>
+            <span>Cargo</span>
+            <strong>${cargoLoad}/${s.ship.cargoCapacity}</strong>
+          </div>
         </div>
-        <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-danger"></span>Wanted</span>
-          <span class="stat-value">${s.player.wanted}</span>
+        <div class="header-stat">
+          <span class="pill-icon icon-danger"></span>
+          <div>
+            <span>Wanted</span>
+            <strong>${s.player.wanted}</strong>
+          </div>
         </div>
       </section>
 
       <main class="app-main">
         <section class="data-panel">
           <h1 class="panel-title">Bridge</h1>
-          <p class="muted">
-            Roles: ${s.player.roles.join(", ")} • Ship: ${s.ship.name} • Status: Hull ${s.ship.hp}/${
-    s.ship.maxHp
-  } · Shields ${s.ship.shields}/${s.ship.maxShields}
-          </p>
+          <div class="bridge-grid">
+            <div class="bridge-stat">
+              <i class="bi bi-person-lines-fill"></i>
+              <div>
+                <span>Roles</span>
+                <strong>${s.player.roles.join(", ")}</strong>
+              </div>
+            </div>
+            <div class="bridge-stat">
+              <i class="bi bi-ship"></i>
+              <div>
+                <span>Ship</span>
+                <strong>${s.ship.name}</strong>
+              </div>
+            </div>
+            <div class="bridge-stat">
+              <i class="bi bi-shield-fill"></i>
+              <div>
+                <span>Hull</span>
+                <strong>${s.ship.hp}/${s.ship.maxHp}</strong>
+              </div>
+            </div>
+            <div class="bridge-stat">
+              <i class="bi bi-shield-shaded"></i>
+              <div>
+                <span>Shields</span>
+                <strong>${s.ship.shields}/${s.ship.maxShields}</strong>
+              </div>
+            </div>
+          </div>
           ${lastNote ? `<p class="muted">Log: ${lastNote}</p>` : ""}
           <div class="panel-row">
             <div class="panel-card">
-              <p class="label">Fuel/Cargo</p>
-              <p class="value-inline">Fuel ${s.ship.fuel}/${s.ship.maxFuel} · Cargo ${cargoLoad}/${s.ship.cargoCapacity}</p>
+              <p class="label">Fuel / Cargo</p>
+              <div class="fuel-cargo-grid">
+                <div class="mini-stat">
+                  <i class="bi bi-fuel-pump"></i>
+                  <div>
+                    <span>Fuel</span>
+                    <strong>${s.ship.fuel}/${s.ship.maxFuel}</strong>
+                  </div>
+                </div>
+                <div class="mini-stat">
+                  <i class="bi bi-boxes"></i>
+                  <div>
+                    <span>Cargo</span>
+                    <strong>${cargoLoad}/${s.ship.cargoCapacity}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="panel-card">
-              <p class="label">Location</p>
-              <p class="value-inline">${system?.description ?? "Unknown space"}</p>
+          <p class="label">Location</p>
+          <p class="value-inline" id="location-description">${shortLocationDescription}</p>
             </div>
           </div>
         </section>

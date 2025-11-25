@@ -143,19 +143,19 @@ export function CombatScreen(): string {
 
       <section class="app-stats">
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-hull"></span>Hull</span>
+          <span class="stat-label"><i class="bi bi-shield-fill"></i>Hull</span>
           <span class="stat-value">${ship.hp}/${ship.maxHp}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-shields"></span>Shields</span>
+          <span class="stat-label"><i class="bi bi-shield-shaded"></i>Shields</span>
           <span class="stat-value">${ship.shields}/${ship.maxShields}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-hull"></span>Enemy Hull</span>
+          <span class="stat-label"><i class="bi bi-shield-fill"></i>Enemy Hull</span>
           <span class="stat-value">${c.enemyHp}/${c.enemyMaxHp}</span>
         </div>
         <div class="stat-pill">
-          <span class="stat-label"><span class="pill-icon icon-shields"></span>Enemy Shields</span>
+          <span class="stat-label"><i class="bi bi-shield-shaded"></i>Enemy Shields</span>
           <span class="stat-value">${c.enemyShields}/${c.enemyMaxShields}</span>
         </div>
       </section>

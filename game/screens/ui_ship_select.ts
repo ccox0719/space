@@ -132,7 +132,24 @@ export function ShipSelectScreen(): string {
           </div>
         </div>
         ${passiveBlock}
-        <p class="muted">Hull ${ship.hull} | Shields ${ship.shields} | Fuel ${ship.fuel} | Cargo ${ship.cargo}</p>
+        <div class="starter-stats">
+          <span class="starter-stat">
+            <i class="bi bi-shield-fill"></i>
+            <strong>${ship.hull} Hull</strong>
+          </span>
+          <span class="starter-stat">
+            <i class="bi bi-shield-shaded"></i>
+            <strong>${ship.shields} Shields</strong>
+          </span>
+          <span class="starter-stat">
+            <i class="bi bi-fuel-pump"></i>
+            <strong>${ship.fuel} Fuel</strong>
+          </span>
+          <span class="starter-stat">
+            <i class="bi bi-boxes"></i>
+            <strong>${ship.cargo} Cargo</strong>
+          </span>
+        </div>
         <button class="btn btn-primary" onclick="chooseStarter('${ship.id}')">Choose ${ship.name}</button>
       </div>
     `;
