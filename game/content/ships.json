@@ -112,7 +112,7 @@
   },
   {
     "id": "spearling",
-    "name": "Spearling Interceptor",
+    "name": "Spearling",
     "description": "Nimble interceptor focused on quick strikes; Combat Momentum adds dodge, crit, damage reduction, and flee perks.",
     "roleHint": "fighter",
     "starter": true,

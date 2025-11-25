@@ -179,6 +179,20 @@ export function TravelScreen(): string {
             </div>
             ${mapDisplay}
             ${routeDescriptor ? `<p class="muted">Active route: ${routeDescriptor}</p>` : ""}
+            <div class="panel-card">
+              <p class="label">Map Labels</p>
+              <p class="muted">
+                Each icon shows the system name; tap “Focus route” to zoom to that destination.
+              </p>
+              <ul class="label-list">
+                ${neighbors
+                  .map(
+                    ({ system, profile }) =>
+                      `<li>${system.name} — ${profile.travelTime} turn${profile.travelTime === 1 ? "" : "s"} / ${profile.fuelCost} fuel</li>`
+                  )
+                  .join("")}
+              </ul>
+            </div>
             <p class="muted">Line colors: <span class="muted-bold">Core</span>=green <span class="muted-bold">Frontier</span>=orange <span class="muted-bold">Wild</span>=red</p>
           </div>
           ${baseCard}

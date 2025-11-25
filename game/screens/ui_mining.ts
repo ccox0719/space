@@ -104,9 +104,9 @@ export function MiningScreen(): string {
   if (!session) {
     return `
       <div class="app-root mining-shell">
-        <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
+        <header class="app-header app-header--market">
+          <div class="app-title app-title--centered">
+            <span class="app-game-title">The Veil</span>
             <span class="app-location">Mining</span>
           </div>
         </header>
@@ -137,9 +137,9 @@ export function MiningScreen(): string {
   if (session.runComplete) {
     return `
       <div class="app-root mining-shell">
-        <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
+        <header class="app-header app-header--market">
+          <div class="app-title app-title--centered">
+            <span class="app-game-title">The Veil</span>
             <span class="app-location">Mining · Session Complete</span>
           </div>
         </header>
@@ -161,12 +161,12 @@ export function MiningScreen(): string {
 
   return `
     <div class="app-root mining-shell">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
+      <header class="app-header app-header--market">
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
           <span class="app-location">Mining · ${session.beltName || session.beltId || session.systemId}</span>
         </div>
-        <div class="app-meta">
+        <div class="app-meta app-meta--centered">
           <span>Day ${gameState.time.day}</span>
           <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>

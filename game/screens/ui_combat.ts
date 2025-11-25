@@ -132,12 +132,12 @@ export function CombatScreen(): string {
 
   return `
     <div class="${rootClasses.join(" ")}">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
+      <header class="app-header app-header--market">
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
           <span class="app-location">Engaged: ${c.enemyName}</span>
         </div>
-        <div class="app-meta">
+        <div class="app-meta app-meta--centered">
           <span>Day ${gameState.time.day}</span>
           <span>Turn ${formatTurn(gameState.time.turn)} · Round ${c.round}</span>
         </div>
@@ -218,24 +218,6 @@ export function CombatScreen(): string {
             ${weaponRows}
           </div>
 
-          <h2 class="panel-title">Damage Guide</h2>
-          <div class="panel-card">
-            <p><strong>Called Shot</strong>: ${CALLED_SHOT_TIP}</p>
-            <p><strong>Brace vs Attack</strong>: ${BRACE_TIP}</p>
-            <table class="damage-guide">
-              <thead>
-                <tr><th>Damage Type</th><th>Shield Effect</th><th>Hull Effect</th><th>Usage Tip</th></tr>
-              </thead>
-              <tbody>
-                ${damageTypeRows}
-              </tbody>
-            </table>
-          </div>
-
-          <h2 class="panel-title">Battle Log</h2>
-          <div class="combat-log">
-            ${logHtml}
-          </div>
         </section>
       </main>
 

@@ -356,6 +356,7 @@ export function MarketScreen(params: Record<string, unknown> = {}): string {
     ${renderMarketEvents(system.id)}
           </aside>
           <div class="market-list">
+            <h2 class="panel-title small">Goods</h2>
             ${rows}
             ${detailPanel}
           </div>
@@ -425,34 +426,45 @@ function renderMarketInsights(
       .map((entry) => getSystemById(entry.id))
       .filter((s): s is NonNullable<typeof system> => !!s && intel[s.id]) || [];
 
-  const intelLines = neighbors
-    .map((n) => {
-      const ops = summarizeNeighborIntel(system?.id, n.id);
-      const age = gameState.time.turn - (intel[n.id]?.turn ?? gameState.time.turn);
-      const overText = ops.over
-        ? `${ops.over.id} overpriced (+${Math.round(ops.over.delta * 100)}%)`
-        : "overpay unknown";
-      const underText = ops.under
-        ? `${ops.under.id} underpriced (${Math.round(ops.under.delta * 100)}% cheaper)`
-        : "no bargain yet";
-      return `<p class="muted">${n.name} - age ${age}t - Sell ${overText} - Buy ${underText}</p>`;
-    })
-    .join("");
+  const intelItems =
+    neighbors.length > 0
+      ? neighbors
+          .map((n) => {
+            const ops = summarizeNeighborIntel(system?.id, n.id);
+            const age = gameState.time.turn - (intel[n.id]?.turn ?? gameState.time.turn);
+            const overText = ops.over
+              ? `${ops.over.id} overpriced (+${Math.round(ops.over.delta * 100)}%)`
+              : "no overpay signal";
+            const underText = ops.under
+              ? `${ops.under.id} underpriced (${Math.round(ops.under.delta * 100)}% cheaper)`
+              : "no bargain yet";
+            return `<p class="insight-mini">${n.name}: ↑ ${overText} · ↓ ${underText} (age ${age}t)</p>`;
+          })
+          .join("")
+      : `<p class="insight-mini muted">No neighbor intel yet.</p>`;
 
-  const highLine = highTrendEntry
-    ? `<p class="muted">
-        ${highTrendEntry.commodity.name} high runs ${Math.round(
-          highTrendEntry.quote.high - highTrendEntry.quote.buy
-        )} above buy (${highTrendEntry.quote.high})
-      </p>`
-    : "";
-  const lowLine = lowTrendEntry
-    ? `<p class="muted">
-        ${lowTrendEntry.commodity.name} low sits ${Math.round(
-          lowTrendEntry.quote.buy - lowTrendEntry.quote.low
-        )} below buy (${lowTrendEntry.quote.low})
-      </p>`
-    : "";
+  const trendNotes: string[] = [];
+  if (highTrendEntry) {
+    trendNotes.push(
+      `<span>📈</span> ${highTrendEntry.commodity.name} high runs ${Math.round(
+        highTrendEntry.quote.high - highTrendEntry.quote.buy
+      )} above buy (${highTrendEntry.quote.high})`
+    );
+  }
+  if (lowTrendEntry) {
+    trendNotes.push(
+      `<span>📉</span> ${lowTrendEntry.commodity.name} low sits ${Math.round(
+        lowTrendEntry.quote.buy - lowTrendEntry.quote.low
+      )} below buy (${lowTrendEntry.quote.low})`
+    );
+  }
+  const trendBody = trendNotes.length
+    ? trendNotes.map((note) => `<p class="insight-mini">${note}</p>`).join("")
+    : `<p class="insight-mini muted">No strong pulses yet.</p>`;
+
+  const hotTipBody = hotTipEntry
+    ? `<p class="insight-mini"><span>💡</span> Consider ${hotTipEntry.commodity.name}. Buy @ ${hotTipEntry.quote.buy} A·, sell @ ${hotTipEntry.quote.high} A· (high).</p><p class="insight-mini muted">Profit spread: +${hotTipEntry.profit}</p>`
+    : `<p class="insight-mini muted">No hot tip available.</p>`;
 
   const logEntries = gameState.notifications
     .filter((note) => {
@@ -465,36 +477,38 @@ function renderMarketInsights(
     })
     .slice(-6)
     .reverse();
+  const logBody = logEntries.length
+    ? logEntries.map((note) => `<p class="insight-mini">${note}</p>`).join("")
+    : `<p class="insight-mini muted">No market-relevant log entries yet.</p>`;
 
-  const logLines = logEntries.map((note) => `<p class="muted">${note}</p>`).join("");
-
-  const hotTip = hotTipEntry
-    ? `<p>Consider ${hotTipEntry.commodity.name}. Buy @ ${hotTipEntry.quote.buy} A�, sell @ ${hotTipEntry.quote.high} A� (high).</p><p class="muted">Profit spread: +${hotTipEntry.profit}</p>`
-    : `<p class="muted">No hot tip available.</p>`;
+  const insightTitle = (icon: string, label: string) =>
+    `<p class="insight-title"><span class="insight-icon" aria-hidden="true">${icon}</span>${label}</p>`;
 
   return `
     <div class="panel-card market-insights-card">
       <p class="label">Market Insights</p>
       <div class="insight-section">
-        <p class="insight-title">Intel Tools</p>
-        <p class="muted">System: ${system?.name || "Unknown"}</p>
-        <p class="muted">Neighbor Intel ${intelCost} cr - highlights over/under priced goods (actuals drift on arrival).</p>
+        ${insightTitle("🛰️", "Intel Tools")}
+        <p class="insight-mini muted">System: ${system?.name || "Unknown"}</p>
+        <p class="insight-mini">Neighbor Intel ${intelCost} cr — highlights over/under priced goods (actuals drift on arrival).</p>
+        <div class="insight-list">
+          ${intelItems}
+        </div>
         <div class="app-actions">
           <button class="btn btn-primary" onclick="purchaseNeighborIntel()">Buy Neighbor Intel (${intelCost})</button>
         </div>
-        ${intelLines || `<p class="muted">No neighbor intel yet.</p>`}
       </div>
       <div class="insight-section">
-        <p class="insight-title">Trending</p>
-        ${highLine || lowLine ? `${highLine}${lowLine}` : `<p class="muted">No strong pulses yet.</p>`}
+        ${insightTitle("📈", "Trending")}
+        ${trendBody}
       </div>
       <div class="insight-section">
-        <p class="insight-title">Hot Tip</p>
-        ${hotTip}
+        ${insightTitle("💡", "Hot Tip")}
+        ${hotTipBody}
       </div>
       <div class="insight-section">
-        <p class="insight-title">Market Log</p>
-        ${logLines || `<p class="muted">No market-relevant log entries yet.</p>`}
+        ${insightTitle("📝", "Market Log")}
+        ${logBody}
       </div>
     </div>
   `;

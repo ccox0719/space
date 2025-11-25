@@ -9,9 +9,9 @@ export function WeaponSlotsScreen(): string {
   if (!ship.hardpoints.length) {
     return `
       <div class="app-root">
-        <header class="app-header">
-          <div class="app-title">
-            <span class="app-game-title">Echoes Fleet</span>
+        <header class="app-header app-header--market">
+          <div class="app-title app-title--centered">
+            <span class="app-game-title">The Veil</span>
             <span class="app-location">Weapons</span>
           </div>
         </header>
@@ -47,12 +47,12 @@ export function WeaponSlotsScreen(): string {
 
   return `
     <div class="app-root">
-      <header class="app-header">
-        <div class="app-title">
-          <span class="app-game-title">Echoes Fleet</span>
+      <header class="app-header app-header--market">
+        <div class="app-title app-title--centered">
+          <span class="app-game-title">The Veil</span>
           <span class="app-location">Weapon Hardpoints</span>
         </div>
-        <div class="app-meta">
+        <div class="app-meta app-meta--centered">
           <span>Day ${gameState.time.day}</span>
           <span>Turn ${formatTurn(gameState.time.turn)}</span>
         </div>

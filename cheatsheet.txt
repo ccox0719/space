@@ -10,11 +10,7 @@ git push
 npm run export-pages
 
 next edits: 
-Lets make it so restricted goods just results in a fine instead of confiscation of the goods. 
 
-
-
-Sector map needs labels to see where to go. And I don't know what focus route does.
 
 
 

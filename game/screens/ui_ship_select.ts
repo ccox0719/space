@@ -62,6 +62,40 @@ function formatAbsolute(value: number, label: string): string | null {
   return `${sign}${amount} ${label}`;
 }
 
+type AbilityCaps = {
+  maxHull: number;
+  maxShields: number;
+  maxFuel: number;
+  maxCargo: number;
+};
+
+function renderAbilityBars(ship: ShipDef, caps: AbilityCaps): string {
+  const stats = [
+    { label: "Hull", value: ship.hull, max: caps.maxHull },
+    { label: "Shields", value: ship.shields, max: caps.maxShields },
+    { label: "Fuel", value: ship.fuel, max: caps.maxFuel },
+    { label: "Cargo", value: ship.cargo, max: caps.maxCargo }
+  ];
+  return `
+    <div class="ability-bars">
+      ${stats
+        .map((stat) => {
+          const percent = Math.min(100, Math.round((stat.value / Math.max(1, stat.max)) * 100));
+          return `
+            <div class="ability-row">
+              <span>${stat.label}</span>
+              <div class="ability-bar">
+                <div class="ability-bar__fill" style="width:${percent}%"></div>
+              </div>
+              <strong>${stat.value}</strong>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 declare global {
   interface Window {
     chooseStarter: (id: string) => void;
@@ -79,6 +113,12 @@ declare const nav: (screen: string) => void;
 
 export function ShipSelectScreen(): string {
   const starters = getStarterShips();
+  const caps = {
+    maxHull: Math.max(...starters.map((s) => s.hull), 100),
+    maxShields: Math.max(...starters.map((s) => s.shields), 100),
+    maxFuel: Math.max(...starters.map((s) => s.fuel), 100),
+    maxCargo: Math.max(...starters.map((s) => s.cargo), 50)
+  };
 
   if (starters.length === 0) {
     return `
@@ -122,42 +162,30 @@ export function ShipSelectScreen(): string {
         : "";
 
       return `
-      <div class="panel-card starter-card">
-        <div class="starter-card-head">
-          ${renderStarterIcon(ship.id, ship.roleHint ?? ship.name)}
-          <div>
-            <p class="label">${ship.roleHint}</p>
-            <p class="value-inline"><strong>${ship.name}</strong></p>
-            <p class="muted">${ship.description}</p>
+      <button class="panel-card starter-card btn-starter" type="button" onclick="chooseStarter('${ship.id}')">
+        <div class="starter-card-head starter-card-head--split">
+          <div class="starter-head__ship starter-head__ship--stacked">
+            ${renderStarterIcon(ship.id, ship.roleHint ?? ship.name)}
+            <div>
+              <p class="label">${ship.roleHint}</p>
+              <p class="value-inline"><strong>${ship.name}</strong></p>
+            </div>
+          </div>
+          <div class="starter-head__passive">
+            ${passiveBlock || `<p class="muted">No passive</p>`}
           </div>
         </div>
-        ${passiveBlock}
-        <div class="starter-stats">
-          <span class="starter-stat">
-            <i class="bi bi-shield-fill"></i>
-            <strong>${ship.hull} Hull</strong>
-          </span>
-          <span class="starter-stat">
-            <i class="bi bi-shield-shaded"></i>
-            <strong>${ship.shields} Shields</strong>
-          </span>
-          <span class="starter-stat">
-            <i class="bi bi-fuel-pump"></i>
-            <strong>${ship.fuel} Fuel</strong>
-          </span>
-          <span class="starter-stat">
-            <i class="bi bi-boxes"></i>
-            <strong>${ship.cargo} Cargo</strong>
-          </span>
+        <div class="starter-card-body">
+          ${renderAbilityBars(ship, caps)}
         </div>
-        <button class="btn btn-primary" onclick="chooseStarter('${ship.id}')">Choose ${ship.name}</button>
-      </div>
+      </button>
     `;
     })
     .join("");
 
   return `
     <div class="app-root">
+      <div class="mobile-bg-slice"></div>
       <header class="app-header app-header--market">
         <button class="btn-icon" onclick="nav('main')" aria-label="Back"><</button>
         <div class="app-title app-title--centered">
@@ -170,9 +198,9 @@ export function ShipSelectScreen(): string {
         <section class="data-panel">
           <h1 class="panel-title">Select Your Starter Ship</h1>
           <p class="muted">Pick a hull to define your opening playstyle.</p>
-        <div class="panel-row">
-          ${list}
-        </div>
+          <div class="panel-row starter-grid">
+            ${list}
+          </div>
         </section>
       </main>
 

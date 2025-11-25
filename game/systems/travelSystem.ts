@@ -249,9 +249,7 @@ function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile):
     if (!qty) continue;
     const commodity = getCommodityById(commodityId);
     if (!commodity) continue;
-    if (commodity.legalStatus !== "illegal" && commodity.legalStatus !== "restricted") {
-      continue;
-    }
+    if (commodity.legalStatus !== "illegal") continue;
     seizedUnits += qty;
     cargo[commodityId] = 0;
   }
@@ -269,8 +267,10 @@ function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile):
   const finalWanted = Math.max(0, wantedGain - wantedReduction);
   adjustWanted(finalWanted);
 
+  const restrictedNote =
+    summary.restrictedUnits > 0 ? ` (restricted goods fined, not seized)` : "";
   gameState.notifications.push(
-    `Checkpoint scans flag contraband. Seized ${seizedUnits} units, fined ${finalFine} credits, wanted +${finalWanted}.`
+    `Checkpoint scans flag contraband. Seized ${seizedUnits} illegal units, fined ${finalFine} credits${restrictedNote}, wanted +${finalWanted}.`
   );
   return true;
 }

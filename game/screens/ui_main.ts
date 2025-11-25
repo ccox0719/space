@@ -7,11 +7,20 @@ import { getSystemById } from "../core/engine";
 declare global {
   interface Window {
     nav: (screen: string, params?: Record<string, unknown>) => void;
+    toggleTools?: () => void;
   }
 }
 
 window.nav = (screen: string, params: Record<string, unknown> = {}) => {
   navigation.go(screen as any, params);
+};
+
+window.toggleTools = () => {
+  const actions = document.getElementById("toolsActions");
+  const button = document.getElementById("toolsToggleBtn");
+  if (!actions || !button) return;
+  const collapsed = actions.classList.toggle("collapsed");
+  button.textContent = collapsed ? "Show" : "Hide";
 };
 
 export function MainScreen(): string {
@@ -41,13 +50,6 @@ export function MainScreen(): string {
           <div>
             <span>Credits</span>
             <strong>${s.player.credits}</strong>
-          </div>
-        </div>
-        <div class="header-stat">
-          <i class="bi bi-fuel-pump"></i>
-          <div>
-            <span>Fuel</span>
-            <strong>${s.ship.fuel}/${s.ship.maxFuel}</strong>
           </div>
         </div>
         <div class="header-stat">
@@ -161,7 +163,7 @@ export function MainScreen(): string {
           </div>
         </div>
         <div class="menu-row">
-          <div class="menu-group menu-group--tools">
+          <div class="menu-group menu-group--system-tools">
             <span class="menu-group__label">System</span>
             <div class="menu-group__actions">
               <button class="btn btn-primary" onclick="nav('market')" id="navMarket">Market</button>
@@ -169,10 +171,18 @@ export function MainScreen(): string {
                 ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
                 : ``}
             </div>
-          </div>
-          <div class="menu-group">
-            <span class="menu-group__label">Tools</span>
-            <div class="menu-group__actions">
+            <div class="menu-group__header">
+              <span class="menu-group__label">Tools</span>
+              <button
+                id="toolsToggleBtn"
+                class="btn btn-ghost btn-small tools-toggle"
+                onclick="toggleTools()"
+                type="button"
+              >
+                Hide
+              </button>
+            </div>
+            <div class="menu-group__actions" id="toolsActions">
               <button class="btn btn-ghost btn-small btn-inconspicuous" id="navDev">Dev</button>
             </div>
           </div>
