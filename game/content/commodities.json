@@ -6,7 +6,7 @@
     "mass": 1,
     "tags": ["ore", "mining"],
     "tier": "standard",
-    "volatility": 0.35,
+    "volatility": 0.455,
     "legalStatus": "legal",
     "tradeTags": ["mining", "industrial", "bulk"],
     "baseSpread": { "buyMultiplier": 1, "sellMultiplier": 0.85 }
@@ -18,7 +18,7 @@
     "mass": 2,
     "tags": ["industrial", "refined"],
     "tier": "standard",
-    "volatility": 0.2,
+    "volatility": 0.26,
     "legalStatus": "legal",
     "tradeTags": ["industrial", "refined_goods"],
     "baseSpread": { "buyMultiplier": 1.05, "sellMultiplier": 0.9 }
@@ -30,7 +30,7 @@
     "mass": 1,
     "tags": ["food", "essential"],
     "tier": "basic",
-    "volatility": 0.1,
+    "volatility": 0.13,
     "legalStatus": "legal",
     "tradeTags": ["essential", "civilian"],
     "baseSpread": { "buyMultiplier": 0.95, "sellMultiplier": 0.88 }
@@ -42,7 +42,7 @@
     "mass": 1,
     "tags": ["luxury", "artifact"],
     "tier": "luxury",
-    "volatility": 0.55,
+    "volatility": 0.715,
     "legalStatus": "illegal",
     "tradeTags": ["black_market", "religious", "luxury"],
     "baseSpread": { "buyMultiplier": 1.2, "sellMultiplier": 0.75 }
@@ -54,7 +54,7 @@
     "mass": 1,
     "tags": ["fuel", "industrial"],
     "tier": "standard",
-    "volatility": 0.25,
+    "volatility": 0.325,
     "legalStatus": "restricted",
     "tradeTags": ["fuel", "logistics", "industrial"],
     "baseSpread": { "buyMultiplier": 1.05, "sellMultiplier": 0.9 }
@@ -66,7 +66,7 @@
     "mass": 1,
     "tags": ["medical", "essential"],
     "tier": "strategic",
-    "volatility": 0.3,
+    "volatility": 0.39,
     "legalStatus": "restricted",
     "tradeTags": ["medical", "humanitarian"],
     "baseSpread": { "buyMultiplier": 1.15, "sellMultiplier": 0.92 }
@@ -78,7 +78,7 @@
     "mass": 1,
     "tags": ["data", "illegal"],
     "tier": "strategic",
-    "volatility": 0.6,
+    "volatility": 0.78,
     "legalStatus": "illegal",
     "tradeTags": ["black_market", "intel"],
     "baseSpread": { "buyMultiplier": 1.25, "sellMultiplier": 0.7 }
@@ -90,7 +90,7 @@
     "mass": 1,
     "tags": ["luxury", "consumable"],
     "tier": "luxury",
-    "volatility": 0.4,
+    "volatility": 0.52,
     "legalStatus": "restricted",
     "tradeTags": ["luxury", "black_market"],
     "baseSpread": { "buyMultiplier": 1.15, "sellMultiplier": 0.85 }
@@ -102,7 +102,7 @@
     "mass": 1,
     "tags": ["gas", "reactor_fuel"],
     "tier": "strategic",
-    "volatility": 0.5,
+    "volatility": 0.65,
     "legalStatus": "restricted",
     "tradeTags": ["fuel", "industrial", "research"],
     "baseSpread": { "buyMultiplier": 1.08, "sellMultiplier": 0.82 }
@@ -114,7 +114,7 @@
     "mass": 1,
     "tags": ["industrial", "refined"],
     "tier": "standard",
-    "volatility": 0.22,
+    "volatility": 0.286,
     "legalStatus": "legal",
     "tradeTags": ["industrial", "shipyard"],
     "baseSpread": { "buyMultiplier": 1.02, "sellMultiplier": 0.9 }
@@ -126,9 +126,69 @@
     "mass": 1,
     "tags": ["research", "medical"],
     "tier": "strategic",
-    "volatility": 0.45,
+    "volatility": 0.585,
     "legalStatus": "restricted",
     "tradeTags": ["research", "medical", "black_market"],
     "baseSpread": { "buyMultiplier": 1.18, "sellMultiplier": 0.78 }
+  },
+  {
+    "id": "titanium_wire",
+    "name": "Titanium Wire Spools",
+    "basePrice": 95,
+    "mass": 1,
+    "tags": ["industrial", "component"],
+    "tier": "standard",
+    "volatility": 0.39,
+    "legalStatus": "legal",
+    "tradeTags": ["industrial", "shipyard", "refined_goods"],
+    "baseSpread": { "buyMultiplier": 1.02, "sellMultiplier": 0.9 }
+  },
+  {
+    "id": "purified_water",
+    "name": "Purified Water Canisters",
+    "basePrice": 50,
+    "mass": 1,
+    "tags": ["life_support", "essential"],
+    "tier": "basic",
+    "volatility": 0.13,
+    "legalStatus": "legal",
+    "tradeTags": ["civilian", "essential"],
+    "baseSpread": { "buyMultiplier": 0.95, "sellMultiplier": 0.88 }
+  },
+  {
+    "id": "textile_fiber",
+    "name": "Reactive Textile Fiber",
+    "basePrice": 75,
+    "mass": 1,
+    "tags": ["civilian", "luxury"],
+    "tier": "standard",
+    "volatility": 0.26,
+    "legalStatus": "legal",
+    "tradeTags": ["civilian", "fashion", "refined_goods"],
+    "baseSpread": { "buyMultiplier": 1, "sellMultiplier": 0.9 }
+  },
+  {
+    "id": "forbidden_ai_logic",
+    "name": "Forbidden AI Logic",
+    "basePrice": 320,
+    "mass": 1,
+    "tags": ["ai", "illegal"],
+    "tier": "advanced",
+    "volatility": 0.78,
+    "legalStatus": "illegal",
+    "tradeTags": ["black_market", "intel", "research"],
+    "baseSpread": { "buyMultiplier": 1.3, "sellMultiplier": 0.65 }
+  },
+  {
+    "id": "rarefied_spice",
+    "name": "Rarefied Spice",
+    "basePrice": 210,
+    "mass": 1,
+    "tags": ["luxury", "consumable", "illegal"],
+    "tier": "luxury",
+    "volatility": 0.52,
+    "legalStatus": "illegal",
+    "tradeTags": ["black_market", "luxury"],
+    "baseSpread": { "buyMultiplier": 1.2, "sellMultiplier": 0.75 }
   }
 ]

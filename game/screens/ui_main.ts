@@ -3,11 +3,13 @@ import { formatTurn } from "../core/formatters";
 import { navigation } from "../core/navigation";
 import { systemHasTag } from "../systems/systemHelpers";
 import { getSystemById } from "../core/engine";
+import { startMiningSession } from "../systems/miningSystem";
 
 declare global {
   interface Window {
     nav: (screen: string, params?: Record<string, unknown>) => void;
     toggleTools?: () => void;
+    startMiningSessionFromMain?: () => void;
   }
 }
 
@@ -21,6 +23,26 @@ window.toggleTools = () => {
   if (!actions || !button) return;
   const collapsed = actions.classList.toggle("collapsed");
   button.textContent = collapsed ? "Show" : "Hide";
+};
+
+window.startMiningSessionFromMain = () => {
+  const systemId = gameState.location.systemId;
+  const system = getSystemById(systemId);
+  if (!system) return;
+  const globalEasyBeltId = "global_easy_signal_belt";
+  const hasDedicatedBelt = Array.isArray(system.tags) && system.tags.includes("mining_belt");
+  const started = startMiningSession(
+    gameState,
+    systemId,
+    hasDedicatedBelt ? undefined : globalEasyBeltId,
+    undefined,
+    { easySignals: true }
+  );
+  if (started) {
+    navigation.go("mining");
+  } else {
+    navigation.go("main", { message: "Travel to a new system before mining again." });
+  }
 };
 
 export function MainScreen(): string {
@@ -154,13 +176,16 @@ export function MainScreen(): string {
       <nav class="app-menu" aria-label="Primary menu">
         <div class="menu-group menu-group--system">
           <span class="menu-group__label">Primary</span>
-          <div class="menu-group__actions">
-            <button class="btn btn-primary" onclick="nav('travel')">Travel</button>
-            <button class="btn btn-primary" onclick="nav('contracts', { source: 'main_menu' })">
-              Contracts
-            </button>
-            <button class="btn btn-primary" onclick="nav('ship')">Ship</button>
-          </div>
+        <div class="menu-group__actions">
+          <button class="btn btn-primary" onclick="nav('travel')">Travel</button>
+          <button class="btn btn-primary" onclick="nav('contracts', { source: 'main_menu' })">
+            Contracts
+          </button>
+          <button class="btn btn-primary" onclick="nav('ship')">Ship</button>
+          <button class="btn btn-primary" onclick="startMiningSessionFromMain()">
+            Mining
+          </button>
+        </div>
         </div>
         <div class="menu-row">
           <div class="menu-group menu-group--system-tools">

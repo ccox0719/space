@@ -6,9 +6,12 @@ import { tickMissions } from "./missionSystem";
 import { tickContracts } from "./contractSystem";
 import { tickIntel } from "./intelSystem";
 import { tickResources } from "./miningSystem";
+import { refreshDifficultyDay, tickDifficulty } from "./difficultySystem";
 
 export function advanceDay(state: GameState): void {
   state.time.day += 1;
+  refreshDifficultyDay(state);
+  tickDifficulty(state);
   recordDaySurvived(state.time.day);
 
   tickMarket(state);

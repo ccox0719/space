@@ -272,8 +272,12 @@ window.devCombat = (enemyId: string = "pirate_cutter") => {
 };
 
 window.devMining = () => {
-  startMiningSession(gameState, gameState.location.systemId);
-  navigation.go("mining");
+  const started = startMiningSession(gameState, gameState.location.systemId);
+  if (started) {
+    navigation.go("mining");
+  } else {
+    navigation.go("main", { message: "Travel to a new system before mining again." });
+  }
 };
 
 function renderDevControlSections(): string {
@@ -350,7 +354,7 @@ export function render() {
   ) {
     const system = getCurrentSystem();
     const tags = new Set(system?.tags ?? []);
-    if (tags.has("mining_belt") || tags.has("mining")) {
+    if ((tags.has("mining_belt") || tags.has("mining")) && gameState.lastMiningSystemId !== gameState.location.systemId) {
       startMiningSession(gameState, gameState.location.systemId);
     }
   }

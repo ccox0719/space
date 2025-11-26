@@ -7,7 +7,8 @@ import {
   getHighScore,
   setHighScore,
   DEFAULT_DEV_TUNE,
-  getCombatTune
+  getCombatTune,
+  getStanceDefinition
 } from "../core/state";
 import { getPassiveEffects } from "../core/passives";
 import { navigation } from "../core/navigation";
@@ -26,17 +27,27 @@ import {
   CALLED_SHOT_MODS,
   CALLED_SHOT_TIP,
   BRACE_TIP,
-  DAMAGE_TYPE_GUIDE
+  DAMAGE_TYPE_GUIDE,
+  DAMAGE_TYPE_VS_DEFENSE
 } from "./combatConstants";
 export { CALLED_SHOT_TIP, BRACE_TIP, DAMAGE_TYPE_GUIDE } from "./combatConstants";
-import { computePlayerPower, computeDayPressure } from "./difficultySystem";
+import { computePlayerPower, computeDayPressure, getEnemyScale, adjustTension } from "./difficultySystem";
 import { systemHasTag } from "./systemHelpers";
 import { recordCombatKill } from "./missionSystem";
 import { adjustWanted } from "./wantedSystem";
 import { abortMiningSession } from "./miningSystem";
 import type { ScreenID } from "../core/navigation";
+import type {
+  CombatState,
+  DamageType,
+  EnemySlot,
+  EnemyPosition,
+  StatusEffectType,
+  StanceId,
+  EncounterState
+} from "../core/state";
+import type { WeaponDef, WeaponDamageType } from "../core/contentTypes";
 
-type Stance = "assault" | "balanced" | "evasive";
 type AimMode = "normal" | "called_shot";
 
 function getEnemyTemplate(id: string) {
@@ -52,6 +63,550 @@ function getEnemyTemplate(id: string) {
 
 function randBetween(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateEnemyPositions(count: number): EnemyPosition[] {
+  const positions: EnemyPosition[] = [];
+  const laneUsage: Record<number, number> = {};
+  for (let i = 0; i < count; i += 1) {
+    const lane = i % 3;
+    const usage = laneUsage[lane] ?? 0;
+    const row: EnemyPosition["row"] = usage === 0 ? "front" : "back";
+    laneUsage[lane] = usage + 1;
+    positions.push({ lane, row });
+  }
+  return positions;
+}
+
+const SOLO_FIRE_BONUS = 1.25;
+
+function buildEncounterSlots(template: ReturnType<typeof getEnemyTemplate>, hpMultiplier: number, positions: EnemyPosition[]): EnemySlot[] {
+  const baseHp = Math.max(1, Math.round(template.hull * hpMultiplier));
+  const baseShields = Math.max(0, Math.round(template.shields * hpMultiplier));
+  return positions.map((position, index) => ({
+    id: `${template.id}-${position.lane}-${position.row}-${index}-${Math.round(Math.random() * 10000)}`,
+    templateId: template.id,
+    name: template.name,
+    hp: baseHp,
+    maxHp: baseHp,
+    shields: baseShields,
+    maxShields: baseShields,
+    weaponIds: template.weaponIds.slice(),
+    weaponCooldowns: template.weaponIds.map(() => 0),
+    position,
+    alive: true,
+    side: "enemy",
+    factionId: template.faction,
+    factionLabel:
+      (content?.factions.find((faction) => faction.id === template.faction)?.name) ?? undefined,
+    statusEffects: [],
+    tags: template.tags ? [...template.tags] : [],
+    canEscape: template.canEscape
+  }));
+}
+
+function buildEncounterName(template: ReturnType<typeof getEnemyTemplate>, count: number): string {
+  if (count <= 1) return template.name;
+  return `${template.name} Squadron`;
+}
+
+function getStanceAccuracyFactor(stance: StanceId): number {
+  const definition = getStanceDefinition(stance);
+  const factor = 1 - definition.evasionBonus;
+  return Math.max(0, factor);
+}
+
+function applyStanceDamageMultiplier(
+  damage: number,
+  damageType: DamageType,
+  stance: StanceId
+): number {
+  const definition = getStanceDefinition(stance);
+  const multiplier = definition.damageTakenMultipliers?.[damageType] ?? 1;
+  return Math.max(0, Math.round(damage * multiplier));
+}
+
+type BoardState = {
+  encounter: EncounterState;
+};
+
+const VOLLEY_ORDER: WeaponDamageType[] = ["disruptive", "energy", "kinetic", "explosive"];
+const HEAT_RUNNING_THRESHOLD = 0.55;
+const HEAT_OVERHEAT_THRESHOLD = 0.9;
+const HEAT_DECAY_RATE = 50;
+const HEAT_DECAY_OVERHEAT_RATE = 25;
+const OVERHEAT_COOLDOWN_TURNS = 2;
+const PRECISION_SHIELD_BONUS = 1.2;
+
+function getWeaponHeatCost(weapon: WeaponDef): number {
+  return weapon.heatCost ?? 10;
+}
+
+function applyHeatGain(heatGain: number, label?: string) {
+  const ship = gameState.ship;
+  const prevHeat = Number.isFinite(ship.heat) ? ship.heat : 0;
+  const maxHeat = ship.maxHeat || 100;
+  const newHeat = Math.min(maxHeat, prevHeat + Math.round(heatGain));
+  ship.heat = newHeat;
+
+  if (prevHeat < maxHeat * HEAT_RUNNING_THRESHOLD && ship.heat >= maxHeat * HEAT_RUNNING_THRESHOLD) {
+    log("Heat stabilizers warning: systems running hot.");
+  }
+
+  const overheatThreshold = maxHeat * HEAT_OVERHEAT_THRESHOLD;
+  if (prevHeat < overheatThreshold && ship.heat >= overheatThreshold) {
+    ship.overheated = true;
+    ship.overheatTurns = OVERHEAT_COOLDOWN_TURNS;
+    log("Warning: heat levels have maxed out; systems overheated!");
+    log("Overheat knocks shields offline until your systems cool down.");
+    const combat = gameState.combat;
+    if (combat) {
+      combat.overheatPenaltyTurns = Math.max(combat.overheatPenaltyTurns ?? 0, 2);
+      combat.overheatModalVisible = true;
+    }
+  }
+  if (heatGain > 0) {
+    const labelText = label ? `(${label}) ` : "";
+    log(`Heat ${labelText}+${Math.round(heatGain)} → ${ship.heat}/${maxHeat}`);
+    const combat = gameState.combat;
+    if (combat) {
+      combat.lastHeatDelta = `Heat ${labelText}+${Math.round(heatGain)} → ${ship.heat}/${maxHeat}`;
+    }
+  }
+}
+
+function applyHeatForFiring(
+  playerWeapons: WeaponDef[],
+  mode: "single" | "volley",
+  isCalledShot: boolean
+) {
+  if (!playerWeapons.length) return;
+  const totalBase = playerWeapons.reduce((sum, weapon) => sum + getWeaponHeatCost(weapon), 0);
+  let multiplier = 1;
+  if (mode === "single") {
+    multiplier = isCalledShot ? 1.2 : 0.8;
+  } else {
+    multiplier = isCalledShot ? 2.3 : 1.7;
+  }
+  applyHeatGain(totalBase * multiplier, `${mode}${isCalledShot ? " called" : ""}`);
+}
+
+function getHeatAccuracyMultiplier(): number {
+  const ship = gameState.ship;
+  const maxHeat = ship.maxHeat || 100;
+  const fraction = maxHeat > 0 ? ship.heat / maxHeat : 0;
+  if (ship.overheated || fraction >= HEAT_OVERHEAT_THRESHOLD) {
+    return 0.75;
+  }
+  if (fraction >= HEAT_RUNNING_THRESHOLD) {
+    return 0.9;
+  }
+  return 1;
+}
+
+function heatDecay() {
+  const ship = gameState.ship;
+  const decay = ship.overheated ? HEAT_DECAY_OVERHEAT_RATE : HEAT_DECAY_RATE;
+  ship.heat = Math.max(0, ship.heat - decay);
+  if (ship.heat === 0) {
+    ship.overheated = false;
+  }
+  if (ship.overheated && ship.overheatTurns > 0) {
+    ship.overheatTurns = Math.max(0, ship.overheatTurns - 1);
+    if (ship.overheatTurns === 0 && ship.heat === 0) {
+      ship.overheated = false;
+    }
+  }
+}
+
+function getHeatStatus(): string {
+  const ship = gameState.ship;
+  const maxHeat = ship.maxHeat || 100;
+  if (ship.overheated) return "Overheated";
+  if (ship.heat >= maxHeat * HEAT_RUNNING_THRESHOLD) return "Running Hot";
+  return "Stable";
+}
+
+const FRONT_RETREAT_HP_THRESHOLD = 0.4;
+
+const BREACH_DURATION = 2;
+const JAMMED_DURATION = 2;
+const BURN_DURATION = 3;
+const BREACH_TICK_DAMAGE = 2;
+const BURN_TICK_DAMAGE = 3;
+const JAMMED_ACCURACY_PENALTY = 0.7;
+
+function addStatusEffect(slot: EnemySlot, type: StatusEffectType, duration: number): boolean {
+  const existing = slot.statusEffects.find((status) => status.type === type);
+  if (existing) {
+    existing.duration = Math.max(existing.duration, duration);
+    return false;
+  }
+  slot.statusEffects.push({ type, duration });
+  return true;
+}
+
+function hasStatusEffect(slot: EnemySlot, type: StatusEffectType): boolean {
+  return slot.statusEffects.some((status) => status.type === type);
+}
+
+function getShipAt(board: BoardState, lane: number, row: "front" | "back", side?: "player" | "enemy"): EnemySlot | undefined {
+  return board.encounter.enemies.find(
+    (ship) => ship.position.lane === lane && ship.position.row === row && (!side || ship.side === side)
+  );
+}
+
+function getLaneShips(board: BoardState, lane: number, side?: "player" | "enemy"): EnemySlot[] {
+  return board.encounter.enemies.filter(
+    (ship) => ship.position.lane === lane && (!side || ship.side === side)
+  );
+}
+
+function getAliveShips(board: BoardState, side: "player" | "enemy"): EnemySlot[] {
+  return board.encounter.enemies.filter((ship) => ship.side === side && ship.alive);
+}
+
+function canTargetSlot(board: BoardState, weapon: WeaponDef, target: EnemySlot): boolean {
+  if (!target.alive) return false;
+  const frontInLane = getShipAt(board, target.position.lane, "front", target.side);
+  if (target.position.row === "back" && frontInLane && frontInLane.alive && !weapon.canBypassCover) {
+    return false;
+  }
+  switch (weapon.targetingMode) {
+    case "frontOnly":
+      return target.position.row === "front";
+    case "linePierce":
+      return target.position.row === "front";
+    case "splashLane":
+      return target.position.row === "front";
+    default:
+      return true;
+  }
+}
+
+function getFactionDefinition(factionId?: string) {
+  if (!factionId || !content) return undefined;
+  return content.factions.find((faction) => faction.id === factionId);
+}
+
+const FACTION_PREFERENCE_BONUS = 2;
+
+function scoreTarget(attacker: EnemySlot, weapon: WeaponDef, target: EnemySlot): number {
+  let score = 0;
+  const shieldPct = target.maxShields ? target.shields / target.maxShields : 0;
+  const hpPct = target.maxHp ? target.hp / target.maxHp : 0;
+  score += (1 - shieldPct) * 3;
+  score += (1 - hpPct) * 5;
+  if (target.isFragile) score += 3;
+  if (target.role === "support" || target.role === "artillery") score += 2;
+  if (!weapon.canBypassCover && target.position.row === "front") score += 1;
+  if (weapon.linePierce && target.position.row === "front") score += 1;
+  if (weapon.damageType === target.damageProfile) score += 1;
+  const faction = getFactionDefinition(attacker.factionId);
+  if (faction && faction.preferredDamage.includes(weapon.damageType)) {
+    score += FACTION_PREFERENCE_BONUS;
+  }
+  return score;
+}
+
+function buildPlayerSlot(): EnemySlot {
+  const ship = gameState.ship;
+  return {
+    id: "player",
+    side: "player",
+    templateId: "player",
+    name: ship.name,
+    hp: ship.hp,
+    maxHp: ship.maxHp,
+    shields: ship.shields,
+    maxShields: ship.maxShields,
+    weaponIds: [],
+    weaponCooldowns: [],
+    position: { lane: 1, row: "front" },
+    statusEffects: [],
+    tags: [],
+    canEscape: false,
+    alive: ship.hp > 0
+  };
+}
+
+function chooseTarget(
+  attacker: EnemySlot,
+  weapon: WeaponDef,
+  board: BoardState,
+  extraTargets: EnemySlot[] = []
+): EnemySlot | null {
+  const valid = [
+    ...board.encounter.enemies.filter(
+      (slot) => slot.side !== attacker.side && canTargetSlot(board, weapon, slot)
+    ),
+    ...extraTargets.filter((slot) => slot.side !== attacker.side && canTargetSlot(board, weapon, slot))
+  ];
+  if (!valid.length) return null;
+  const scored = valid
+    .map((slot) => ({ slot, score: scoreTarget(attacker, weapon, slot) }))
+    .sort((a, b) => b.score - a.score);
+  return scored[0].slot;
+}
+
+function applyAreaEffects(board: BoardState, weapon: WeaponDef, primary: EnemySlot | null, damage: number) {
+  if (!primary || primary.side !== "enemy") return;
+  if (weapon.linePierce && primary.position.row === "front") {
+    const back = getShipAt(board, primary.position.lane, "back");
+    if (back && back.alive && back.side !== primary.side) {
+      const pierceDamage = Math.max(0, Math.round(damage * 0.5));
+      applyDamageToEnemySlot(pierceDamage, weapon.damageType as DamageType, weapon, back);
+      log(`${weapon.name} pierces through ${primary.name} and grazes ${back.name} for ${pierceDamage}.`);
+    }
+  }
+  if (weapon.splashRadius && primary.position.row === "front") {
+    const laneTargets = board.encounter.enemies.filter(
+      (slot) =>
+        slot.position.lane === primary.position.lane &&
+        slot.id !== primary.id &&
+        slot.alive
+    );
+    const splashDamage = Math.max(0, Math.round(damage * 0.35));
+    for (const slot of laneTargets) {
+      applyDamageToEnemySlot(splashDamage, weapon.damageType as DamageType, weapon, slot);
+      log(`${weapon.name} splashes ${slot.name} for ${splashDamage} damage.`);
+    }
+  }
+}
+
+function maybeApplyStatus(
+  damageType: DamageType,
+  damageDone: number,
+  slot: EnemySlot
+) {
+  if (damageType === "explosive" && slot.shields <= 0 && damageDone >= 8) {
+    if (Math.random() <= 0.3 && addStatusEffect(slot, "breach", BREACH_DURATION)) {
+      log(`${slot.name} suffers a hull breach!`);
+    }
+  }
+  if (damageType === "disruptive" && damageDone >= 5) {
+    if (Math.random() <= 0.3 && addStatusEffect(slot, "jammed", JAMMED_DURATION)) {
+      log(`${slot.name} is jammed and struggles to stay online!`);
+    }
+  }
+  if (damageType === "energy" && slot.shields <= 0 && damageDone >= 6) {
+    if (Math.random() <= 0.25 && addStatusEffect(slot, "burn", BURN_DURATION)) {
+      log(`${slot.name} is singed by the energy barrage!`);
+    }
+  }
+}
+
+function tickStatusEffects(combat: CombatState) {
+  for (const slot of [...combat.encounter.enemies]) {
+    if (slot.statusEffects.length === 0) continue;
+    const next: typeof slot.statusEffects = [];
+    for (const status of slot.statusEffects) {
+      if (status.type === "breach" && slot.hp > 0) {
+        const overflow = Math.min(slot.hp, BREACH_TICK_DAMAGE);
+        slot.hp = Math.max(0, slot.hp - BREACH_TICK_DAMAGE);
+        if (overflow > 0) {
+          log(`${slot.name} leaks atmosphere from the breach (-${overflow} hull).`);
+        }
+      }
+      if (status.type === "burn" && slot.hp > 0) {
+        const damage = Math.min(slot.hp, BURN_TICK_DAMAGE);
+        slot.hp = Math.max(0, slot.hp - BURN_TICK_DAMAGE);
+        if (damage > 0) {
+          log(`${slot.name} suffers burning damage (-${damage} hull).`);
+        }
+      }
+      status.duration -= 1;
+      if (status.duration > 0) {
+        next.push(status);
+      } else {
+        log(`${slot.name} recovers from ${status.type}.`);
+      }
+    }
+    slot.statusEffects = next;
+    if (slot.hp <= 0) {
+      removeEnemySlotFromEncounter(combat, slot.id);
+    }
+  }
+}
+function getSelectedEnemySlot(combat: CombatState): EnemySlot | undefined {
+  return combat.encounter.enemies.find((slot) => slot.id === combat.selectedEnemyId);
+}
+
+function ensureSelectedEnemy(combat: CombatState): EnemySlot | undefined {
+  const current = getSelectedEnemySlot(combat);
+  if (current) return current;
+  const fallback =
+    combat.encounter.enemies.find((slot) => slot.position.row === "front") ?? combat.encounter.enemies[0];
+  if (fallback) {
+    combat.selectedEnemyId = fallback.id;
+  } else {
+    combat.selectedEnemyId = null;
+  }
+  return fallback;
+}
+
+function promoteBackRowSlot(combat: CombatState, lane: number): void {
+  const backSlot = combat.encounter.enemies.find(
+    (enemy) => enemy.position.lane === lane && enemy.position.row === "back"
+  );
+  if (!backSlot) return;
+  backSlot.position.row = "front";
+  log(`${backSlot.name} steps forward to lane ${lane}.`);
+}
+
+function removeEnemySlotFromEncounter(combat: CombatState, slotId: string): void {
+  const idx = combat.encounter.enemies.findIndex((slot) => slot.id === slotId);
+  if (idx === -1) return;
+  const [removed] = combat.encounter.enemies.splice(idx, 1);
+  if (removed.position.row === "front") {
+    promoteBackRowSlot(combat, removed.position.lane);
+  }
+  if (combat.selectedEnemyId === slotId) {
+    const nextTarget =
+      combat.encounter.enemies.find((slot) => slot.position.row === "front") ??
+      combat.encounter.enemies[0];
+    combat.selectedEnemyId = nextTarget?.id ?? null;
+  }
+}
+
+function tryDefensiveRetreat(combat: CombatState, side: "player" | "enemy") {
+  const board: BoardState = combat;
+  for (let lane = 0; lane < 3; lane += 1) {
+    const front = getShipAt(board, lane, "front", side);
+    const back = getShipAt(board, lane, "back", side);
+    if (!front || !back) continue;
+    if (!front.alive || !back.alive) continue;
+
+    const frontHpPct = front.maxHp > 0 ? front.hp / front.maxHp : 0;
+    const backHpPct = back.maxHp > 0 ? back.hp / back.maxHp : 0;
+
+    const frontDamaged =
+      front.shields < front.maxShields || front.hp < front.maxHp;
+    const frontInTrouble =
+      frontDamaged &&
+      (front.shields === 0 || frontHpPct < FRONT_RETREAT_HP_THRESHOLD);
+    const backIsFragile = back.isFragile ?? false;
+    const backCanFrontline = !backIsFragile && backHpPct >= frontHpPct;
+
+    if (frontInTrouble && backCanFrontline) {
+      front.position.row = "back";
+      back.position.row = "front";
+      log(
+        `${back.name} surges forward in lane ${lane + 1} as ${front.name} pulls back to recover.`
+      );
+    }
+  }
+}
+
+function tryOffensiveAdvance(combat: CombatState, side: "player" | "enemy") {
+  const board: BoardState = combat;
+  for (let lane = 0; lane < 3; lane += 1) {
+    const front = getShipAt(board, lane, "front", side);
+    if (front && front.alive) continue;
+    const back = getShipAt(board, lane, "back", side);
+    if (!back || !back.alive) continue;
+
+    const backIsFragile = back.isFragile ?? false;
+    const canFrontline = back.wantsFrontline || !backIsFragile;
+    if (!canFrontline) continue;
+
+    back.position.row = "front";
+    log(`${back.name} fills the empty front line in lane ${lane + 1}.`);
+  }
+}
+
+function handleFormationMovement(combat: CombatState) {
+  tryDefensiveRetreat(combat, "player");
+  tryDefensiveRetreat(combat, "enemy");
+  tryOffensiveAdvance(combat, "player");
+  tryOffensiveAdvance(combat, "enemy");
+  relocateBacklineToCover(combat);
+  fillEmptyBackSlots(combat);
+  ensureSelectedEnemy(combat);
+}
+
+function fillEmptyBackSlots(combat: CombatState) {
+  const board: BoardState = combat;
+  for (let lane = 0; lane < 3; lane += 1) {
+    const front = getShipAt(board, lane, "front", "enemy");
+    const back = getShipAt(board, lane, "back", "enemy");
+    if (!front || !front.alive) continue;
+    if (back && back.alive) continue;
+
+    const donor = board.encounter.enemies.find(
+      (slot) =>
+        slot.side === "enemy" &&
+        slot.alive &&
+        slot.position.row === "front" &&
+        slot.id !== front.id &&
+        slot.position.lane !== lane &&
+        !(slot.wantsFrontline ?? false)
+    );
+    if (!donor) continue;
+
+    donor.position = { lane, row: "back" };
+    log(`${donor.name} drops into lane ${lane + 1} to shelter behind ${front.name}.`);
+  }
+}
+
+function relocateBacklineToCover(combat: CombatState) {
+  const board: BoardState = combat;
+  for (let lane = 0; lane < 3; lane += 1) {
+    const front = getShipAt(board, lane, "front", "enemy");
+    const back = getShipAt(board, lane, "back", "enemy");
+    if (!front || !front.alive || (back && back.alive)) continue;
+
+    const donor = board.encounter.enemies.find((slot) => {
+      if (
+        slot.side !== "enemy" ||
+        !slot.alive ||
+        slot.position.row !== "front" ||
+        slot.position.lane === lane ||
+        (slot.wantsFrontline ?? false)
+      ) {
+        return false;
+      }
+      const laneMates = getLaneShips(board, slot.position.lane, "enemy").filter(
+        (mate) => mate.alive && mate.id !== slot.id
+      );
+      return laneMates.length > 0;
+    });
+    if (!donor) continue;
+
+    donor.position = { lane, row: "back" };
+    const coverName = front.name ?? `Lane ${lane + 1}`;
+    log(
+      `${donor.name} maneuvers into lane ${lane + 1} to take cover behind ${coverName}.`
+    );
+  }
+}
+
+function applyDamageToEnemySlot(
+  baseDamage: number,
+  damageType: DamageType,
+  weapon: WeaponDef,
+  slot: EnemySlot
+): number {
+  const tableEntry = DAMAGE_TYPE_VS_DEFENSE[damageType];
+  if (!tableEntry || baseDamage <= 0) return 0;
+  const tags = weapon.tags || [];
+  if (slot.shields > 0) {
+    let multiplier = tableEntry.vsShields * (weapon.shieldMod ?? 1);
+    if (tags.includes("shield_breaker")) {
+      multiplier *= 1.2;
+    }
+    const damage = Math.max(0, Math.round(baseDamage * multiplier));
+    slot.shields = Math.max(0, slot.shields - damage);
+    return damage;
+  }
+  let multiplier = tableEntry.vsHull * (weapon.armorMod ?? 1);
+  if (tags.includes("armor_piercing")) {
+    multiplier *= 1.2;
+  }
+  const damage = Math.max(0, Math.round(baseDamage * multiplier));
+  slot.hp = Math.max(0, slot.hp - damage);
+  slot.alive = slot.hp > 0;
+  return damage;
 }
 
 export type PlayerCombatActionType = "fire" | "brace" | "flee" | "fire_all";
@@ -89,26 +644,25 @@ export function startCombat(enemyId: string, opts: CombatReturn = {}) {
   const tpl = getEnemyTemplate(enemyId);
   const shipWeapons = gameState.ship.weapons;
   const playerCooldowns = shipWeapons.map(() => 0);
-  const enemyWeapons = tpl.weaponIds.slice();
-  const enemyCooldowns = enemyWeapons.map(() => 0);
   const tune = getCombatTune();
-  const hpMultiplier = tune.enemyHpMultiplier ?? 1;
+  const difficultyScale = getEnemyScale(gameState);
+  const hpMultiplier = Math.max(1, (tune.enemyHpMultiplier ?? 1) * difficultyScale);
   const minCount = Math.max(1, Math.round(tune.enemyCountMin ?? 1));
   const maxCount = Math.max(minCount, Math.round(tune.enemyCountMax ?? minCount));
   const enemyCount = Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount;
   const enemyCountFactor = Math.max(1, enemyCount);
+  const positions = generateEnemyPositions(enemyCountFactor);
+  const encounterSlots = buildEncounterSlots(tpl, hpMultiplier, positions);
+  const encounterName = buildEncounterName(tpl, encounterSlots.length);
 
   gameState.combat = {
-    enemyId: tpl.id,
-    enemyName: tpl.name,
-    enemyHp: Math.max(1, Math.round(tpl.hull * hpMultiplier * enemyCountFactor)),
-    enemyMaxHp: Math.max(1, Math.round(tpl.hull * hpMultiplier * enemyCountFactor)),
-    enemyShields: Math.max(0, Math.round(tpl.shields * hpMultiplier * enemyCountFactor)),
-    enemyMaxShields: Math.max(0, Math.round(tpl.shields * hpMultiplier * enemyCountFactor)),
-    enemyWeapons,
-    enemyCooldowns,
-    enemyTags: tpl.tags || [],
-    enemyCount: enemyCountFactor,
+    encounter: {
+      id: tpl.id,
+      name: encounterName,
+      enemies: encounterSlots,
+      tags: tpl.tags ? [...new Set(tpl.tags)] : []
+    },
+    selectedEnemyId: encounterSlots[0]?.id ?? null,
     playerCooldowns,
     playerBracing: false,
     playerStance: "balanced",
@@ -125,10 +679,13 @@ export function startCombat(enemyId: string, opts: CombatReturn = {}) {
     totalRounds: 1,
     startingHp: gameState.ship.hp,
     round: 1,
-    log: [`${tpl.name} engages you in combat!`],
+    log: [`${encounterName} engages you in combat!`],
     adviceToken: Math.random(),
     returnTo: opts.returnScreen,
-    returnParams: opts.returnParams
+    returnParams: opts.returnParams,
+    overheatPenaltyTurns: 0,
+    overheatModalVisible: false,
+    lastHeatDelta: ""
   };
 
   if (enemyCountFactor > 1) {
@@ -217,8 +774,12 @@ export function playerCombatAction(
   }
 
   if (!gameState.combat) return;
-  if (combat.enemyHp <= 0) {
+  if (combat.encounter.enemies.length === 0) {
     handleVictory();
+    return;
+  }
+
+  if (resolveOverheatPenalty()) {
     return;
   }
 
@@ -230,13 +791,47 @@ export function playerCombatAction(
     return;
   }
 
+  handleFormationMovement(combat);
+
   tickCooldowns();
   combat.adviceToken = Math.random();
   combat.round += 1;
   combat.totalRounds += 1;
 }
 
-function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
+interface FireWeaponOptions {
+  isVolley?: boolean;
+  soloFire?: boolean;
+  volleyCount?: number;
+}
+
+function resolveOverheatPenalty(): boolean {
+  const combat = gameState.combat;
+  if (!combat || !(combat.overheatPenaltyTurns ?? 0)) return false;
+  let ranPenalty = false;
+
+  while (combat.overheatPenaltyTurns && combat.overheatPenaltyTurns > 0) {
+    ranPenalty = true;
+    combat.overheatPenaltyTurns -= 1;
+    log("Overheat penalty: the enemy seizes a free strike while you cool down!");
+    enemyTurn();
+    if (!gameState.combat) {
+      break;
+    }
+    if (gameState.ship.hp <= 0) {
+      handleDefeat();
+      break;
+    }
+  }
+
+  if (gameState.combat) {
+    combat.overheatModalVisible = false;
+  }
+
+  return ranPenalty;
+}
+
+function playerFireWeapon(slotIndex: number, aimMode: AimMode, options: FireWeaponOptions = {}) {
   const combat = gameState.combat;
   if (!combat) return;
 
@@ -256,6 +851,11 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
     log("Missing weapon data.");
     return;
   }
+  const otherReadyWeapons = ship.weapons.filter(
+    (id, idx) => idx !== slotIndex && Boolean(id) && (combat.playerCooldowns[idx] ?? 0) <= 0
+  );
+  const soloFire = otherReadyWeapons.length === 0;
+  applyHeatForFiring([weapon], "single", aimMode === "called_shot");
   const passive = getPassiveEffects();
   const firstRound = combat.round <= 1;
   const effectiveWeapon = {
@@ -274,16 +874,11 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
     return;
   }
 
-  const targetState = {
-    shields: combat.enemyShields,
-    hp: combat.enemyHp
-  };
   const aimDamageMod = aimMode === "called_shot" ? CALLED_SHOT_MODS.damageMultiplier : 1;
   const aimAccuracyMod = aimMode === "called_shot" ? CALLED_SHOT_MODS.accuracyMultiplier : 1;
-  const stanceMod = getOutgoingMod(combat.playerStance);
-  const damage = computeWeaponDamage(effectiveWeapon, targetState, {
-    accuracyMultiplier: aimAccuracyMod,
-    damageMultiplier: aimDamageMod * stanceMod * (passive.playerDamageBonus ?? 1)
+  const damage = computeWeaponDamage(effectiveWeapon, {
+    accuracyMultiplier: aimAccuracyMod * getHeatAccuracyMultiplier(),
+    damageMultiplier: aimDamageMod * (passive.playerDamageBonus ?? 1)
   });
 
   if (damage <= 0) {
@@ -293,52 +888,115 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode) {
     return;
   }
 
-  recordCombatDamageDealt(damage);
-
-  let remaining = damage;
-  if (combat.enemyShields > 0) {
-    const absorbed = Math.min(combat.enemyShields, remaining);
-    combat.enemyShields -= absorbed;
-    remaining -= absorbed;
-  }
-  if (remaining > 0) {
-    combat.enemyHp = Math.max(0, combat.enemyHp - remaining);
+  const targetSlot = ensureSelectedEnemy(combat);
+  if (!targetSlot) {
+    log("No enemy target available.");
+    combat.playerCooldowns[slotIndex] = weapon.cooldown;
+    return;
   }
 
-  const targetArea = targetState.shields > 0 ? "shields" : "hull";
+  const board: BoardState = combat;
+  if (!canTargetSlot(board, weapon, targetSlot)) {
+    const front = getShipAt(board, targetSlot.position.lane, "front", "enemy");
+    log(
+      front && front.alive
+        ? `${weapon.name} cannot hit ${targetSlot.name} because ${front.name} is covering the lane.`
+        : `${weapon.name} cannot reach ${targetSlot.name}.`
+    );
+    combat.playerCooldowns[slotIndex] = weapon.cooldown;
+    return;
+  }
+  const preHitLayer = targetSlot.shields > 0 ? "shields" : "hull";
+  let adjustedDamage = damage;
+  if (soloFire) {
+    adjustedDamage = Math.max(1, Math.round(damage * SOLO_FIRE_BONUS));
+    log(`Solo fire bonus: ${weapon.name} punches harder this turn.`);
+  }
+  const shieldBonus =
+    !options.isVolley && targetSlot.shields > 0 ? PRECISION_SHIELD_BONUS : 1;
+  adjustedDamage = Math.round(adjustedDamage * shieldBonus);
+  const damageDone = applyDamageToEnemySlot(
+    adjustedDamage,
+    weapon.damageType as DamageType,
+    weapon,
+    targetSlot
+  );
+
+  if (damageDone > 0) {
+    recordCombatDamageDealt(damageDone);
+    maybeApplyStatus(weapon.damageType as DamageType, damageDone, targetSlot);
+  }
+
   const aimLabel = aimMode === "called_shot" ? "called shot" : "normal shot";
-  log(`You strike the ${combat.enemyName}'s ${targetArea} with ${weapon.name} (${aimLabel}) for ${damage} damage.`);
+  log(`You strike ${targetSlot.name}'s ${preHitLayer} with ${weapon.name} (${aimLabel}) for ${damageDone} damage.`);
 
-  // Tag-based effects
-  if (damage > 0 && weapon.tags?.includes("disruptor")) {
+  if (damageDone > 0 && weapon.tags?.includes("disruptor")) {
     combat.enemyStatus.weaponJammedTurns = Math.min(
       2,
       combat.enemyStatus.weaponJammedTurns + 1
     );
-    log(`${combat.enemyName}'s weapons are disrupted!`);
+    log(`${targetSlot.name}'s weapons are disrupted!`);
   }
 
   combat.playerCooldowns[slotIndex] = weapon.cooldown;
+
+  if (targetSlot.hp <= 0) {
+    log(`${targetSlot.name} is destroyed!`);
+    removeEnemySlotFromEncounter(combat, targetSlot.id);
+  }
+}
+
+function getReadyWeaponsOrdered(combat: CombatState): { idx: number; weapon: WeaponDef }[] {
+  if (!content) return [];
+  const ship = gameState.ship;
+  const orderRank: Record<WeaponDamageType, number> = {
+    disruptive: 0,
+    energy: 1,
+    kinetic: 2,
+    explosive: 3
+  };
+  const ready: { idx: number; weapon: WeaponDef }[] = [];
+  for (let idx = 0; idx < ship.weapons.length; idx += 1) {
+    const weaponId = ship.weapons[idx];
+    if (!weaponId) continue;
+    const weapon = getWeaponById(weaponId);
+    if (!weapon) continue;
+    const cooldown = combat.playerCooldowns[idx] ?? 0;
+    if (cooldown > 0) continue;
+    ready.push({ idx, weapon });
+  }
+  return ready.sort((a, b) => {
+    const orderA = orderRank[a.weapon.damageType as WeaponDamageType] ?? 4;
+    const orderB = orderRank[b.weapon.damageType as WeaponDamageType] ?? 4;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.idx - b.idx;
+  });
 }
 
 function fireAllReadyWeapons(aimMode: AimMode) {
   const combat = gameState.combat;
   if (!combat) return;
   const ship = gameState.ship;
-  const readySlots = ship.weapons
-    .map((id, idx) => ({ id, idx }))
-    .filter(
-      ({ id, idx }) =>
-        Boolean(id) && (combat.playerCooldowns[idx] ?? 0) <= 0
-    )
-    .map((entry) => entry.idx);
-  if (!readySlots.length) {
+  if (ship.overheated) {
+    log("Systems are overheated; volley fire is disabled until heat subsides.");
+    return;
+  }
+  const readyWeapons = getReadyWeaponsOrdered(combat);
+  if (!readyWeapons.length) {
     log("No weapons are ready to fire.");
     return;
   }
-  for (const idx of readySlots) {
-    if (!gameState.combat || gameState.combat.enemyHp <= 0) break;
-    playerFireWeapon(idx, aimMode);
+  applyHeatForFiring(
+    readyWeapons.map(({ weapon }) => weapon),
+    "volley",
+    aimMode === "called_shot"
+  );
+  for (const { idx } of readyWeapons) {
+    if (!gameState.combat || gameState.combat.encounter.enemies.length === 0) break;
+    playerFireWeapon(idx, aimMode, {
+      isVolley: true,
+      volleyCount: readyWeapons.length
+    });
   }
 }
 
@@ -357,8 +1015,10 @@ function attemptFlee(): boolean {
     return false;
   }
   const baseChance = 0.4;
-  const stanceBonus =
-    combat.playerStance === "assault" ? -0.1 : combat.playerStance === "evasive" ? 0.15 : 0;
+    let stanceBonus = 0;
+    if (combat.playerStance === "evasive") stanceBonus = 0.15;
+    if (combat.playerStance === "brace") stanceBonus = -0.05;
+    if (combat.playerStance === "overcharge") stanceBonus = -0.1;
   const playerManeuver =
     (gameState.ship.maneuverRating || 0) + (combat.playerStatus.maneuverBonus || 0);
   const enemyManeuver = 40;
@@ -373,6 +1033,7 @@ function attemptFlee(): boolean {
       log(
         `You punch the thrusters and break free! (Flee chance ${(chance * 100).toFixed(0)}%)`
       );
+      adjustTension(gameState, -5);
       gameState.combat = null;
       abortMiningSession(
         gameState,
@@ -392,67 +1053,63 @@ function attemptFlee(): boolean {
 function enemyTurn() {
   const combat = gameState.combat;
   if (!combat) return;
-
   if (combat.enemyStatus.weaponJammedTurns > 0) {
     combat.enemyStatus.weaponJammedTurns -= 1;
     log("Enemy weapons are jammed this round!");
     return;
   }
-
-  const readySlots: number[] = [];
-  combat.enemyWeapons.forEach((id, idx) => {
-    const cd = combat.enemyCooldowns[idx] ?? 0;
-    if (id && cd <= 0) {
-      readySlots.push(idx);
-    }
-  });
-
-  if (readySlots.length === 0) {
-    log(`The ${combat.enemyName} reloads while you advance.`);
+  const board: BoardState = combat;
+  const readySlots = combat.encounter.enemies.filter((slot) =>
+    slot.weaponIds.some((id, idx) => id && (slot.weaponCooldowns[idx] ?? 0) <= 0 && slot.alive)
+  );
+  if (!readySlots.length) {
+    log(`The ${combat.encounter.name} reloads while you advance.`);
     return;
   }
-
   const slot = readySlots[randBetween(0, readySlots.length - 1)];
-  const weaponId = combat.enemyWeapons[slot];
-  const weapon = getWeaponById(weaponId);
-  if (!weapon) {
-    log(`The ${combat.enemyName} fumbles its weapon.`);
+  const readyWeapons = slot.weaponIds
+    .map((id, idx) => ({ id, idx }))
+    .filter(({ id, idx }) => Boolean(id) && (slot.weaponCooldowns[idx] ?? 0) <= 0);
+  if (!readyWeapons.length) {
+    log(`The ${slot.name} catches its breath while reloading.`);
     return;
   }
-
-  const targetState = {
-    shields: gameState.ship.shields,
-    hp: gameState.ship.hp
-  };
+  const choice = readyWeapons[randBetween(0, readyWeapons.length - 1)];
+  const weapon = getWeaponById(choice.id);
+  if (!weapon) {
+    log(`The ${slot.name} fumbles its weapon.`);
+    return;
+  }
+  const playerSlot = buildPlayerSlot();
+  const targetSlot = chooseTarget(slot, weapon, board, [playerSlot]);
+  if (!targetSlot) {
+    log(`${slot.name} finds no valid targets.`);
+    return;
+  }
+  const isJammed = hasStatusEffect(slot, "jammed");
+  if (isJammed) {
+    log(`${slot.name} is still recovering from jammed systems.`);
+  }
   const accPenalty = Math.min(0.3, Math.max(0, combat.playerStatus.maneuverBonus || 0) * 0.01);
   const tune = getCombatTune();
   const passive = getPassiveEffects();
   const firstRound = combat.round <= 1;
-  let damage = computeWeaponDamage(weapon, targetState, {
-    accuracyMultiplier: Math.max(
-      0,
-      (1 - accPenalty) *
-        (tune.enemyAccuracyMultiplier ?? 1) *
-        Math.max(0, 1 - (passive.dodgeBonus ?? 0)) *
-        (firstRound ? Math.max(0, 1 - (passive.dodgeBonus ?? 0)) : 1)
-    )
-  });
-  damage = Math.max(0, Math.round(damage * (tune.enemyDamageMultiplier ?? 1)));
-  if (combat.enemyCount && combat.enemyCount > 1) {
-    damage = Math.max(0, Math.round(damage * combat.enemyCount));
-  }
-
-  if (damage <= 0) {
-    log(`The ${combat.enemyName} fires ${weapon.name}, but misses.`);
-    combat.enemyCooldowns[slot] = weapon.cooldown;
-    return;
-  }
-
+  const baseAccuracy = Math.max(
+    0,
+    (1 - accPenalty) *
+      (tune.enemyAccuracyMultiplier ?? 1) *
+      Math.max(0, 1 - (passive.dodgeBonus ?? 0)) *
+      (firstRound ? Math.max(0, 1 - (passive.dodgeBonus ?? 0)) : 1)
+  );
+  const stanceFactor = getStanceAccuracyFactor(combat.playerStance);
+  const adjustedAccuracy = Math.max(0, baseAccuracy * stanceFactor * (isJammed ? JAMMED_ACCURACY_PENALTY : 1));
+  let damage = computeWeaponDamage(weapon, { accuracyMultiplier: adjustedAccuracy });
+  const difficultyScale = getEnemyScale(gameState);
+  damage = Math.max(0, Math.round(damage * (tune.enemyDamageMultiplier ?? 1) * difficultyScale));
   if (combat.playerBracing) {
     damage = Math.round(damage * BRACE_DAMAGE_REDUCTION);
   }
-
-  damage = Math.max(0, Math.round(damage * getIncomingMod(combat.playerStance)));
+  damage = applyStanceDamageMultiplier(damage, weapon.damageType as DamageType, combat.playerStance);
   damage = Math.max(
     0,
     Math.round(
@@ -462,28 +1119,29 @@ function enemyTurn() {
         (firstRound ? Math.max(0.1, passive.damageTakenMultiplier ?? 1) : 1)
     )
   );
-
   let remaining = damage;
   if (combat.playerStatus.shieldBoost > 0) {
     const absorbed = Math.min(combat.playerStatus.shieldBoost, remaining);
     combat.playerStatus.shieldBoost -= absorbed;
     remaining -= absorbed;
   }
-  if (gameState.ship.shields > 0) {
+  if (!gameState.ship.overheated && gameState.ship.shields > 0 && remaining > 0) {
     const absorbed = Math.min(gameState.ship.shields, remaining);
     gameState.ship.shields -= absorbed;
     remaining -= absorbed;
+  } else if (gameState.ship.overheated) {
+    log("Overheat damages bypass shields; hull is exposed.");
   }
   if (remaining > 0) {
     gameState.ship.hp = Math.max(0, gameState.ship.hp - remaining);
   }
-
-  log(`The ${combat.enemyName} hits you with ${weapon.name} for ${damage} damage.`);
+  log(`The ${slot.name} hits you with ${weapon.name} for ${damage} damage.`);
   recordCombatDamageTaken(damage);
-  combat.enemyCooldowns[slot] = weapon.cooldown;
+  adjustTension(gameState, -Math.min(6, Math.floor(damage / 10)));
+  slot.weaponCooldowns[choice.idx] = weapon.cooldown + (isJammed ? 1 : 0);
+  applyAreaEffects(board, weapon, targetSlot, damage);
 }
-
-export type CombatAdviceSuggestion = "brace" | "assault" | "balanced";
+export type CombatAdviceSuggestion = StanceId;
 
 export interface CombatAdvice {
   text: string;
@@ -495,49 +1153,51 @@ export function getCombatAdvice(): CombatAdvice | null {
   const combat = gameState.combat;
   if (!combat) return null;
 
-  const cds =
-    combat.enemyCooldowns.length > 0
-      ? combat.enemyCooldowns.map((cd) => (cd ?? Number.MAX_SAFE_INTEGER))
-      : [Number.MAX_SAFE_INTEGER];
-  const soonestCd = Math.min(...cds);
+  const slots = combat.encounter.enemies;
+  if (!slots.length) return null;
+  const cooldownValues = slots.flatMap((slot) =>
+    slot.weaponCooldowns.map((cd) => (cd ?? Number.MAX_SAFE_INTEGER))
+  );
+  const soonestCd = Math.min(...(cooldownValues.length ? cooldownValues : [Number.MAX_SAFE_INTEGER]));
 
   const candidates: CombatAdvice[] = [];
 
   if (soonestCd <= 1) {
     const confidence = clamp(0.6 + (1 - soonestCd) * 0.2, 0.65, 0.95);
     candidates.push({
-      text: `Enemy shifts into a heavy attack stance; the next shot lands in ${soonestCd} turn${soonestCd === 1 ? "" : "s"}—brace to soften the incoming blow.`,
+      text: `Enemy shifts into a heavy attack stance; the next shot lands in ${soonestCd} turn${soonestCd === 1 ? "" : "s"} - brace to soften the incoming blow.`,
       suggestion: "brace",
       confidence
     });
   }
 
-  if (combat.enemyShields <= 0) {
+  const activeTarget = slots.find((slot) => slot.position.row === "front") ?? slots[0];
+  if (activeTarget && activeTarget.shields <= 0) {
     const readyWeapons = combat.playerCooldowns.filter((cd) => cd <= 0).length;
     const readyRatio = readyWeapons / Math.max(1, gameState.ship.weapons.length);
     const confidence = clamp(0.6 + readyRatio * 0.3, 0.6, 0.9);
     candidates.push({
-      text: "Shields down—called shots are primed to shatter the hull before the enemy recovers.",
-      suggestion: "assault",
+      text: "Shields down - called shots are primed to shatter the hull before the enemy recovers.",
+      suggestion: "overcharge",
       confidence
     });
   }
 
   if (gameState.ship.hp / gameState.ship.maxHp < 0.4) {
     candidates.push({
-      text: "Hull integrity is low—brace now to survive the next volley while you recover.",
+      text: "Hull integrity is low - brace now to survive the next volley while you recover.",
       suggestion: "brace",
       confidence: 0.75
     });
   }
 
   candidates.push({
-    text: "Balanced posture—cycle weapons, wait for openings, and shift stance if needed.",
+    text: "Balanced posture - cycle weapons, wait for openings, and shift stance if needed.",
     suggestion: "balanced",
     confidence: 0.5
   });
 
-  const seed = ((combat.adviceToken ?? Math.random()) + (combat.round * 0.13)) % 1;
+  const seed = ((combat.adviceToken ?? Math.random()) + combat.round * 0.13) % 1;
   const index = Math.floor(seed * candidates.length);
   const choice = candidates[index];
   return {
@@ -545,12 +1205,14 @@ export function getCombatAdvice(): CombatAdvice | null {
     confidence: choice.confidence
   };
 }
-
 function tickCooldowns() {
   const combat = gameState.combat;
   if (!combat) return;
   combat.playerCooldowns = combat.playerCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
-  combat.enemyCooldowns = combat.enemyCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
+  for (const slot of combat.encounter.enemies) {
+    slot.weaponCooldowns = slot.weaponCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
+  }
+  tickStatusEffects(combat);
 
   if (combat.playerStatus.maneuverTurns > 0) {
     combat.playerStatus.maneuverTurns -= 1;
@@ -564,22 +1226,24 @@ function tickCooldowns() {
       combat.playerStatus.shieldBoost = 0;
     }
   }
+  heatDecay();
 }
 
 function handleVictory() {
   const combat = gameState.combat;
   if (!combat) return;
-  log(`The ${combat.enemyName} explodes under your punishing fire. Victory is yours.`);
+  const encounter = combat.encounter;
+  log(`The ${encounter.name} explodes under your punishing fire. Victory is yours.`);
 
   const hullDamageTaken = Math.max(0, combat.startingHp - gameState.ship.hp);
   const quickKill = combat.totalRounds <= 3;
   const lowDamageTaken = hullDamageTaken <= 5;
 
   const loot = rollLoot(
-    combat.enemyId,
-    combat.enemyName,
+    encounter.id,
+    encounter.name,
     { quickKill, lowDamageTaken },
-    combat.enemyTags || []
+    encounter.tags
   );
   if (loot) {
     gameState.lastBattleResult = loot;
@@ -603,14 +1267,23 @@ function handleVictory() {
     log("No notable loot recovered.");
   }
 
+  const tensionGain = 3 + (quickKill ? 2 : 0) + (lowDamageTaken ? 1 : 0);
+  adjustTension(gameState, tensionGain);
+  if (loot?.creditsEarned && loot.creditsEarned > 300) {
+    adjustTension(gameState, 2);
+  }
+  if (encounter.tags.some((tag) => /navy|elite/.test(tag))) {
+    adjustTension(gameState, 2);
+  }
+
   recordCombatVictory();
   recordShipDestroyed();
 
-  recordCombatKill(combat.enemyId);
+  recordCombatKill(encounter.id);
   if (
-    combat.enemyTags?.some((tag) => /pirate|raider/i.test(tag)) ||
-    combat.enemyId.includes("pirate") ||
-    combat.enemyId.includes("raider")
+    encounter.tags.some((tag) => /pirate|raider/i.test(tag)) ||
+    encounter.id.includes("pirate") ||
+    encounter.id.includes("raider")
   ) {
     const repMult = getCombatTune().repGainMultiplier ?? 1;
     adjustWanted(Math.round(3 * repMult));
@@ -629,33 +1302,12 @@ function handleDefeat() {
   triggerGameOver("ship_destroyed", "Ship destroyed in combat.");
 }
 
-export function setPlayerStance(stance: Stance): void {
+export function setPlayerStance(stance: StanceId): void {
   const combat = gameState.combat;
   if (!combat) return;
   combat.playerStance = stance;
-  log(`Stance changed to ${stance.charAt(0).toUpperCase() + stance.slice(1)}.`);
-}
-
-function getOutgoingMod(stance: Stance): number {
-  switch (stance) {
-    case "assault":
-      return 1.15;
-    case "evasive":
-      return 0.8;
-    default:
-      return 1;
-  }
-}
-
-function getIncomingMod(stance: Stance): number {
-  switch (stance) {
-    case "assault":
-      return 1.1;
-    case "evasive":
-      return 0.7;
-    default:
-      return 1;
-  }
+  const definition = getStanceDefinition(stance);
+  log(`Stance changed to ${definition.label}.`);
 }
 
 function clamp(value: number, min: number, max: number): number {

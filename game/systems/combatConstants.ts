@@ -9,31 +9,31 @@ export const BRACE_TIP =
   "Brace reduces the next incoming volley to 60% strength and works well when the enemy reloads or you expect a heavy return fire.";
 
 type DamageTypeEffect = {
-  shield: number;
-  hull: number;
+  vsShields: number;
+  vsHull: number;
   description: string;
 };
 
 export const DAMAGE_TYPE_EFFECTS: Record<WeaponDamageType, DamageTypeEffect> = {
-  EM: {
-    shield: 1.25,
-    hull: 0.85,
-    description: "EM arcs overload shields quickly but bleed off against plated hulls."
-  },
-  thermal: {
-    shield: 1.1,
-    hull: 1.0,
-    description: "Thermal beams melt shielding and stay reliable against exposed hull."
-  },
   kinetic: {
-    shield: 0.9,
-    hull: 1.2,
+    vsShields: 0.8,
+    vsHull: 1.2,
     description: "Kinetic projectiles punch through armor but have less effect on energy shields."
   },
-  plasma: {
-    shield: 1.05,
-    hull: 1.15,
-    description: "Plasma burns through both defenses and leaves hull plating glowing."
+  energy: {
+    vsShields: 1.2,
+    vsHull: 0.8,
+    description: "Energy beams focus on shields and finesse hulls."
+  },
+  explosive: {
+    vsShields: 1.0,
+    vsHull: 1.3,
+    description: "Explosives blast both layers but leave hull plating the most damaged."
+  },
+  disruptive: {
+    vsShields: 1.3,
+    vsHull: 1.0,
+    description: "Disruptive rounds disable shields aggressively while nicking hull."
   }
 };
 
@@ -48,7 +48,9 @@ export const DAMAGE_TYPE_GUIDE: DamageTypeGuideEntry[] = (Object.keys(
   DAMAGE_TYPE_EFFECTS
 ) as WeaponDamageType[]).map((type) => ({
   type,
-  shieldMultiplier: DAMAGE_TYPE_EFFECTS[type].shield,
-  hullMultiplier: DAMAGE_TYPE_EFFECTS[type].hull,
+  shieldMultiplier: DAMAGE_TYPE_EFFECTS[type].vsShields,
+  hullMultiplier: DAMAGE_TYPE_EFFECTS[type].vsHull,
   description: DAMAGE_TYPE_EFFECTS[type].description
 }));
+
+export const DAMAGE_TYPE_VS_DEFENSE = DAMAGE_TYPE_EFFECTS;

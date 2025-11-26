@@ -5,6 +5,23 @@ import { startMiningSession } from "../systems/miningSystem";
 import { gameState } from "../core/state";
 import type { EventChoice } from "../core/contentTypes";
 
+const EVENT_HINTS: Record<string, string> = {
+  pirate: "Sensors report kinetic and explosive signatures—brace for hull rakes ahead.",
+  disruptive: "Disruptive arcs detected; expect jammed systems if shields fall.",
+  energy: "Energy harmonics in the signal mean shields will sponge the incoming fire.",
+  ghost: "Ghost fleet scouts favor shield-cracking pulses; bring hull-focused damage."
+};
+
+function getEventHint(tags?: string[]): string {
+  if (!tags) return "";
+  for (const tag of tags) {
+    if (EVENT_HINTS[tag]) {
+      return EVENT_HINTS[tag];
+    }
+  }
+  return "";
+}
+
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
 declare const pickChoice: (choiceIdx: number) => void;
 declare const beginMiningSession: (beltId?: string, resourceId?: string) => void;
@@ -23,11 +40,13 @@ export function EventScreen(params: Record<string, unknown> = {}): string {
   }
 
   if (ev.type === "mining") {
+    const flavorHint = getEventHint(ev.tags);
     return `
       <div class="screen event">
         <header class="event-header">
           <h1>${ev.name}</h1>
           ${ev.description ? `<p class="event-description">${ev.description}</p>` : ""}
+          ${flavorHint ? `<p class="event-hint">${flavorHint}</p>` : ""}
         </header>
         <p>Secure your mining rig and hope the pirates stay away.</p>
         <div class="screen-actions">
@@ -40,13 +59,15 @@ export function EventScreen(params: Record<string, unknown> = {}): string {
   }
 
   const choiceSection = renderChoices(ev.choices);
+  const flavorHint = getEventHint(ev.tags);
 
   return `
     <div class="screen event">
       <header class="event-header">
         <h1>${ev.name}</h1>
         <p class="event-type">Type: ${titleCase(ev.type)}</p>
-        ${ev.description ? `<p class="event-description">${ev.description}</p>` : ""}
+          ${ev.description ? `<p class="event-description">${ev.description}</p>` : ""}
+          ${flavorHint ? `<p class="event-hint">${flavorHint}</p>` : ""}
       </header>
       <section class="event-choices">
         <h2>Choices</h2>
@@ -116,11 +137,15 @@ window.pickChoice = (choiceIdx: number) => {
 };
 
 window.beginMiningSession = (beltId?: string, resourceId?: string) => {
-  startMiningSession(
+  const started = startMiningSession(
     gameState,
     gameState.location.systemId,
     beltId || undefined,
     resourceId || undefined
   );
-  navigation.go("mining");
+  if (started) {
+    navigation.go("mining");
+  } else {
+    navigation.go("main", { message: "Travel to a new system before mining again." });
+  }
 };

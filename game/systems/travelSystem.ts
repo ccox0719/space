@@ -347,6 +347,7 @@ export function travelTo(targetSystemId: string): void {
 
     gameState.ship.fuel -= scaledProfile.fuelCost;
     gameState.location.systemId = target.id;
+    gameState.lastMiningSystemId = null;
     gameState.location.docked = true;
   navigation.advanceActiveRoute(target.id);
   const travelTurns = scaleTurnDelta(profile.travelTime);
@@ -534,6 +535,10 @@ function getTaggedEventId(system: SystemDef): string | null {
   if (tags.has("mining_belt")) {
     push(MINING_EVENTS_BY_SYSTEM[system.id] ?? "mining_fragment_field");
   }
+  const extraMiningTags = ["wildspace", "anomaly", "mining"];
+  if (extraMiningTags.some((tag) => tags.has(tag))) {
+    push("mining_fragment_field");
+  }
   if (tags.has("checkpoint") || tags.has("trade_lane") || tags.has("trade_hub")) {
     push("navy_inspection");
   }
@@ -545,6 +550,13 @@ function getTaggedEventId(system: SystemDef): string | null {
     push("unity_checkpoint");
   }
 
+  const MINING_BASE_CHANCE = 0.18;
+  if (
+    Math.random() < MINING_BASE_CHANCE &&
+    !options.includes("mining_fragment_field")
+  ) {
+    push("mining_fragment_field");
+  }
   if (!options.length) return null;
   return options[Math.floor(Math.random() * options.length)];
 }

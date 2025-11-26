@@ -16,6 +16,25 @@ import {
   type StarNode
 } from "../core/map";
 
+const FACTION_HINTS: Record<string, string> = {
+  pirate:
+    "Sensors pick up razor-thin kinematic volleys—expect raiders and brawlers that favor heavy hull breaks.",
+  raider:
+    "Raiders pressure forward with kinetic + explosive clusters. Keep shields topped and aim for front rows.",
+  ghost: "Ghost Fleet whispers with disruptives—jam vs. shields, then focus on energy weapons.",
+  corsair:
+    "Corsairs hang back with energy/lance beams. Strike their hulls quickly or they will melt your shields."
+};
+
+function getFactionHint(tags: string[]): string {
+  for (const tag of tags) {
+    if (FACTION_HINTS[tag]) {
+      return FACTION_HINTS[tag];
+    }
+  }
+  return "";
+}
+
 declare const nav: (screen: string) => void;
 
 declare global {
@@ -76,6 +95,10 @@ export function TravelScreen(): string {
 
   const currentBase = current ? getBaseInSystem(current.id) : null;
   const baseTag = getBaseTag(currentBase);
+  const intelHintText = getFactionHint(current.tags || []);
+  const intelHintCard = intelHintText
+    ? `<div class="panel-card intel-hint">${intelHintText}</div>`
+    : "";
   const baseCard = currentBase
     ? `
       <div class="panel-card">
@@ -166,6 +189,7 @@ export function TravelScreen(): string {
         <section class="data-panel">
           <h1 class="panel-title">Travel</h1>
           <p class="muted">${current.description}</p>
+          ${intelHintCard}
           <div class="travel-list">
             ${neighborCards}
           </div>

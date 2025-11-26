@@ -30,6 +30,7 @@ import type {
   LootTable,
   MissionDef,
   PirateBaseDef,
+  EncounterTemplate,
   GameContent
 } from "./contentTypes";
 
@@ -42,6 +43,7 @@ export type {
   ComponentDef,
   WeaponDef,
   CommodityDef,
+  EncounterTemplate,
   GameContent
 } from "./contentTypes";
 
@@ -64,17 +66,19 @@ async function loadContent(): Promise<GameContent> {
   const base = (import.meta.env.BASE_URL ?? "/").replace(/\/+$/, "/");
   const contentUrl = (file: string) => `${base}content/${file}`;
 
-  const [
-    systemsResp,
-    shipsResp,
-    componentsResp,
-    commoditiesResp,
-    weaponsResp,
-    enemiesResp,
-    eventsResp,
-    lootResp,
-    missionsResp
-  ] =
+    const [
+      systemsResp,
+      shipsResp,
+      componentsResp,
+      commoditiesResp,
+      weaponsResp,
+      enemiesResp,
+      eventsResp,
+      lootResp,
+      missionsResp,
+      encountersResp,
+      factionsResp
+    ] =
     await Promise.all([
       fetch(contentUrl("systems.json")),
       fetch(contentUrl("ships.json")),
@@ -84,7 +88,9 @@ async function loadContent(): Promise<GameContent> {
       fetch(contentUrl("enemies.json")),
       fetch(contentUrl("events.json")),
       fetch(contentUrl("loot_tables.json")),
-      fetch(contentUrl("missions.json"))
+      fetch(contentUrl("missions.json")),
+      fetch(contentUrl("encounters.json")),
+      fetch(contentUrl("factions.json"))
     ]);
 
   if (!systemsResp.ok) {
@@ -115,9 +121,15 @@ async function loadContent(): Promise<GameContent> {
     throw new Error(`Failed to load loot_tables.json: ${lootResp.status}`);
   }
 
-  if (!missionsResp.ok) {
-    throw new Error(`Failed to load missions.json: ${missionsResp.status}`);
-  }
+    if (!missionsResp.ok) {
+      throw new Error(`Failed to load missions.json: ${missionsResp.status}`);
+    }
+    if (!encountersResp.ok) {
+      throw new Error(`Failed to load encounters.json: ${encountersResp.status}`);
+    }
+    if (!factionsResp.ok) {
+      throw new Error(`Failed to load factions.json: ${factionsResp.status}`);
+    }
 
   const systems: SystemDef[] = await systemsResp.json();
   for (const system of systems) {
@@ -155,7 +167,9 @@ async function loadContent(): Promise<GameContent> {
   const lootTables: LootTable[] = await lootResp.json();
   setLootTables(lootTables);
 
-  const missions: MissionDef[] = await missionsResp.json();
+    const missions: MissionDef[] = await missionsResp.json();
+    const encounters: EncounterTemplate[] = await encountersResp.json();
+    const factions: FactionDef[] = await factionsResp.json();
   setMissions(missions as any);
 
   const basesById: Record<string, PirateBaseDef> = {};
@@ -175,9 +189,11 @@ async function loadContent(): Promise<GameContent> {
     enemies,
     events,
     lootTables,
-    missions
-  };
-}
+      missions,
+      encounters,
+      factions
+    };
+  }
 
 function ensurePixelCanvas(): void {
   if (pixelCanvas) return;

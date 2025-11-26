@@ -3,6 +3,12 @@ export interface TimeState {
   turn: number;
 }
 
+export interface DifficultyState {
+  day: number;
+  playerPowerScore: number;
+  tension: number; // 0-100
+}
+
 export interface LocationState {
   systemId: string;
   docked: boolean;
@@ -106,7 +112,7 @@ export interface HighScoreEntry {
 }
 
 import shipsData from "../content/ships.json";
-import type { ShipDef, ShipPassive } from "./contentTypes";
+import type { EnemyPosition, EnemyRole, ShipDef, ShipPassive, WeaponDamageType } from "./contentTypes";
 
 const shipsCatalog = shipsData as ShipDef[];
 const starterTemplate = shipsCatalog.find((ship) => ship.starter) ?? shipsCatalog[0];
@@ -143,22 +149,118 @@ export interface ShipState {
     type: "energy" | "projectile" | "missile" | "hybrid";
   }[];
   passive?: ShipPassive | null;
+  heat: number;
+  maxHeat: number;
+  overheated: boolean;
+  overheatTurns: number;
+}
+
+export type DamageType = WeaponDamageType;
+
+export type StatusEffectType = "breach" | "jammed" | "burn";
+
+export interface StatusEffect {
+  type: StatusEffectType;
+  duration: number;
+}
+
+export type StanceId = "balanced" | "brace" | "evasive" | "overcharge";
+
+export interface StanceDefinition {
+  id: StanceId;
+  label: string;
+  description: string;
+  damageTakenMultipliers: Partial<Record<DamageType, number>>;
+  evasionBonus: number;
+  shieldBonus?: number;
+}
+
+export const STANCES: Record<StanceId, StanceDefinition> = {
+  balanced: {
+    id: "balanced",
+    label: "Balanced",
+    description: "Steady posture that treats every attack equally while keeping systems synced.",
+    damageTakenMultipliers: {},
+    evasionBonus: 0
+  },
+  brace: {
+    id: "brace",
+    label: "Brace",
+    description: "Tighten defenses—absorbs kinetic/explosive hits but lets in energy fire.",
+    damageTakenMultipliers: {
+      kinetic: 0.7,
+      explosive: 0.7,
+      energy: 1.1,
+      disruptive: 1.1
+    },
+    evasionBonus: 0.05
+  },
+  evasive: {
+    id: "evasive",
+    label: "Evasive",
+    description: "Skinny, agile frame—decreases all damage via maneuvering.",
+    damageTakenMultipliers: {
+      kinetic: 0.85,
+      explosive: 0.85,
+      energy: 0.85,
+      disruptive: 0.85
+    },
+    evasionBonus: 0.15
+  },
+  overcharge: {
+    id: "overcharge",
+    label: "Overcharge",
+    description: "Pour power to shields and weapons but disruptives tear through you.",
+    damageTakenMultipliers: {
+      disruptive: 1.25,
+      kinetic: 0.95,
+      explosive: 0.95,
+      energy: 0.9
+    },
+    evasionBonus: -0.05,
+    shieldBonus: 15
+  }
+};
+
+export function getStanceDefinition(id: StanceId): StanceDefinition {
+  return STANCES[id];
+}
+
+export interface EnemySlot {
+  id: string;
+  side: "player" | "enemy";
+  templateId: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  shields: number;
+  maxShields: number;
+  weaponIds: string[];
+  weaponCooldowns: number[];
+  position: EnemyPosition;
+  statusEffects: StatusEffect[];
+  tags: string[];
+  canEscape: boolean;
+  alive: boolean;
+  factionId?: string;
+  factionLabel?: string;
+  role?: EnemyRole;
+  prefersLane?: number | "any";
+}
+
+export interface EncounterState {
+  id: string;
+  name: string;
+  enemies: EnemySlot[];
+  tags: string[];
 }
 
 export interface CombatState {
-  enemyId: string;
-  enemyName: string;
-  enemyHp: number;
-  enemyMaxHp: number;
-  enemyShields: number;
-  enemyMaxShields: number;
-  enemyWeapons: string[];
-  enemyCooldowns: number[];
-  enemyTags?: string[];
-  enemyCount?: number;
+  encounter: EncounterState;
+  selectedEnemyId: string | null;
   playerCooldowns: number[];
   playerBracing: boolean;
-  playerStance: "assault" | "balanced" | "evasive";
+  playerStance: StanceId;
   playerStatus: {
     maneuverBonus: number;
     maneuverTurns: number;
@@ -176,6 +278,9 @@ export interface CombatState {
   adviceToken?: number;
   returnTo?: import("./navigation").ScreenID;
   returnParams?: Record<string, unknown>;
+  overheatPenaltyTurns?: number;
+  overheatModalVisible?: boolean;
+  lastHeatDelta?: string;
 }
 
 export interface MiningSample {
@@ -240,6 +345,7 @@ export interface MiningSessionState {
     rareFind?: { id: string; amount: number } | null;
   };
   samples?: MiningSample[];
+  lowSignalMode?: boolean;
 }
 
 export interface ReputationTrack {
@@ -286,6 +392,7 @@ export interface GameState {
   missions?: ContractState[]; // legacy alias
   combat: CombatState | null;
   miningSession?: MiningSessionState | null;
+  lastMiningSystemId?: string | null;
   miningBelts: MiningBeltState[];
   notifications: string[];
   transactions: TradeLogEntry[];
@@ -299,6 +406,7 @@ export interface GameState {
   runStats: RunStats;
   gameOver: GameOverState;
   map?: import("./map").StarMap | null;
+  difficulty: DifficultyState;
 }
 
 export function createRunStats(): RunStats {
@@ -383,13 +491,23 @@ export function newGameState(): GameState {
       components: [],
       hardpoints: starterTemplate?.hardpoints.map((hp) => ({ ...hp })) ?? []
       ,
-      passive: starterTemplate?.passive ?? null
+      passive: starterTemplate?.passive ?? null,
+      heat: 0,
+      maxHeat: 100,
+      overheated: false,
+      overheatTurns: 0
     },
     reputation: {},
     contracts: [],
     missions: [],
     combat: null,
+    overheatPenaltyTurns: 0,
+    overheatModalVisible: false,
+    lastHeatDelta: "",
+    overheatPenaltyTurns: 0,
+    overheatModalVisible: false,
     miningSession: null,
+    lastMiningSystemId: null,
     miningBelts: [],
     notifications: [],
     transactions: [],
@@ -415,7 +533,12 @@ export function newGameState(): GameState {
     ,
     runStats: createRunStats(),
     gameOver: { active: false, reason: null },
-    map: null
+    map: null,
+    difficulty: {
+      day: 1,
+      playerPowerScore: 1,
+      tension: 0
+    }
   };
 }
 
@@ -486,7 +609,7 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
   marketBurstChance: 5,
   marketCrashChance: 5,
   tradeProfitMultiplier: 1,
-  contractPayoutMultiplier: 1,
+  contractPayoutMultiplier: 1.4,
   contractDifficultyMultiplier: 1,
   fuelCostMultiplier: 1,
   travelRiskScaling: 100,
@@ -503,14 +626,14 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
     pirateCargoValueSensitivity: 1,
     navyEncounterRateBase: 0,
     maxEncountersPerDay: 10,
-    enemyHpMultiplier: 0.4,
-    enemyDamageMultiplier: 0.2,
+    enemyHpMultiplier: 0.6,
+    enemyDamageMultiplier: 0.4,
     enemyAccuracyMultiplier: 0.6,
     enemyCountMin: 1,
     enemyCountMax: 1,
     difficultyScalePerDay: 0,
     difficultyScalePerShipPower: 0,
-    creditsRewardMultiplier: 1,
+    creditsRewardMultiplier: 1.2,
     lootDropChance: 100,
     rareLootChance: 12,
     repGainMultiplier: 1,

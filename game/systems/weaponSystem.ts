@@ -1,15 +1,7 @@
 import { gameState, persistLoadout } from "../core/state";
 import { content, WeaponDef } from "../core/engine";
-
-export type DamageType = "kinetic" | "thermal" | "plasma" | "EM";
-type DefenseLayer = "shields" | "hull";
-
-const DAMAGE_MATRIX: Record<DamageType, Record<DefenseLayer, number>> = {
-  kinetic: { shields: 0.9, hull: 1.1 },
-  thermal: { shields: 1.0, hull: 1.0 },
-  plasma: { shields: 1.15, hull: 1.05 },
-  EM: { shields: 1.25, hull: 0.8 }
-};
+import { DAMAGE_TYPE_VS_DEFENSE } from "./combatConstants";
+import type { WeaponDamageType } from "../core/contentTypes";
 
 /**
  * Get all available weapons (raw data).
@@ -108,7 +100,6 @@ export interface DamageOptions {
  */
 export function computeWeaponDamage(
   weapon: WeaponDef,
-  enemyState: { shields: number; hp: number },
   opts: DamageOptions = {}
 ): number {
   const tags = weapon.tags || [];
@@ -123,32 +114,19 @@ export function computeWeaponDamage(
   }
 
   let dmg = weapon.damage;
-  const layer: DefenseLayer = enemyState.shields > 0 ? "shields" : "hull";
-  const layerMultiplier = DAMAGE_MATRIX[weapon.damageType as DamageType]?.[layer] ?? 1;
-  const baseMod = layer === "shields" ? weapon.shieldMod : weapon.armorMod;
-  dmg *= baseMod * layerMultiplier;
-
-  if (layer === "shields" && tags.includes("shield_breaker")) {
-    dmg *= 1.2;
-  }
-  if (layer === "hull" && tags.includes("armor_piercing")) {
-    dmg *= 1.2;
-  }
-
   if (Math.random() < weapon.critChance) {
     dmg *= weapon.critMultiplier;
   }
 
   dmg *= opts.damageMultiplier ?? 1;
-
   return Math.max(0, Math.round(dmg));
 }
 
-const TYPE_LABELS: Record<DamageType, string> = {
+const TYPE_LABELS: Record<WeaponDamageType, string> = {
   kinetic: "Kinetic",
-  thermal: "Thermal",
-  plasma: "Plasma",
-  EM: "EM"
+  energy: "Energy",
+  explosive: "Explosive",
+  disruptive: "Disruptive"
 };
 
 const TAG_NOTES: Record<string, string> = {
@@ -178,11 +156,11 @@ export interface WeaponHint {
 }
 
 export function getWeaponHint(weapon: WeaponDef): WeaponHint {
-  const dt = weapon.damageType as DamageType;
-  const matrix = DAMAGE_MATRIX[dt] ?? DAMAGE_MATRIX.kinetic;
+  const dt = weapon.damageType as WeaponDamageType;
+  const matrix = DAMAGE_TYPE_VS_DEFENSE[dt] ?? DAMAGE_TYPE_VS_DEFENSE.kinetic;
 
-  const vsShields = describeValue(matrix.shields);
-  const vsHull = describeValue(matrix.hull);
+  const vsShields = describeValue(matrix.vsShields);
+  const vsHull = describeValue(matrix.vsHull);
 
   let role = "Balanced";
   if (vsShields === "Strong" && vsHull === "Weak") {

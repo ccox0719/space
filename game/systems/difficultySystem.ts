@@ -55,6 +55,43 @@ export function getDifficultyWeights(state: GameState): {
   return { easyWeight, mediumWeight, hardWeight };
 }
 
+const PLAYER_POWER_DIVISOR = 30;
+
+export function refreshDifficultyDay(state: GameState): void {
+  if (!state.difficulty) return;
+  state.difficulty.day = state.time.day;
+  state.difficulty.playerPowerScore = Math.max(
+    1,
+    Math.round(computePlayerPower(state) / PLAYER_POWER_DIVISOR)
+  );
+}
+
+export function adjustTension(state: GameState, delta: number): void {
+  if (!state.difficulty) return;
+  const tension = state.difficulty.tension + delta;
+  state.difficulty.tension = Math.max(0, Math.min(100, tension));
+}
+
+export function getEnemyScale(state: GameState): number {
+  if (!state.difficulty) return 1;
+  const playerPowerScore = Math.max(
+    1,
+    Math.round(computePlayerPower(state) / PLAYER_POWER_DIVISOR)
+  );
+  state.difficulty.playerPowerScore = playerPowerScore;
+  const dayFactor = state.difficulty.day * 0.03;
+  const powerFactor = playerPowerScore * 0.02;
+  const tensionFactor = state.difficulty.tension * 0.01;
+  const scale = 1 + dayFactor + powerFactor + tensionFactor;
+  return Math.max(1, scale);
+}
+
+export function tickDifficulty(state: GameState): void {
+  if (!state.difficulty) return;
+  const drain = Math.max(0.5, computeDayPressure(state.time.day)) * 0.05;
+  adjustTension(state, -Math.min(state.difficulty.tension, drain));
+}
+
 function sumWeaponPower(weaponIds: (string | null | undefined)[]): number {
   return weaponIds.reduce((total, id) => {
     if (!id) return total;

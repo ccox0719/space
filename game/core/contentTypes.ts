@@ -233,7 +233,37 @@ export interface ComponentDef {
 
 export type WeaponType = "energy" | "projectile" | "missile" | "hybrid";
 export type WeaponSize = "small" | "medium" | "large";
-export type WeaponDamageType = "kinetic" | "thermal" | "plasma" | "EM";
+export type WeaponDamageType = "kinetic" | "energy" | "explosive" | "disruptive";
+
+export type EncounterRow = "front" | "back";
+
+export interface EnemyPosition {
+  lane: number;
+  row: EncounterRow;
+}
+
+export type EnemyRole = "frontline" | "backline" | "support";
+
+export interface EncounterEnemyDef {
+  shipId: string;
+  position?: EnemyPosition;
+  role?: EnemyRole;
+  prefersLane?: number | "any";
+}
+
+export interface EncounterTemplate {
+  id: string;
+  name: string;
+  tags?: string[];
+  enemies: EncounterEnemyDef[];
+}
+
+export type WeaponTargetingMode =
+  | "frontOnly"
+  | "laneAny"
+  | "ignoreCover"
+  | "linePierce"
+  | "splashLane";
 
 export interface WeaponDef {
   id: string;
@@ -252,6 +282,10 @@ export interface WeaponDef {
   cooldown: number;
   price: number;
   tags: string[];
+  targetingMode?: WeaponTargetingMode;
+  canBypassCover?: boolean;
+  splashRadius?: number;
+  linePierce?: boolean;
 }
 
 export interface CommodityDef {
@@ -278,7 +312,17 @@ export interface EnemyDef {
   canEscape: boolean;
   weaponIds: string[];
   hardpoints: HardpointDef[];
-   tags?: string[];
+  tags?: string[];
+  faction?: string;
+  damageTypeFocus?: WeaponDamageType;
+}
+
+export interface FactionDef {
+  id: string;
+  name: string;
+  description: string;
+  preferredDamage: WeaponDamageType[];
+  role: string;
 }
 
 export interface GameContent {
@@ -291,7 +335,9 @@ export interface GameContent {
   weapons: WeaponDef[];
   commodities: CommodityDef[];
   enemies: EnemyDef[];
+  encounters: EncounterTemplate[];
   events: GameEvent[];
   lootTables: LootTable[];
   missions: MissionDef[];
+  factions: FactionDef[];
 }

@@ -259,8 +259,13 @@ export function startMiningSession(
   systemId: string,
   beltId?: string,
   resourceId?: string,
-  options?: { force?: boolean }
-) {
+  options?: { force?: boolean; easySignals?: boolean }
+): boolean {
+  if (state.lastMiningSystemId === systemId) {
+    state.notifications.push("You need to travel to another system before mining again.");
+    return false;
+  }
+
   const belt = pickBelt(systemId, beltId);
   const beltState = ensureBeltState(state, belt.id);
   if (options?.force) {
@@ -270,7 +275,7 @@ export function startMiningSession(
     state.notifications.push(
       `This belt is depleted. It will recover by day ${beltState.depletedUntilDay}.`
     );
-    return;
+    return false;
   }
   const baseChance = 0;
   const grid = createGrid();
@@ -299,12 +304,15 @@ export function startMiningSession(
     veinRow: row,
     veinCol: col,
     veinDepth: depth,
+    lowSignalMode: Boolean(options?.easySignals),
     accumulatedOre: {},
     beltName: belt.name,
     lastMessage: "Belt initialized. Stability nominal.",
     lastYield: undefined,
     samples: []
   };
+  state.lastMiningSystemId = systemId;
+  return true;
 }
 
 export function setMiningDepth(state: GameState, depth: number) {
@@ -341,7 +349,10 @@ export function drillSurveyCell(state: GameState, row: number, col: number) {
   const noiseScale = Math.max(0.2, 1 - session.drillsUsed * 0.04);
   const noise = (Math.random() * 2 - 1) * noiseScale;
   const baseSignal = 10 - penalty;
-  const signal = clamp(Math.round(baseSignal + noise), 0, 10);
+  let signal = clamp(Math.round(baseSignal + noise), 0, 10);
+  if (session.lowSignalMode) {
+    signal = clamp(signal, 0, 5);
+  }
 
   const dirClass = computeDirectionClass(session.veinRow ?? 0, session.veinCol ?? 0, r, c);
   const depthHint = depthHintClass(depth, session.veinDepth ?? 3);

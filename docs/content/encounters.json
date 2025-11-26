@@ -1,0 +1,133 @@
+[
+  {
+    "id": "pirate_raider_charge",
+    "name": "Pirate Raider Charge",
+    "tags": ["pirate", "raider"],
+    "enemies": [
+      {
+        "shipId": "raider_skiff",
+        "position": { "lane": 0, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 0
+      },
+      {
+        "shipId": "raider_skiff",
+        "position": { "lane": 1, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 1
+      },
+      {
+        "shipId": "pirate_cutter",
+        "position": { "lane": 0, "row": "back" },
+        "role": "backline",
+        "prefersLane": 0
+      }
+    ]
+  },
+  {
+    "id": "ghost_fleet_scout",
+    "name": "Ghost Fleet Scout",
+    "tags": ["ghost", "disruptive"],
+    "enemies": [
+      {
+        "shipId": "cult_frigate",
+        "position": { "lane": 1, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 1
+      },
+      {
+        "shipId": "raider_skiff",
+        "position": { "lane": 1, "row": "back" },
+        "role": "support",
+        "prefersLane": 1
+      },
+      {
+        "shipId": "syndicate_raider",
+        "position": { "lane": 2, "row": "back" },
+        "role": "support",
+        "prefersLane": 2
+      }
+    ]
+  },
+  {
+    "id": "navy_barrage",
+    "name": "Navy Barrage",
+    "tags": ["navy"],
+    "enemies": [
+      {
+        "shipId": "armored_gunboat",
+        "position": { "lane": 0, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 0
+      },
+      {
+        "shipId": "navy_interceptor",
+        "position": { "lane": 0, "row": "back" },
+        "role": "backline",
+        "prefersLane": 0
+      },
+      {
+        "shipId": "navy_interceptor",
+        "position": { "lane": 1, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 1
+      }
+    ]
+  },
+  {
+    "id": "pirate_bulwark_screen",
+    "name": "Pirate Bulwark Screen",
+    "tags": ["pirate", "tank"],
+    "enemies": [
+      {
+        "shipId": "pirate_bulwark",
+        "position": { "lane": 1, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 1
+      },
+      {
+        "shipId": "pirate_cover_skiff",
+        "position": { "lane": 1, "row": "back" },
+        "role": "backline",
+        "prefersLane": 1
+      },
+      {
+        "shipId": "pirate_reaver",
+        "position": { "lane": 0, "row": "back" },
+        "role": "support",
+        "prefersLane": 0
+      }
+    ]
+  },
+  {
+    "id": "pirate_guarded_charge",
+    "name": "Guarded Pirate Charge",
+    "tags": ["pirate", "raider"],
+    "enemies": [
+      {
+        "shipId": "pirate_bulwark",
+        "position": { "lane": 0, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 0
+      },
+      {
+        "shipId": "pirate_reaver",
+        "position": { "lane": 1, "row": "front" },
+        "role": "frontline",
+        "prefersLane": 1
+      },
+      {
+        "shipId": "pirate_cover_skiff",
+        "position": { "lane": 0, "row": "back" },
+        "role": "backline",
+        "prefersLane": 0
+      },
+      {
+        "shipId": "pirate_cover_skiff",
+        "position": { "lane": 1, "row": "back" },
+        "role": "backline",
+        "prefersLane": 1
+      }
+    ]
+  }
+]
