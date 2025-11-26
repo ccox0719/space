@@ -52,8 +52,19 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
           ${active
             .map((mission) => {
               const req = mission.requirements || {};
-              const systemName = formatMissionSystem(req.travel?.systemId);
-              const systemRange = formatMissionRange(req.travel?.systemId);
+              const systemId = resolveMissionSystemId(mission);
+              const systemName = formatMissionSystem(systemId);
+              const systemRange = formatMissionRange(systemId);
+              const system = getSystemById(systemId ?? "");
+              const regionLabel = system?.region
+                ? `Region: ${sanitizeKey(system.region)}`
+                : "";
+              const keywordList =
+                system?.tags?.length > 0
+                  ? `Keywords: ${system.tags
+                      .map((tag) => sanitizeKey(tag))
+                      .join(", ")}`
+                  : "";
               return `
                 <article class="contract-row contract-row--active" onclick="abandonMission('${mission.id}')">
                   <div class="contract-row__main">
@@ -67,6 +78,8 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
                   </div>
                   <div class="contract-row__info">
                     <span>System: ${systemName}${systemRange ? ` - ${systemRange}` : ""}</span>
+                    ${regionLabel ? `<span>${regionLabel}</span>` : ""}
+                    ${keywordList ? `<span>${keywordList}</span>` : ""}
                   </div>
                 </article>
               `;
@@ -82,17 +95,22 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
     ? [available[0].id]
     : [];
   const groupedAvailable = available.reduce((map, mission) => {
-    const systemId = mission.requirements?.travel?.systemId || "unknown";
-    const systemName = formatMissionSystem(systemId);
-    const key = systemName;
+    const systemId = resolveMissionSystemId(mission) ?? "unknown";
+    const key = systemId;
     const items = map.get(key) ?? [];
     items.push(mission);
     map.set(key, items);
     return map;
   }, new Map<string, typeof available>());
 
-  const formatAvailableSection = (title: string, missions: typeof available) => {
+  const formatAvailableSection = (systemId: string, missions: typeof available) => {
     if (!missions.length) return "";
+    const system = getSystemById(systemId);
+    const regionLabel = system?.region ? `Region: ${sanitizeKey(system.region)}` : "";
+    const keywordList = system?.tags?.length
+      ? `Keywords: ${system.tags.map((tag) => sanitizeKey(tag)).join(", ")}`
+      : "";
+    const title = system ? system.name : "Unknown Region";
     return `
       <div class="contract-list contract-section">
         <h3 class="panel-title tiny">${title}</h3>
@@ -102,6 +120,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
             if (selectionForRows.includes(mission.id)) {
               rowClasses.push("contract-row--active");
             }
+            const range = formatMissionRange(systemId);
             return `
               <article class="${rowClasses.join(" ")}" onclick="acceptContract('${mission.id}')">
                 <div class="contract-row__main">
@@ -110,7 +129,9 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
                 </div>
                 <p class="muted">${mission.description}</p>
                 <div class="contract-row__info">
-                  <span>System: ${title}</span>
+                  <span>System: ${title}${range ? ` - ${range}` : ""}</span>
+                  ${regionLabel ? `<span>${regionLabel}</span>` : ""}
+                  ${keywordList ? `<span>${keywordList}</span>` : ""}
                   <span>Reward: ${formatReward(mission.reward)}</span>
                 </div>
               </article>
@@ -123,7 +144,7 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
 
   const availableList = groupedAvailable.size
     ? Array.from(groupedAvailable.entries())
-        .map(([systemName, missions]) => formatAvailableSection(systemName, missions))
+        .map(([systemId, missions]) => formatAvailableSection(systemId, missions))
         .join("")
     : "<p class=\"muted\">No available missions.</p>";
 
@@ -212,6 +233,39 @@ function formatReward(
     parts.push(`Weapon: ${weaponName}`);
   }
   return parts.join(" | ") || "None";
+}
+
+function sanitizeKey(value: string): string {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function resolveMissionSystemId(mission: { requirements?: Record<string, any>; description?: string }): string | undefined {
+  const req = mission.requirements || {};
+  if (req.travel?.systemId) return req.travel.systemId;
+  if (req.deliver?.systemId) return req.deliver.systemId;
+  if (req.combat?.systemId) return req.combat.systemId;
+  if (Array.isArray(req.multiTravel) && req.multiTravel.length) {
+    const first = req.multiTravel[0];
+    return typeof first === "string" ? first : first?.systemId;
+  }
+  if (mission.description) {
+    return findSystemIdByDescription(mission.description);
+  }
+  return undefined;
+}
+
+function findSystemIdByDescription(description: string): string | undefined {
+  const map = getStarMap();
+  if (!map) return undefined;
+  const normalized = description.toLowerCase();
+  for (const node of map.nodes) {
+    if (!node.name) continue;
+    if (normalized.includes(node.name.toLowerCase())) return node.id;
+  }
+  return undefined;
 }
 
 declare global {
