@@ -132,7 +132,6 @@ type BoardState = {
 
 const VOLLEY_ORDER: WeaponDamageType[] = ["disruptive", "energy", "kinetic", "explosive"];
 const HEAT_RUNNING_THRESHOLD = 0.55;
-const HEAT_OVERHEAT_THRESHOLD = 0.9;
 const HEAT_DECAY_RATE = 50;
 const HEAT_DECAY_OVERHEAT_RATE = 25;
 const OVERHEAT_COOLDOWN_TURNS = 2;
@@ -153,8 +152,8 @@ function applyHeatGain(heatGain: number, label?: string) {
     log("Heat stabilizers warning: systems running hot.");
   }
 
-  const overheatThreshold = maxHeat * HEAT_OVERHEAT_THRESHOLD;
-  if (prevHeat < overheatThreshold && ship.heat >= overheatThreshold) {
+  const wasOverheated = ship.overheated;
+  if (!wasOverheated && ship.heat >= maxHeat) {
     ship.overheated = true;
     ship.overheatTurns = OVERHEAT_COOLDOWN_TURNS;
     log("Warning: heat levels have maxed out; systems overheated!");
@@ -171,6 +170,7 @@ function applyHeatGain(heatGain: number, label?: string) {
     const combat = gameState.combat;
     if (combat) {
       combat.lastHeatDelta = `Heat ${labelText}+${Math.round(heatGain)} → ${ship.heat}/${maxHeat}`;
+      combat.heatAccumulated = (combat.heatAccumulated ?? 0) + Math.round(heatGain);
     }
   }
 }
@@ -195,7 +195,7 @@ function getHeatAccuracyMultiplier(): number {
   const ship = gameState.ship;
   const maxHeat = ship.maxHeat || 100;
   const fraction = maxHeat > 0 ? ship.heat / maxHeat : 0;
-  if (ship.overheated || fraction >= HEAT_OVERHEAT_THRESHOLD) {
+  if (ship.overheated) {
     return 0.75;
   }
   if (fraction >= HEAT_RUNNING_THRESHOLD) {
@@ -207,24 +207,14 @@ function getHeatAccuracyMultiplier(): number {
 function heatDecay() {
   const ship = gameState.ship;
   const decay = ship.overheated ? HEAT_DECAY_OVERHEAT_RATE : HEAT_DECAY_RATE;
-  ship.heat = Math.max(0, ship.heat - decay);
-  if (ship.heat === 0) {
-    ship.overheated = false;
-  }
+  const prevHeat = ship.heat;
+  const newHeat = Math.max(0, prevHeat - decay);
+  ship.heat = newHeat;
   if (ship.overheated && ship.overheatTurns > 0) {
     ship.overheatTurns = Math.max(0, ship.overheatTurns - 1);
-    if (ship.overheatTurns === 0 && ship.heat === 0) {
-      ship.overheated = false;
-    }
   }
-}
-
-function getHeatStatus(): string {
-  const ship = gameState.ship;
   const maxHeat = ship.maxHeat || 100;
-  if (ship.overheated) return "Overheated";
-  if (ship.heat >= maxHeat * HEAT_RUNNING_THRESHOLD) return "Running Hot";
-  return "Stable";
+  ship.overheated = ship.heat >= maxHeat;
 }
 
 const FRONT_RETREAT_HP_THRESHOLD = 0.4;
@@ -681,6 +671,7 @@ export function startCombat(enemyId: string, opts: CombatReturn = {}) {
     round: 1,
     log: [`${encounterName} engages you in combat!`],
     adviceToken: Math.random(),
+    heatAccumulated: 0,
     returnTo: opts.returnScreen,
     returnParams: opts.returnParams,
     overheatPenaltyTurns: 0,

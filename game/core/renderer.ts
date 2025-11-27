@@ -88,31 +88,39 @@ const DEV_CONTROL_SECTIONS: { title: string; controls: DevControl[] }[] = [
   },
 {
   title: "Combat",
-  controls: [
-    {
-      path: "combat.enemyHpMultiplier",
-      label: "Enemy HP Multiplier",
-      min: 0.25,
-      max: 5,
-      step: 0.05,
-      formatter: (value) => `${value.toFixed(2)}x`
-    },
-    {
-      path: "combat.enemyDamageMultiplier",
-      label: "Enemy Damage Multiplier",
-      min: 0.25,
-      max: 5,
-      step: 0.05,
-      formatter: (value) => `${value.toFixed(2)}x`
-    },
-    {
-      path: "combat.creditsRewardMultiplier",
-      label: "Combat Credits Reward",
-      min: 0.1,
-      max: 5,
-      step: 0.1,
-      formatter: (value) => `${value.toFixed(2)}x`
-    },
+    controls: [
+      {
+        path: "combat.enemyHpMultiplier",
+        label: "Enemy HP Multiplier",
+        min: 0.25,
+        max: 5,
+        step: 0.05,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "combat.enemyDamageMultiplier",
+        label: "Enemy Damage Multiplier",
+        min: 0.25,
+        max: 5,
+        step: 0.05,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "combat.enemyAccuracyMultiplier",
+        label: "Enemy Accuracy Multiplier",
+        min: 0.1,
+        max: 2,
+        step: 0.05,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
+      {
+        path: "combat.creditsRewardMultiplier",
+        label: "Combat Credits Reward",
+        min: 0.1,
+        max: 5,
+        step: 0.1,
+        formatter: (value) => `${value.toFixed(2)}x`
+      },
     {
       path: "combat.enemyCountMin",
       label: "Min Enemy Count",

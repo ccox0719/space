@@ -158,16 +158,6 @@ function renderEnemySlotButton(
   `;
 }
 
-function getHeatStatus(ship: typeof gameState.ship): string {
-  if (ship.overheated) {
-    return `Overheated (${ship.overheatTurns} turn${ship.overheatTurns === 1 ? "" : "s"} to cool)`;
-  }
-  const maxHeat = ship.maxHeat || 100;
-  const fraction = maxHeat > 0 ? ship.heat / maxHeat : 0;
-  if (fraction >= 0.7) return "Running Hot";
-  return "Stable";
-}
-
 export function CombatScreen(): string {
   const c = gameState.combat;
 
@@ -245,6 +235,7 @@ export function CombatScreen(): string {
       : '<div class="enemy-slot muted-chip">No enemies in formation.</div>';
 
   const isOverheated = ship.overheated;
+  const overheatTooltip = isOverheated ? "Weapons offline: ship overheated" : "";
   const weaponRows = ship.hardpoints
     .map((hp, idx) => {
       const weaponId = ship.weapons[idx];
@@ -257,8 +248,8 @@ export function CombatScreen(): string {
           <p class="value-inline">${weapon?.name || "Empty"}</p>
           <p class="muted">${cooldown > 0 ? `Cooling (${cooldown})` : "Ready"}</p>
           <div class="app-actions">
-            <button class="btn btn-primary ${isOverheated ? "overheat-disabled" : ""}" ${ready && !isOverheated ? "" : "disabled"} onclick="fireWeapon(${idx}, 'normal')">Fire</button>
-            <button class="btn btn-ghost ${isOverheated ? "overheat-disabled" : ""}" ${ready && !isOverheated ? "" : "disabled"} onclick="fireWeapon(${idx}, 'called_shot')">Called Shot</button>
+            <button class="btn btn-primary ${isOverheated ? "overheat-disabled" : ""}" title="${overheatTooltip}" ${ready && !isOverheated ? "" : "disabled"} onclick="fireWeapon(${idx}, 'normal')">Fire</button>
+            <button class="btn btn-ghost ${isOverheated ? "overheat-disabled" : ""}" title="${overheatTooltip}" ${ready && !isOverheated ? "" : "disabled"} onclick="fireWeapon(${idx}, 'called_shot')">Called Shot</button>
           </div>
         </div>
       `;
@@ -279,7 +270,12 @@ export function CombatScreen(): string {
   const stanceDef = getStanceDefinition(c.playerStance);
   const stanceIconClass = STANCE_ICON_MAP[c.playerStance] ?? "bi bi-flag";
   const displayMaxHeat = ship.maxHeat || 100;
-  const heatStatus = getHeatStatus(ship);
+  const accumulatedHeat = Math.min(c.heatAccumulated ?? 0, displayMaxHeat);
+  const heatValue = `Heat: ${accumulatedHeat} / ${displayMaxHeat}`;
+  const hudHeatText = isOverheated
+    ? `${heatValue} - OVERHEATED (weapons and shields offline)`
+    : heatValue;
+  const shipHeatNote = isOverheated ? "Overheated" : "";
   const shipStatsGrid = `
     <div class="ship-stats-grid">
       <div class="ship-stat">
@@ -309,7 +305,7 @@ export function CombatScreen(): string {
           <span>Heat</span>
           <strong>${ship.heat}/${ship.maxHeat}</strong>
         </div>
-        <small class="muted">${heatStatus}</small>
+        ${shipHeatNote ? `<small class="muted">${shipHeatNote}</small>` : ""}
       </div>
     </div>
   `;
@@ -383,9 +379,8 @@ export function CombatScreen(): string {
           </span>
           <span class="hud-stat">
             <i class="bi bi-thermometer-half"></i>
-            Heat ${ship.heat}/${displayMaxHeat} (${heatStatus})
+            ${hudHeatText}
           </span>
-          <span class="hud-heat-delta muted">${c.lastHeatDelta || ""}</span>
         </div>
       </div>
       <div class="hud-meta-column">
@@ -426,10 +421,12 @@ export function CombatScreen(): string {
         <p class="label small">Actions</p>
         <div class="app-actions combat-actions combat-majors">
           <button class="btn btn-primary ${isOverheated ? "overheat-disabled" : ""}"
+            title="${overheatTooltip}"
             onclick="fireAllWeapons('normal')" ${isOverheated ? "disabled" : ""}>
             Fire All
           </button>
           <button class="btn btn-ghost ${isOverheated ? "overheat-disabled" : ""}"
+            title="${overheatTooltip}"
             onclick="fireAllWeapons('called_shot')" ${isOverheated ? "disabled" : ""}>
             Called Shots
           </button>

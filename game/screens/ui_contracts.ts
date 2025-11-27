@@ -6,7 +6,8 @@ import {
   acceptMission,
   abandonMission,
   describeMission,
-  getMissionProgress
+  getMissionProgress,
+  getMissionById
 } from "../systems/missionSystem";
 import { getWeaponById } from "../systems/weaponSystem";
 import { getSystemById } from "../core/engine";
@@ -80,6 +81,11 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
                     <span>System: ${systemName}${systemRange ? ` - ${systemRange}` : ""}</span>
                     ${regionLabel ? `<span>${regionLabel}</span>` : ""}
                     ${keywordList ? `<span>${keywordList}</span>` : ""}
+                    ${
+                      systemId
+                        ? `<button class="btn btn-ghost btn-small" onclick="event.stopPropagation(); focusContractTravel('${systemId}')">Travel here</button>`
+                        : ""
+                    }
                   </div>
                 </article>
               `;
@@ -114,28 +120,28 @@ export function ContractsScreen(params: Record<string, unknown> = {}): string {
     return `
       <div class="contract-list contract-section">
         <h3 class="panel-title tiny">${title}</h3>
-        ${missions
-          .map((mission) => {
-            const rowClasses = ["contract-row"];
-            if (selectionForRows.includes(mission.id)) {
-              rowClasses.push("contract-row--active");
-            }
-            const range = formatMissionRange(systemId);
-            return `
-              <article class="${rowClasses.join(" ")}" onclick="acceptContract('${mission.id}')">
-                <div class="contract-row__main">
-                  <span class="contract-row__name">${mission.name}</span>
-                  <span class="contract-type">${mission.type}</span>
-                </div>
-                <p class="muted">${mission.description}</p>
-                <div class="contract-row__info">
-                  <span>System: ${title}${range ? ` - ${range}` : ""}</span>
-                  ${regionLabel ? `<span>${regionLabel}</span>` : ""}
-                  ${keywordList ? `<span>${keywordList}</span>` : ""}
-                  <span>Reward: ${formatReward(mission.reward)}</span>
-                </div>
-              </article>
-            `;
+              ${missions
+                .map((mission) => {
+                  const rowClasses = ["contract-row"];
+                  if (selectionForRows.includes(mission.id)) {
+                    rowClasses.push("contract-row--active");
+                  }
+                  const range = formatMissionRange(systemId);
+                  return `
+                    <article class="${rowClasses.join(" ")}" onclick="acceptContract('${mission.id}')">
+                      <div class="contract-row__main">
+                        <span class="contract-row__name">${mission.name}</span>
+                        <span class="contract-type">${mission.type}</span>
+                      </div>
+                      <p class="muted">${mission.description}</p>
+                      <div class="contract-row__info">
+                        <span>System: ${title}${range ? ` - ${range}` : ""}</span>
+                        ${regionLabel ? `<span>${regionLabel}</span>` : ""}
+                        ${keywordList ? `<span>${keywordList}</span>` : ""}
+                        <span>Reward: ${formatReward(mission.reward)}</span>
+                      </div>
+                    </article>
+                  `;
           })
           .join("")}
       </div>
@@ -272,6 +278,7 @@ declare global {
   interface Window {
     acceptContract: (missionId: string) => void;
     abandonMission: (missionId: string) => void;
+    focusContractTravel: (systemId: string) => void;
   }
 }
 
@@ -285,5 +292,10 @@ window.abandonMission = (missionId: string) => {
   const result = abandonMission(missionId);
   const message = result.success ? "Mission abandoned." : result.reason || "Unable to abandon.";
   nav("contracts", { message });
+};
+
+window.focusContractTravel = (systemId: string) => {
+  if (!systemId) return;
+  nav("travel", { focusTargetId: systemId });
 };
 

@@ -281,6 +281,7 @@ export interface CombatState {
   overheatPenaltyTurns?: number;
   overheatModalVisible?: boolean;
   lastHeatDelta?: string;
+  heatAccumulated?: number;
 }
 
 export interface MiningSample {
@@ -628,7 +629,7 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
     maxEncountersPerDay: 10,
     enemyHpMultiplier: 0.6,
     enemyDamageMultiplier: 0.4,
-    enemyAccuracyMultiplier: 0.6,
+    enemyAccuracyMultiplier: 0.8,
     enemyCountMin: 1,
     enemyCountMax: 1,
     difficultyScalePerDay: 0,
