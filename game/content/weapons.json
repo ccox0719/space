@@ -30,6 +30,7 @@
     "critMultiplier": 1.8,
     "energyCost": 6,
     "cooldown": 2,
+    "canBypassCover": true,
     "price": 2100,
     "tags": ["alpha_strike", "area", "armor_piercing"]
   },
@@ -132,6 +133,7 @@
     "critMultiplier": 1.7,
     "energyCost": 3,
     "cooldown": 2,
+    "canBypassCover": true,
     "price": 1300,
     "tags": ["alpha_strike", "armor_piercing"]
   },

@@ -2,8 +2,8 @@
   {
     "id": "pirate_cutter",
     "name": "Pirate Cutter",
-    "hull": 80,
-    "shields": 25,
+    "hull": 68,
+    "shields": 21,
     "canEscape": true,
     "weaponIds": ["coil_autocannon"],
     "hardpoints": [{ "size": "small", "type": "projectile" }],
@@ -12,8 +12,8 @@
   {
     "id": "raider_skiff",
     "name": "Raider Skiff",
-    "hull": 60,
-    "shields": 15,
+    "hull": 51,
+    "shields": 13,
     "canEscape": true,
     "weaponIds": ["laser_mk1", "stinger_missiles"],
     "hardpoints": [
@@ -25,8 +25,8 @@
   {
     "id": "syndicate_raider",
     "name": "Syndicate Raider",
-    "hull": 110,
-    "shields": 30,
+    "hull": 94,
+    "shields": 26,
     "canEscape": true,
     "weaponIds": ["railgun_mk1", "stinger_missiles"],
     "hardpoints": [
@@ -78,8 +78,8 @@
   {
     "id": "pirate_bulwark",
     "name": "Pirate Bulwark",
-    "hull": 170,
-    "shields": 90,
+    "hull": 144,
+    "shields": 76,
     "canEscape": false,
     "weaponIds": ["mass_driver", "coil_autocannon"],
     "hardpoints": [
@@ -91,8 +91,8 @@
   {
     "id": "pirate_reaver",
     "name": "Pirate Reaver",
-    "hull": 95,
-    "shields": 25,
+    "hull": 81,
+    "shields": 21,
     "canEscape": true,
     "weaponIds": ["railgun_mk1", "stinger_missiles"],
     "hardpoints": [
@@ -104,8 +104,8 @@
   {
     "id": "pirate_cover_skiff",
     "name": "Cover Skiff",
-    "hull": 70,
-    "shields": 30,
+    "hull": 60,
+    "shields": 26,
     "canEscape": true,
     "weaponIds": ["laser_mk1"],
     "hardpoints": [{ "size": "small", "type": "energy" }],

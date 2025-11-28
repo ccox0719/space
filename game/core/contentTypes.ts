@@ -220,6 +220,19 @@ export interface ShipDef {
   passive?: ShipPassive;
 }
 
+export type ComponentAbilityType = "pull" | "push";
+
+export type ComponentAbilityStatus = "jammed" | "immobilized";
+
+export interface ComponentAbilityDef {
+  id: string;
+  type: ComponentAbilityType;
+  description: string;
+  cooldown?: number;
+  statusEffect?: ComponentAbilityStatus;
+  effectDuration?: number;
+}
+
 export interface ComponentDef {
   id: string;
   name: string;
@@ -229,6 +242,7 @@ export interface ComponentDef {
   value?: number;
   effects?: Record<string, number>;
   slot?: string;
+  ability?: ComponentAbilityDef;
 }
 
 export type WeaponType = "energy" | "projectile" | "missile" | "hybrid";
@@ -304,6 +318,14 @@ export interface CommodityDef {
   };
 }
 
+export interface AiProfile {
+  role: "tank" | "support" | "artillery" | "raider" | "disruptor" | "flagship";
+  prefersFront: boolean;
+  retreatThreshold: number;
+  bravery: number;
+  anchor: boolean;
+}
+
 export interface EnemyDef {
   id: string;
   name: string;
@@ -315,6 +337,7 @@ export interface EnemyDef {
   tags?: string[];
   faction?: string;
   damageTypeFocus?: WeaponDamageType;
+  aiProfile?: AiProfile;
 }
 
 export interface FactionDef {

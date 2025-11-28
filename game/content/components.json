@@ -67,7 +67,7 @@
     "id": "mining_lidar_suite",
     "name": "Mining LiDAR Suite",
     "description": "Precision scanners map veins faster, boosting mining yield and speed.",
-    "cost": 2200,
+    "cost": 1100,
     "effects": {
       "miningYield": 1.15,
       "miningSpeed": 0.9
@@ -77,7 +77,7 @@
     "id": "geo_sampling_lab",
     "name": "Geological Sampling Lab",
     "description": "Onboard lab improves assay quality, raising rare find odds and smoothing payouts.",
-    "cost": 2400,
+    "cost": 1200,
     "effects": {
       "rareFindChance": 1.2,
       "miningPayoutMultiplier": 1.1
@@ -87,7 +87,7 @@
     "id": "trade_forecaster",
     "name": "Trade Forecaster Core",
     "description": "Predictive market suite that marginally boosts sale prices sector-wide.",
-    "cost": 1800,
+    "cost": 900,
     "effects": {
       "sellBonus": 1.05,
       "incomeMultiplier": 1.05
@@ -97,10 +97,38 @@
     "id": "customs_liaison",
     "name": "Customs Liaison",
     "description": "Embedded liaison smooths paperwork and lowers local tariffs on your trades.",
-    "cost": 2000,
+    "cost": 1000,
     "effects": {
       "marketTax": 0.92,
       "buyBonus": 0.97
+    }
+  },
+  {
+    "id": "grappler_array",
+    "name": "Grappler Array",
+    "description": "Reel in distant threats with a powered tether; ready for entrance control.",
+    "cost": 1150,
+    "ability": {
+      "id": "grappler_pull",
+      "type": "pull",
+      "description": "Pull a back-line enemy into the front row and jam their systems for 1 turn.",
+      "cooldown": 3,
+      "statusEffect": "jammed",
+      "effectDuration": 1
+    }
+  },
+  {
+    "id": "repulsor_pulse",
+    "name": "Repulsor Pulse",
+    "description": "Eject a crushing concussive wave that shoves foes backward into containment.",
+    "cost": 1200,
+    "ability": {
+      "id": "repulsor_push",
+      "type": "push",
+      "description": "Push a front-line enemy backward and immobilize them for 1 turn.",
+      "cooldown": 3,
+      "statusEffect": "immobilized",
+      "effectDuration": 1
     }
   }
 ]

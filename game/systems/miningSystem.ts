@@ -474,8 +474,6 @@ export function finalizeSurveyExtraction(state: GameState) {
     approxValue,
     rareFind
   };
-  session.runComplete = true;
-  session.active = false;
 
   const finalThreatGain = 6 + depth * 2;
   const threatMultiplier = Math.max(0, devTune.miningThreatMultiplier ?? 0.7);
@@ -498,6 +496,9 @@ export function finalizeSurveyExtraction(state: GameState) {
     session.threat = 0;
     session.currentPirateChance = 0;
     session.lastMessage = "Pirates detected during extraction! Threat reset.";
+  } else {
+    session.runComplete = true;
+    session.active = false;
   }
 
   recordMiningYield(added + (rareFind?.amount || 0), Boolean(rareFind));

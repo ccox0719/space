@@ -7,7 +7,9 @@ import {
   CALLED_SHOT_TIP,
   BRACE_TIP,
   DAMAGE_TYPE_GUIDE,
-  getCombatAdvice
+  getCombatAdvice,
+  getActiveModuleAbilities,
+  activateModuleAbility
 } from "../systems/combatSystem";
 import { getWeaponById } from "../systems/weaponSystem";
 
@@ -49,6 +51,8 @@ declare global {
     cycleStance: (direction: -1 | 1) => void;
     fireAllWeapons: (aimMode?: "normal" | "called_shot") => void;
     selectEnemySlot: (slotId: string) => void;
+    activateModuleAbility: (componentId: string) => void;
+    useComboFinish: () => void;
   }
 }
 
@@ -94,6 +98,20 @@ window.cycleStance = (direction: -1 | 1) => {
 
 window.fireAllWeapons = (aimMode: "normal" | "called_shot" = "normal") => {
   playerCombatAction("fire_all", undefined, aimMode);
+  if (gameState.combat) {
+    nav("combat");
+  }
+};
+
+window.activateModuleAbility = (componentId: string) => {
+  activateModuleAbility(componentId);
+  if (gameState.combat) {
+    nav("combat");
+  }
+};
+
+window.useComboFinish = () => {
+  playerCombatAction("combo_finish");
   if (gameState.combat) {
     nav("combat");
   }
@@ -234,24 +252,23 @@ export function CombatScreen(): string {
       `
       : '<div class="enemy-slot muted-chip">No enemies in formation.</div>';
 
-  const isOverheated = ship.overheated;
-  const overheatTooltip = isOverheated ? "Weapons offline: ship overheated" : "";
-  const weaponRows = ship.hardpoints
+  const weaponTypeIcon: Record<WeaponType, string> = {
+    energy: "bi-lightning-fill",
+    projectile: "bi-cpu-fill",
+    missile: "bi-rocket-takeoff-fill",
+    hybrid: "bi-shuffle"
+  };
+
+  const weaponSlotsHtml = ship.hardpoints
     .map((hp, idx) => {
       const weaponId = ship.weapons[idx];
       const weapon = getWeaponById(weaponId);
-      const cooldown = c.playerCooldowns[idx] ?? 0;
-      const ready = Boolean(weapon) && cooldown === 0;
+      const label = weapon?.name ?? `Slot ${idx + 1}`;
+      const icon = weapon ? weaponTypeIcon[weapon.type] ?? "bi-crosshair" : "bi-crosshair";
       return `
-        <div class="panel-card">
-          <p class="label">Slot ${idx + 1} · ${hp.size.toUpperCase()} ${hp.type}</p>
-          <p class="value-inline">${weapon?.name || "Empty"}</p>
-          <p class="muted">${cooldown > 0 ? `Cooling (${cooldown})` : "Ready"}</p>
-          <div class="app-actions">
-            <button class="btn btn-primary ${isOverheated ? "overheat-disabled" : ""}" title="${overheatTooltip}" ${ready && !isOverheated ? "" : "disabled"} onclick="fireWeapon(${idx}, 'normal')">Fire</button>
-            <button class="btn btn-ghost ${isOverheated ? "overheat-disabled" : ""}" title="${overheatTooltip}" ${ready && !isOverheated ? "" : "disabled"} onclick="fireWeapon(${idx}, 'called_shot')">Called Shot</button>
-          </div>
-        </div>
+        <button class="weapon-chip" onclick="fireWeapon(${idx}, 'normal')" title="${label}">
+          <i class="bi ${icon}"></i>
+        </button>
       `;
     })
     .join("");
@@ -269,13 +286,14 @@ export function CombatScreen(): string {
 
   const stanceDef = getStanceDefinition(c.playerStance);
   const stanceIconClass = STANCE_ICON_MAP[c.playerStance] ?? "bi bi-flag";
-  const displayMaxHeat = ship.maxHeat || 100;
-  const accumulatedHeat = Math.min(c.heatAccumulated ?? 0, displayMaxHeat);
-  const heatValue = `Heat: ${accumulatedHeat} / ${displayMaxHeat}`;
-  const hudHeatText = isOverheated
-    ? `${heatValue} - OVERHEATED (weapons and shields offline)`
-    : heatValue;
-  const shipHeatNote = isOverheated ? "Overheated" : "";
+  const comboMeterState = c.comboMeter;
+  const comboCharge = comboMeterState?.charge ?? 0;
+  const comboMax = 100;
+  const comboPercent = Math.min(100, Math.round((comboCharge / comboMax) * 100));
+  const comboReady = comboMeterState?.ready;
+  const comboActionHtml = comboReady
+    ? `<button class="btn btn-primary combo-button" onclick="useComboFinish()">Activate ${comboReady.label}</button>`
+    : `<small class="combo-meter-subtle">Mix attacks, movement, and dodges to unlock finishers.</small>`;
   const shipStatsGrid = `
     <div class="ship-stats-grid">
       <div class="ship-stat">
@@ -298,14 +316,6 @@ export function CombatScreen(): string {
           <span>Fuel</span>
           <strong>${ship.fuel}/${ship.maxFuel}</strong>
         </div>
-      </div>
-      <div class="ship-stat">
-        <i class="bi bi-thermometer-half"></i>
-        <div>
-          <span>Heat</span>
-          <strong>${ship.heat}/${ship.maxHeat}</strong>
-        </div>
-        ${shipHeatNote ? `<small class="muted">${shipHeatNote}</small>` : ""}
       </div>
     </div>
   `;
@@ -342,113 +352,149 @@ export function CombatScreen(): string {
       : "Called shots trade accuracy; wait until shields drop for the best payout."
     : "No active targets to shoot at.";
 
+  const moduleAbilities = getActiveModuleAbilities();
+  const moduleActionsHtml = moduleAbilities
+    .map(({ componentId, componentName, ability, ready }) => {
+      const icon = ability.type === "pull" ? "bi-box-arrow-in-left" : "bi-box-arrow-up-right";
+      return `
+        <button
+          class="action-chip module-chip ${ready ? "" : "is-disabled"}"
+          ${ready ? "" : "disabled"}
+          title="${escapeHtml(componentName)}"
+          onclick="activateModuleAbility('${componentId}')"
+        >
+          <i class="bi ${icon}"></i>
+          <span>${escapeHtml(componentName)}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  const primaryActions = [
+    {
+      icon: "bi-bolt-fill",
+      label: "Fire",
+      action: "fireAllWeapons('normal')",
+      title: "Fire all ready weapons"
+    },
+    {
+      icon: "bi-asterisk",
+      label: "Called",
+      action: "fireAllWeapons('called_shot')",
+      title: "Called shots"
+    },
+    {
+      icon: "bi-shield-fill",
+      label: "Brace",
+      action: "brace()",
+      title: "Brace for impact"
+    },
+    {
+      icon: "bi-flag-fill",
+      label: "Flee",
+      action: "flee()",
+      title: "Attempt to flee"
+    }
+  ];
+
+  const controlButtonsHtml = primaryActions
+    .map(
+      ({ icon, label, action, title }) => `
+        <button class="action-chip" title="${title}" onclick="${action}">
+          <i class="bi ${icon}"></i>
+          <span>${label}</span>
+        </button>
+      `
+    )
+    .join("");
+
+  const comboActionButton = `
+    <button
+      class="action-chip combo-chip ${comboReady ? "" : "is-disabled"}"
+      ${comboReady ? "" : "disabled"}
+      title="Combo finisher"
+      onclick="${comboReady ? "useComboFinish()" : "void(0)" }"
+    >
+      <i class="bi bi-lightning-fill"></i>
+      <span>${comboReady ? comboReady.label : "Combo"}</span>
+    </button>
+  `;
+
   const playerChips = buildPlayerChips(c);
   const enemyChips = buildEnemyChips(c, targetSlot);
 
-  const hudHtml = `
-    <div class="combat-hud">
-      <div class="stance-dial-row">
-        <div class="stance-dial">
-          <button class="dial-btn" onclick="cycleStance(-1)">
-            <i class="bi bi-chevron-left"></i>
-          </button>
-          <div class="stance-dial__current">
-            <i class="${stanceIconClass}"></i>
-            <span>${stanceDef.label}</span>
+  const controlWindow = `
+    <section class="cc-section control-shell">
+      <div class="control-header">
+        <span class="control-label">Target</span>
+        <strong class="control-target">${targetSlot?.name ?? "No target"}</strong>
+        <span class="control-sub">${targetSlot?.position.row === "back" ? "Backline" : "Frontline"}</span>
+      </div>
+      <div class="status-row">
+        <div class="stat-chip">
+          <i class="bi bi-heart-fill"></i>
+          <span>${ship.hp}/${ship.maxHp}</span>
+        </div>
+        <div class="stat-chip">
+          <i class="bi bi-shield-fill"></i>
+          <span>${ship.shields}/${ship.maxShields}</span>
+        </div>
+        <div class="stat-chip">
+          <i class="bi bi-fuel-pump"></i>
+          <span>${ship.fuel}/${ship.maxFuel}</span>
+        </div>
+      </div>
+      <div class="stance-row">
+        <button class="stance-nav" onclick="cycleStance(-1)">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <span class="stance-label">${stanceDef.label}</span>
+        <button class="stance-nav" onclick="cycleStance(1)">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+      <div class="combo-control-meter">
+        <div class="combo-meter combo-inner-meter">
+          <div class="combo-meter-bar">
+            <div class="combo-meter-bar-fill" style="width: ${comboPercent}%"></div>
           </div>
-          <button class="dial-btn" onclick="cycleStance(1)">
-            <i class="bi bi-chevron-right"></i>
-          </button>
+          <div class="combo-meter-meta">
+            <span>Combo ${comboCharge}/${comboMax}</span>
+            <span class="combo-meter-ready">
+              ${comboReady ? `${comboReady.label} ready` : "fill meter"}
+            </span>
+          </div>
         </div>
       </div>
-      <div class="hud-stats-column">
-        <div class="hud-ship-name">${ship.name}</div>
-        <div class="hud-stats">
-          <span class="hud-stat">
-            <i class="bi bi-heart-fill"></i>
-            Hull ${ship.hp}/${ship.maxHp}
-          </span>
-          <span class="hud-stat">
-            <i class="bi bi-shield-fill"></i>
-            Shields ${ship.shields}/${ship.maxShields}
-            ${isOverheated ? '<span class="hud-shield-status">offline</span>' : ""}
-          </span>
-          <span class="hud-stat">
-            <i class="bi bi-fuel-pump"></i>
-            Fuel ${ship.fuel}/${ship.maxFuel}
-          </span>
-          <span class="hud-stat">
-            <i class="bi bi-thermometer-half"></i>
-            ${hudHeatText}
-          </span>
-        </div>
+      <div class="action-grid">
+        ${controlButtonsHtml}
+        ${comboActionButton}
+        ${moduleActionsHtml}
       </div>
-      <div class="hud-meta-column">
-        <div class="hud-center">
-          <span>${c.encounter.name}</span>
-          <span>Enemies ${enemyCount}</span>
-          <span>Round ${c.round}</span>
-        </div>
+      <div class="weapon-chip-row">
+        ${weaponSlotsHtml}
+      </div>
+    </section>
+  `;
+
+  const hudHtml = `
+    <div class="combat-hud combo-hud">
+      <div class="combo-meta">
+        <span>${c.encounter.name}</span>
+        <span>Enemies ${enemyCount}</span>
+        <span>Round ${c.round}</span>
       </div>
     </div>
   `;
 
-  const overheatModalHtml =
-    c.overheatModalVisible && gameState.ship.overheated
-      ? `
-        <div class="overheat-modal">
-          <div class="overheat-modal__card">
-            <h3>Overheated!</h3>
-            <p>Systems have maxed out. Enemies get two free turns while you cool down.</p>
-          </div>
-        </div>
-      `
-      : "";
 
   const commandConsole = `
     <div class="command-console">
-      <section class="cc-section">
-        <div class="target-row">
-          <span class="label">Target</span>
-          <span class="target-name">${targetSlot?.name ?? "No target"}</span>
+      ${controlWindow}
+      <section class="cc-section stance-section">
+        <div class="stance-section-header">
+          <p class="label small">Active Stance Modifiers</p>
         </div>
-        <p class="muted small">${calledShotHint}</p>
-      </section>
-
-      <hr />
-
-      <section class="cc-section">
-        <p class="label small">Actions</p>
-        <div class="app-actions combat-actions combat-majors">
-          <button class="btn btn-primary ${isOverheated ? "overheat-disabled" : ""}"
-            title="${overheatTooltip}"
-            onclick="fireAllWeapons('normal')" ${isOverheated ? "disabled" : ""}>
-            Fire All
-          </button>
-          <button class="btn btn-ghost ${isOverheated ? "overheat-disabled" : ""}"
-            title="${overheatTooltip}"
-            onclick="fireAllWeapons('called_shot')" ${isOverheated ? "disabled" : ""}>
-            Called Shots
-          </button>
-          <button class="btn btn-ghost ${isOverheated ? "overheat-disabled" : ""}"
-            onclick="brace()" ${isOverheated ? "disabled" : ""}>
-            Brace
-          </button>
-          <button class="btn btn-danger ${isOverheated ? "overheat-disabled" : ""}"
-            onclick="flee()" ${isOverheated ? "disabled" : ""}>
-            Attempt Flee
-          </button>
-        </div>
-        ${isOverheated ? `<p class="overheat-note">Weapons & shields offline while overheated.</p>` : ""}
-        <div class="weapons-grid">
-          ${weaponRows}
-        </div>
-      </section>
-
-      <hr />
-
-      <section class="cc-section">
-        <p class="label small">Active Stance Modifiers</p>
         <div class="stance-mod-row">
           ${stanceModifiersHtml}
         </div>
@@ -479,7 +525,6 @@ export function CombatScreen(): string {
             ${logHtml}
           </div>
         </section>
-        ${overheatModalHtml}
       </div>
     </div>
   `;

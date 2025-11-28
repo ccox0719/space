@@ -112,7 +112,7 @@ export interface HighScoreEntry {
 }
 
 import shipsData from "../content/ships.json";
-import type { EnemyPosition, EnemyRole, ShipDef, ShipPassive, WeaponDamageType } from "./contentTypes";
+import type { AiProfile, EnemyPosition, EnemyRole, ShipDef, ShipPassive, WeaponDamageType } from "./contentTypes";
 
 const shipsCatalog = shipsData as ShipDef[];
 const starterTemplate = shipsCatalog.find((ship) => ship.starter) ?? shipsCatalog[0];
@@ -149,15 +149,11 @@ export interface ShipState {
     type: "energy" | "projectile" | "missile" | "hybrid";
   }[];
   passive?: ShipPassive | null;
-  heat: number;
-  maxHeat: number;
-  overheated: boolean;
-  overheatTurns: number;
 }
 
 export type DamageType = WeaponDamageType;
 
-export type StatusEffectType = "breach" | "jammed" | "burn";
+export type StatusEffectType = "breach" | "jammed" | "burn" | "immobilized";
 
 export interface StatusEffect {
   type: StatusEffectType;
@@ -246,6 +242,8 @@ export interface EnemySlot {
   factionLabel?: string;
   role?: EnemyRole;
   prefersLane?: number | "any";
+  aiProfile?: AiProfile;
+  lastMovedRound?: number;
 }
 
 export interface EncounterState {
@@ -275,13 +273,12 @@ export interface CombatState {
   startingHp: number;
   round: number;
   log: string[];
+  enemyMovementUsedThisRound: boolean;
   adviceToken?: number;
   returnTo?: import("./navigation").ScreenID;
   returnParams?: Record<string, unknown>;
-  overheatPenaltyTurns?: number;
-  overheatModalVisible?: boolean;
-  lastHeatDelta?: string;
-  heatAccumulated?: number;
+  comboMeter?: import("../systems/combatSystem").ComboMeterState;
+  moduleAbilityCooldowns: Record<string, number>;
 }
 
 export interface MiningSample {
@@ -490,23 +487,13 @@ export function newGameState(): GameState {
       evasion: 5,
       maneuverRating: starterTemplate?.maneuverRating ?? 0,
       components: [],
-      hardpoints: starterTemplate?.hardpoints.map((hp) => ({ ...hp })) ?? []
-      ,
-      passive: starterTemplate?.passive ?? null,
-      heat: 0,
-      maxHeat: 100,
-      overheated: false,
-      overheatTurns: 0
+      hardpoints: starterTemplate?.hardpoints.map((hp) => ({ ...hp })) ?? [],
+      passive: starterTemplate?.passive ?? null
     },
     reputation: {},
     contracts: [],
     missions: [],
     combat: null,
-    overheatPenaltyTurns: 0,
-    overheatModalVisible: false,
-    lastHeatDelta: "",
-    overheatPenaltyTurns: 0,
-    overheatModalVisible: false,
     miningSession: null,
     lastMiningSystemId: null,
     miningBelts: [],
@@ -530,8 +517,7 @@ export function newGameState(): GameState {
     },
     intel: {
       systems: []
-    }
-    ,
+    },
     runStats: createRunStats(),
     gameOver: { active: false, reason: null },
     map: null,
@@ -628,13 +614,13 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
     navyEncounterRateBase: 0,
     maxEncountersPerDay: 10,
     enemyHpMultiplier: 0.6,
-    enemyDamageMultiplier: 0.4,
-    enemyAccuracyMultiplier: 0.8,
+    enemyDamageMultiplier: 0.65,
+    enemyAccuracyMultiplier: 0.9,
     enemyCountMin: 1,
     enemyCountMax: 1,
     difficultyScalePerDay: 0,
     difficultyScalePerShipPower: 0,
-    creditsRewardMultiplier: 1.2,
+    creditsRewardMultiplier: 1.4,
     lootDropChance: 100,
     rareLootChance: 12,
     repGainMultiplier: 1,

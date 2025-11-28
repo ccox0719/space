@@ -36,6 +36,7 @@ import { systemHasTag } from "./systemHelpers";
 import { recordCombatKill } from "./missionSystem";
 import { adjustWanted } from "./wantedSystem";
 import { abortMiningSession } from "./miningSystem";
+import { getComponentById } from "./componentSystem";
 import type { ScreenID } from "../core/navigation";
 import type {
   CombatState,
@@ -46,7 +47,7 @@ import type {
   StanceId,
   EncounterState
 } from "../core/state";
-import type { WeaponDef, WeaponDamageType } from "../core/contentTypes";
+import type { WeaponDef, WeaponDamageType, ComponentAbilityDef, ComponentDef } from "../core/contentTypes";
 
 type AimMode = "normal" | "called_shot";
 
@@ -130,92 +131,34 @@ type BoardState = {
   encounter: EncounterState;
 };
 
+interface ActiveModuleAbility {
+  componentId: string;
+  componentName: string;
+  ability: ComponentAbilityDef;
+  cooldown: number;
+  ready: boolean;
+}
+
 const VOLLEY_ORDER: WeaponDamageType[] = ["disruptive", "energy", "kinetic", "explosive"];
-const HEAT_RUNNING_THRESHOLD = 0.55;
-const HEAT_DECAY_RATE = 50;
-const HEAT_DECAY_OVERHEAT_RATE = 25;
-const OVERHEAT_COOLDOWN_TURNS = 2;
 const PRECISION_SHIELD_BONUS = 1.2;
 
-function getWeaponHeatCost(weapon: WeaponDef): number {
-  return weapon.heatCost ?? 10;
+type ComboFinishType = "risk" | "variation" | "dodge";
+type ComboSource = "variation" | "risk" | "dodge";
+
+export interface ComboMeterState {
+  charge: number;
+  variationPoints: number;
+  riskPoints: number;
+  dodgePoints: number;
+  recentCategories: string[];
+  ready?: {
+    type: ComboFinishType;
+    label: string;
+  };
 }
 
-function applyHeatGain(heatGain: number, label?: string) {
-  const ship = gameState.ship;
-  const prevHeat = Number.isFinite(ship.heat) ? ship.heat : 0;
-  const maxHeat = ship.maxHeat || 100;
-  const newHeat = Math.min(maxHeat, prevHeat + Math.round(heatGain));
-  ship.heat = newHeat;
-
-  if (prevHeat < maxHeat * HEAT_RUNNING_THRESHOLD && ship.heat >= maxHeat * HEAT_RUNNING_THRESHOLD) {
-    log("Heat stabilizers warning: systems running hot.");
-  }
-
-  const wasOverheated = ship.overheated;
-  if (!wasOverheated && ship.heat >= maxHeat) {
-    ship.overheated = true;
-    ship.overheatTurns = OVERHEAT_COOLDOWN_TURNS;
-    log("Warning: heat levels have maxed out; systems overheated!");
-    log("Overheat knocks shields offline until your systems cool down.");
-    const combat = gameState.combat;
-    if (combat) {
-      combat.overheatPenaltyTurns = Math.max(combat.overheatPenaltyTurns ?? 0, 2);
-      combat.overheatModalVisible = true;
-    }
-  }
-  if (heatGain > 0) {
-    const labelText = label ? `(${label}) ` : "";
-    log(`Heat ${labelText}+${Math.round(heatGain)} → ${ship.heat}/${maxHeat}`);
-    const combat = gameState.combat;
-    if (combat) {
-      combat.lastHeatDelta = `Heat ${labelText}+${Math.round(heatGain)} → ${ship.heat}/${maxHeat}`;
-      combat.heatAccumulated = (combat.heatAccumulated ?? 0) + Math.round(heatGain);
-    }
-  }
-}
-
-function applyHeatForFiring(
-  playerWeapons: WeaponDef[],
-  mode: "single" | "volley",
-  isCalledShot: boolean
-) {
-  if (!playerWeapons.length) return;
-  const totalBase = playerWeapons.reduce((sum, weapon) => sum + getWeaponHeatCost(weapon), 0);
-  let multiplier = 1;
-  if (mode === "single") {
-    multiplier = isCalledShot ? 1.2 : 0.8;
-  } else {
-    multiplier = isCalledShot ? 2.3 : 1.7;
-  }
-  applyHeatGain(totalBase * multiplier, `${mode}${isCalledShot ? " called" : ""}`);
-}
-
-function getHeatAccuracyMultiplier(): number {
-  const ship = gameState.ship;
-  const maxHeat = ship.maxHeat || 100;
-  const fraction = maxHeat > 0 ? ship.heat / maxHeat : 0;
-  if (ship.overheated) {
-    return 0.75;
-  }
-  if (fraction >= HEAT_RUNNING_THRESHOLD) {
-    return 0.9;
-  }
-  return 1;
-}
-
-function heatDecay() {
-  const ship = gameState.ship;
-  const decay = ship.overheated ? HEAT_DECAY_OVERHEAT_RATE : HEAT_DECAY_RATE;
-  const prevHeat = ship.heat;
-  const newHeat = Math.max(0, prevHeat - decay);
-  ship.heat = newHeat;
-  if (ship.overheated && ship.overheatTurns > 0) {
-    ship.overheatTurns = Math.max(0, ship.overheatTurns - 1);
-  }
-  const maxHeat = ship.maxHeat || 100;
-  ship.overheated = ship.heat >= maxHeat;
-}
+const COMBO_MAX = 100;
+const COMBO_HISTORY_LENGTH = 5;
 
 const FRONT_RETREAT_HP_THRESHOLD = 0.4;
 
@@ -333,7 +276,10 @@ function chooseTarget(
     ...extraTargets.filter((slot) => slot.side !== attacker.side && canTargetSlot(board, weapon, slot))
   ];
   if (!valid.length) return null;
-  const scored = valid
+  const coverRestricted = !weapon.canBypassCover;
+  const frontTargets = valid.filter((slot) => slot.position.row === "front");
+  const targetPool = coverRestricted && frontTargets.length ? frontTargets : valid;
+  const scored = targetPool
     .map((slot) => ({ slot, score: scoreTarget(attacker, weapon, slot) }))
     .sort((a, b) => b.score - a.score);
   return scored[0].slot;
@@ -599,7 +545,7 @@ function applyDamageToEnemySlot(
   return damage;
 }
 
-export type PlayerCombatActionType = "fire" | "brace" | "flee" | "fire_all";
+export type PlayerCombatActionType = "fire" | "brace" | "flee" | "fire_all" | "combo_finish";
 
 function log(line: string) {
   const state = gameState.combat;
@@ -609,6 +555,280 @@ function log(line: string) {
   if (state.log.length > MAX_LOG) {
     state.log = state.log.slice(state.log.length - MAX_LOG);
   }
+}
+
+type RiskType = "near_miss" | "perfect_dodge" | "light_damage" | "heavy_damage" | "heroic_spike";
+
+const RISK_GAINS: Record<RiskType, { amount: number; source: ComboSource; label: string }> = {
+  near_miss: { amount: 5, source: "dodge", label: "near miss" },
+  perfect_dodge: { amount: 10, source: "dodge", label: "perfect dodge" },
+  light_damage: { amount: 15, source: "risk", label: "light damage" },
+  heavy_damage: { amount: 25, source: "risk", label: "heavy damage" },
+  heroic_spike: { amount: 40, source: "risk", label: "heroic spike" }
+};
+
+const COMBO_FINISH_LABELS: Record<ComboFinishType, string> = {
+  risk: "Retribution Burst",
+  variation: "Adaptive Strike",
+  dodge: "Phantom Strike"
+};
+
+function createComboMeterState(): ComboMeterState {
+  return {
+    charge: 0,
+    variationPoints: 0,
+    riskPoints: 0,
+    dodgePoints: 0,
+    recentCategories: []
+  };
+}
+
+function getComboMeter(): ComboMeterState | null {
+  const combat = gameState.combat;
+  if (!combat) return null;
+  if (!combat.comboMeter) {
+    combat.comboMeter = createComboMeterState();
+  }
+  return combat.comboMeter;
+}
+
+function addComboCharge(amount: number, source: ComboSource, label?: string) {
+  if (amount <= 0) return;
+  const combo = getComboMeter();
+  if (!combo) return;
+  combo.charge = Math.min(COMBO_MAX, combo.charge + amount);
+  if (source === "variation") {
+    combo.variationPoints += amount;
+  } else if (source === "risk") {
+    combo.riskPoints += amount;
+  } else {
+    combo.dodgePoints += amount;
+  }
+  log(`Combo +${amount}${label ? ` (${label})` : ""}.`);
+  maybeUpdateComboReady(combo);
+}
+
+function registerComboAction(category: string) {
+  const combo = getComboMeter();
+  if (!combo) return;
+  combo.recentCategories.unshift(category);
+  if (combo.recentCategories.length > COMBO_HISTORY_LENGTH) {
+    combo.recentCategories.pop();
+  }
+  const recent = combo.recentCategories.slice(0, 3);
+  const uniqueCount = new Set(recent).size;
+  let variationGain = uniqueCount * 5;
+  if (uniqueCount >= 3) {
+    variationGain += 10;
+  }
+  addComboCharge(variationGain, "variation", "variation");
+}
+
+function determineFinishType(combo: ComboMeterState): ComboFinishType {
+  const candidates: Array<[ComboFinishType, number]> = [
+    ["variation", combo.variationPoints],
+    ["risk", combo.riskPoints],
+    ["dodge", combo.dodgePoints]
+  ];
+  candidates.sort((a, b) => b[1] - a[1]);
+  if (candidates[0][1] === 0) return "variation";
+  return candidates[0][0];
+}
+
+function maybeUpdateComboReady(combo: ComboMeterState) {
+  if (combo.ready || combo.charge < COMBO_MAX) return;
+  const type = determineFinishType(combo);
+  combo.ready = { type, label: COMBO_FINISH_LABELS[type] };
+  combo.charge = 0;
+  combo.variationPoints = 0;
+  combo.riskPoints = 0;
+  combo.dodgePoints = 0;
+  combo.recentCategories = [];
+  log(`Combo meter ready: ${combo.ready.label}!`);
+}
+
+function consumeComboFinish(): ComboFinishType | null {
+  const combo = getComboMeter();
+  if (!combo || !combo.ready) return null;
+  const type = combo.ready.type;
+  combo.ready = undefined;
+  return type;
+}
+
+function addComboRisk(type: RiskType) {
+  const gain = RISK_GAINS[type];
+  if (!gain) return;
+  addComboCharge(gain.amount, gain.source, gain.label);
+}
+
+function calculateComboFinishDamage(): number {
+  const ship = gameState.ship;
+  const weaponDamages = ship.weapons
+    .map((id) => (id ? getWeaponById(id)?.damage ?? 0 : 0))
+    .filter((value) => value > 0);
+  const averageWeaponDamage = weaponDamages.length
+    ? weaponDamages.reduce((sum, value) => sum + value, 0) / weaponDamages.length
+    : 0;
+  const basePower = Math.max(ship.weaponPower ?? 10, Math.round(averageWeaponDamage));
+  return Math.max(10, Math.round(basePower * 1.25));
+}
+
+function createComboFinishWeapon(overrides: Partial<WeaponDef> = {}): WeaponDef {
+  return {
+    id: overrides.id ?? "combo_finish",
+    name:
+      overrides.name ??
+      (overrides.tags?.includes("armor_piercing") ? "Combo Penetrator" : "Combo Burst"),
+    description: overrides.description,
+    type: overrides.type ?? "energy",
+    size: overrides.size ?? "small",
+    damage: overrides.damage ?? 0,
+    damageType: overrides.damageType ?? "energy",
+    shieldMod: overrides.shieldMod ?? 1,
+    armorMod: overrides.armorMod ?? 1,
+    accuracy: overrides.accuracy ?? 1,
+    critChance: overrides.critChance ?? 0,
+    critMultiplier: overrides.critMultiplier ?? 1,
+    energyCost: overrides.energyCost ?? 0,
+    cooldown: overrides.cooldown ?? 0,
+    price: overrides.price ?? 0,
+    tags: overrides.tags ?? [],
+    targetingMode: overrides.targetingMode,
+    canBypassCover: overrides.canBypassCover,
+    splashRadius: overrides.splashRadius,
+    linePierce: overrides.linePierce
+  };
+}
+
+function getAliveEnemies(combat: CombatState): EnemySlot[] {
+  return combat.encounter.enemies.filter((slot) => slot.alive);
+}
+
+function findBacklineTarget(combat: CombatState, excludeId?: string): EnemySlot | undefined {
+  return combat.encounter.enemies.find(
+    (slot) => slot.alive && slot.position.row === "back" && slot.id !== excludeId
+  );
+}
+
+function executeVariationFinish(combat: CombatState, baseDamage: number): boolean {
+  const weapon = createComboFinishWeapon({
+    tags: ["shield_breaker"],
+    armorMod: 1.1,
+    shieldMod: 1.05
+  });
+  const primary = ensureSelectedEnemy(combat);
+  if (!primary || !primary.alive) return false;
+  const secondary =
+    findBacklineTarget(combat, primary.id) ??
+    combat.encounter.enemies.find((slot) => slot.alive && slot.id !== primary.id);
+  const primaryDamage = Math.max(10, Math.round(baseDamage * 1.1));
+  const firstHit = applyDamageToEnemySlot(primaryDamage, "energy", weapon, primary);
+  if (firstHit > 0) {
+    recordCombatDamageDealt(firstHit);
+    log(`Adaptive Strike slams ${primary.name} for ${firstHit} damage.`);
+    if (primary.hp <= 0) {
+      removeEnemySlotFromEncounter(combat, primary.id);
+    }
+  }
+  let secondHit = 0;
+  if (secondary) {
+    const secondaryDamage = Math.max(8, Math.round(baseDamage * 0.85));
+    secondHit = applyDamageToEnemySlot(secondaryDamage, "energy", weapon, secondary);
+    if (secondHit > 0) {
+      recordCombatDamageDealt(secondHit);
+      log(`Adaptive Strike pivots to ${secondary.name} for ${secondHit} damage.`);
+      if (secondary.hp <= 0) {
+        removeEnemySlotFromEncounter(combat, secondary.id);
+      }
+    }
+  }
+  return firstHit > 0 || secondHit > 0;
+}
+
+function executeRiskFinish(combat: CombatState, baseDamage: number): boolean {
+  const target =
+    findBacklineTarget(combat) ??
+    ensureSelectedEnemy(combat) ??
+    getAliveEnemies(combat)[0];
+  if (!target) return false;
+  const weapon = createComboFinishWeapon({
+    tags: ["shield_breaker", "armor_piercing"],
+    armorMod: 1.35,
+    shieldMod: 1.1
+  });
+  const penetration = Math.max(3, Math.round(baseDamage * 0.5));
+  const shieldDamage = Math.max(5, baseDamage - penetration);
+  let totalDamage = 0;
+  if (shieldDamage > 0) {
+    const shieldHit = applyDamageToEnemySlot(shieldDamage, "energy", weapon, target);
+    if (shieldHit > 0) {
+      recordCombatDamageDealt(shieldHit);
+      totalDamage += shieldHit;
+    }
+  }
+  if (penetration > 0 && target.alive) {
+    const beforeHp = target.hp;
+    target.hp = Math.max(0, target.hp - penetration);
+    const hullHit = beforeHp - target.hp;
+    if (hullHit > 0) {
+      recordCombatDamageDealt(hullHit);
+      totalDamage += hullHit;
+    }
+    target.alive = target.hp > 0;
+  }
+  if (target.hp <= 0) {
+    removeEnemySlotFromEncounter(combat, target.id);
+  }
+  if (totalDamage <= 0) return false;
+  const ship = gameState.ship;
+  const recovery = Math.max(1, Math.round(totalDamage * (0.02 + Math.random() * 0.03)));
+  ship.hp = Math.min(ship.maxHp, ship.hp + recovery);
+  log(`Retribution Burst shreds ${target.name} for ${totalDamage} and restores ${recovery} hull.`);
+  return true;
+}
+
+function executeDodgeFinish(combat: CombatState, baseDamage: number): boolean {
+  const target =
+    findBacklineTarget(combat) ??
+    ensureSelectedEnemy(combat) ??
+    getAliveEnemies(combat)[0];
+  if (!target) return false;
+  const weapon = createComboFinishWeapon({
+    tags: ["shield_breaker"],
+    armorMod: 1.2
+  });
+  const damage = Math.max(8, Math.round(baseDamage * 0.9));
+  const hit = applyDamageToEnemySlot(damage, "energy", weapon, target);
+  if (hit > 0) {
+    recordCombatDamageDealt(hit);
+    log(`Phantom Strike ghosts ${target.name} for ${hit} damage.`);
+    if (target.hp <= 0) {
+      removeEnemySlotFromEncounter(combat, target.id);
+    }
+  }
+  combat.playerStatus.maneuverBonus = Math.max(combat.playerStatus.maneuverBonus || 0, 20);
+  combat.playerStatus.maneuverTurns = Math.max(combat.playerStatus.maneuverTurns, 1);
+  return hit > 0;
+}
+
+export function activateComboFinisher(): boolean {
+  const combo = getComboMeter();
+  if (!combo || !combo.ready) return false;
+  const combat = gameState.combat;
+  if (!combat) return false;
+  const baseDamage = calculateComboFinishDamage();
+  const finishType = combo.ready.type;
+  let executed = false;
+  if (finishType === "variation") {
+    executed = executeVariationFinish(combat, baseDamage);
+  } else if (finishType === "risk") {
+    executed = executeRiskFinish(combat, baseDamage);
+  } else if (finishType === "dodge") {
+    executed = executeDodgeFinish(combat, baseDamage);
+  }
+  if (!executed) return false;
+  consumeComboFinish();
+  return true;
 }
 
 function estimateEnemyPower(enemy: { hull: number; shields: number; weaponIds: string[] }): number {
@@ -671,12 +891,9 @@ export function startCombat(enemyId: string, opts: CombatReturn = {}) {
     round: 1,
     log: [`${encounterName} engages you in combat!`],
     adviceToken: Math.random(),
-    heatAccumulated: 0,
+    moduleAbilityCooldowns: {},
     returnTo: opts.returnScreen,
     returnParams: opts.returnParams,
-    overheatPenaltyTurns: 0,
-    overheatModalVisible: false,
-    lastHeatDelta: ""
   };
 
   if (enemyCountFactor > 1) {
@@ -733,62 +950,174 @@ function chooseEnemyId(systemId?: string): string {
   return best.id;
 }
 
-export function playerCombatAction(
-  action: PlayerCombatActionType,
-  weaponIndex?: number,
-  aimMode: AimMode = "normal"
-) {
-  const combat = gameState.combat;
-  if (!combat) return;
+  export function playerCombatAction(
+    action: PlayerCombatActionType,
+    weaponIndex?: number,
+    aimMode: AimMode = "normal"
+  ) {
+    const combat = gameState.combat;
+    if (!combat) return;
 
-  combat.playerBracing = false;
+    combat.playerBracing = false;
 
-  switch (action) {
-    case "fire":
-      if (weaponIndex === undefined) {
-        log("You must choose a weapon to fire.");
-        return;
+    switch (action) {
+      case "fire":
+        if (weaponIndex === undefined) {
+          log("You must choose a weapon to fire.");
+          return;
+        }
+        playerFireWeapon(weaponIndex, aimMode);
+        break;
+      case "fire_all":
+        fireAllReadyWeapons(aimMode);
+        break;
+      case "combo_finish":
+        if (!activateComboFinisher()) {
+          log("Combo finisher is not ready.");
+          return;
+        }
+        break;
+      case "brace":
+        playerBrace();
+        break;
+      case "flee":
+        if (attemptFlee()) {
+          return;
+        }
+        break;
+    }
+
+    finalizePlayerAction();
+  }
+
+  function finalizePlayerAction() {
+    const combat = gameState.combat;
+    if (!combat) return;
+
+    if (combat.encounter.enemies.length === 0) {
+      handleVictory();
+      return;
+    }
+
+    enemyTurn();
+
+    if (!gameState.combat) return;
+    if (gameState.ship.hp <= 0) {
+      handleDefeat();
+      return;
+    }
+
+    handleFormationMovement(combat);
+
+    tickCooldowns();
+    combat.adviceToken = Math.random();
+    combat.round += 1;
+    combat.totalRounds += 1;
+  }
+
+  export function getActiveModuleAbilities(): ActiveModuleAbility[] {
+    const combat = gameState.combat;
+    if (!combat) return [];
+    if (!content) return [];
+    return gameState.ship.components
+      .map((componentId) => {
+        const component = getComponentById(componentId);
+        if (!component?.ability) return null;
+        const cooldown = combat.moduleAbilityCooldowns?.[componentId] ?? 0;
+        return {
+          componentId,
+          componentName: component.name,
+          ability: component.ability,
+          cooldown,
+          ready: cooldown <= 0
+        };
+      })
+      .filter((entry): entry is ActiveModuleAbility => Boolean(entry));
+  }
+
+export function activateModuleAbility(componentId: string) {
+    registerComboAction("utility");
+    const combat = gameState.combat;
+    if (!combat) return;
+    const component = getComponentById(componentId);
+    if (!component || !component.ability) {
+      log("Module ability offline.");
+      return;
+    }
+    const ability = component.ability;
+    combat.moduleAbilityCooldowns = combat.moduleAbilityCooldowns ?? {};
+    const cooldownRemaining = Math.max(0, combat.moduleAbilityCooldowns[componentId] ?? 0);
+    if (cooldownRemaining > 0) {
+      log(`${component.name} is recalibrating (${cooldownRemaining} turn${cooldownRemaining === 1 ? "" : "s"}).`);
+      return;
+    }
+    const target = ensureSelectedEnemy(combat);
+    if (!target) {
+      log("No enemy target available.");
+      return;
+    }
+    const applied = resolveModuleAbilityEffect(combat, component, ability, target);
+    if (!applied) {
+      return;
+    }
+    combat.moduleAbilityCooldowns[componentId] = Math.max(ability.cooldown ?? 3, 1);
+    finalizePlayerAction();
+  }
+
+  function resolveModuleAbilityEffect(
+    combat: CombatState,
+    component: ComponentDef,
+    ability: ComponentAbilityDef,
+    target: EnemySlot
+  ): boolean {
+    const board: BoardState = combat;
+    const lane = target.position.lane;
+    switch (ability.type) {
+      case "pull": {
+        if (target.position.row !== "back") {
+          log("Pull modules need a back-line target.");
+          return false;
+        }
+        const front = getShipAt(board, lane, "front", "enemy");
+        if (front && front.id !== target.id) {
+          front.position.row = "back";
+          log(`${front.name} is forced back to make room.`);
+        }
+        target.position.row = "front";
+        log(`${component.name} hauls ${target.name} into lane ${lane + 1}'s front line.`);
+        break;
       }
-      playerFireWeapon(weaponIndex, aimMode);
-      break;
-    case "fire_all":
-      fireAllReadyWeapons(aimMode);
-      break;
-    case "brace":
-      playerBrace();
-      break;
-    case "flee":
-      if (attemptFlee()) {
-        return;
+      case "push": {
+        if (target.position.row !== "front") {
+          log("Push modules need a front-line target.");
+          return false;
+        }
+        const back = getShipAt(board, lane, "back", "enemy");
+        if (back && back.id !== target.id) {
+          back.position.row = "front";
+        }
+        target.position.row = "back";
+        log(`${component.name} shoves ${target.name} back into cover.`);
+        break;
       }
-      break;
+      default:
+        return false;
+    }
+
+    if (ability.statusEffect) {
+      const duration = ability.effectDuration ?? 1;
+      const applied = addStatusEffect(target, ability.statusEffect as StatusEffectType, duration);
+      if (applied) {
+        if (ability.statusEffect === "jammed") {
+          log(`${target.name}'s systems are jammed for ${duration} turn${duration === 1 ? "" : "s"}.`);
+        } else {
+          log(`${target.name} cannot react for ${duration} turn${duration === 1 ? "" : "s"}.`);
+        }
+      }
+    }
+
+    return true;
   }
-
-  if (!gameState.combat) return;
-  if (combat.encounter.enemies.length === 0) {
-    handleVictory();
-    return;
-  }
-
-  if (resolveOverheatPenalty()) {
-    return;
-  }
-
-  enemyTurn();
-
-  if (!gameState.combat) return;
-  if (gameState.ship.hp <= 0) {
-    handleDefeat();
-    return;
-  }
-
-  handleFormationMovement(combat);
-
-  tickCooldowns();
-  combat.adviceToken = Math.random();
-  combat.round += 1;
-  combat.totalRounds += 1;
-}
 
 interface FireWeaponOptions {
   isVolley?: boolean;
@@ -796,41 +1125,15 @@ interface FireWeaponOptions {
   volleyCount?: number;
 }
 
-function resolveOverheatPenalty(): boolean {
-  const combat = gameState.combat;
-  if (!combat || !(combat.overheatPenaltyTurns ?? 0)) return false;
-  let ranPenalty = false;
-
-  while (combat.overheatPenaltyTurns && combat.overheatPenaltyTurns > 0) {
-    ranPenalty = true;
-    combat.overheatPenaltyTurns -= 1;
-    log("Overheat penalty: the enemy seizes a free strike while you cool down!");
-    enemyTurn();
-    if (!gameState.combat) {
-      break;
-    }
-    if (gameState.ship.hp <= 0) {
-      handleDefeat();
-      break;
-    }
-  }
-
-  if (gameState.combat) {
-    combat.overheatModalVisible = false;
-  }
-
-  return ranPenalty;
-}
-
 function playerFireWeapon(slotIndex: number, aimMode: AimMode, options: FireWeaponOptions = {}) {
+  registerComboAction("weapon_attack");
   const combat = gameState.combat;
   if (!combat) return;
-
   const ship = gameState.ship;
   if (slotIndex < 0 || slotIndex >= ship.weapons.length) {
-    log("Invalid weapon slot.");
-    return;
-  }
+      log("Invalid weapon slot.");
+      return;
+    }
   const weaponId = ship.weapons[slotIndex];
   if (!weaponId) {
     log("That hardpoint is empty.");
@@ -846,7 +1149,6 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode, options: FireWeap
     (id, idx) => idx !== slotIndex && Boolean(id) && (combat.playerCooldowns[idx] ?? 0) <= 0
   );
   const soloFire = otherReadyWeapons.length === 0;
-  applyHeatForFiring([weapon], "single", aimMode === "called_shot");
   const passive = getPassiveEffects();
   const firstRound = combat.round <= 1;
   const effectiveWeapon = {
@@ -868,7 +1170,7 @@ function playerFireWeapon(slotIndex: number, aimMode: AimMode, options: FireWeap
   const aimDamageMod = aimMode === "called_shot" ? CALLED_SHOT_MODS.damageMultiplier : 1;
   const aimAccuracyMod = aimMode === "called_shot" ? CALLED_SHOT_MODS.accuracyMultiplier : 1;
   const damage = computeWeaponDamage(effectiveWeapon, {
-    accuracyMultiplier: aimAccuracyMod * getHeatAccuracyMultiplier(),
+    accuracyMultiplier: aimAccuracyMod,
     damageMultiplier: aimDamageMod * (passive.playerDamageBonus ?? 1)
   });
 
@@ -967,21 +1269,11 @@ function getReadyWeaponsOrdered(combat: CombatState): { idx: number; weapon: Wea
 function fireAllReadyWeapons(aimMode: AimMode) {
   const combat = gameState.combat;
   if (!combat) return;
-  const ship = gameState.ship;
-  if (ship.overheated) {
-    log("Systems are overheated; volley fire is disabled until heat subsides.");
-    return;
-  }
   const readyWeapons = getReadyWeaponsOrdered(combat);
   if (!readyWeapons.length) {
     log("No weapons are ready to fire.");
     return;
   }
-  applyHeatForFiring(
-    readyWeapons.map(({ weapon }) => weapon),
-    "volley",
-    aimMode === "called_shot"
-  );
   for (const { idx } of readyWeapons) {
     if (!gameState.combat || gameState.combat.encounter.enemies.length === 0) break;
     playerFireWeapon(idx, aimMode, {
@@ -992,6 +1284,7 @@ function fireAllReadyWeapons(aimMode: AimMode) {
 }
 
 function playerBrace() {
+  registerComboAction("defense");
   const combat = gameState.combat;
   if (!combat) return;
   combat.playerBracing = true;
@@ -999,6 +1292,7 @@ function playerBrace() {
 }
 
 function attemptFlee(): boolean {
+  registerComboAction("movement");
   const combat = gameState.combat;
   if (!combat) return false;
   if (!combat.canEscape) {
@@ -1041,18 +1335,29 @@ function attemptFlee(): boolean {
   }
 }
 
+function shouldWarnHeavyAttack(damage: number): boolean {
+  const maxShipHp = gameState.ship.maxHp || 100;
+  return damage >= Math.max(1, Math.round(maxShipHp * 0.25));
+}
+
 function enemyTurn() {
   const combat = gameState.combat;
   if (!combat) return;
-  if (combat.enemyStatus.weaponJammedTurns > 0) {
+  const prevHp = gameState.ship.hp;
+  const prevShields = gameState.ship.shields;
+  const maxShipHp = gameState.ship.maxHp || 100;
+    if (combat.enemyStatus.weaponJammedTurns > 0) {
     combat.enemyStatus.weaponJammedTurns -= 1;
     log("Enemy weapons are jammed this round!");
     return;
   }
   const board: BoardState = combat;
-  const readySlots = combat.encounter.enemies.filter((slot) =>
-    slot.weaponIds.some((id, idx) => id && (slot.weaponCooldowns[idx] ?? 0) <= 0 && slot.alive)
-  );
+    const readySlots = combat.encounter.enemies.filter(
+      (slot) =>
+        slot.alive &&
+        !hasStatusEffect(slot, "immobilized") &&
+        slot.weaponIds.some((id, idx) => id && (slot.weaponCooldowns[idx] ?? 0) <= 0)
+    );
   if (!readySlots.length) {
     log(`The ${combat.encounter.name} reloads while you advance.`);
     return;
@@ -1096,7 +1401,15 @@ function enemyTurn() {
   const adjustedAccuracy = Math.max(0, baseAccuracy * stanceFactor * (isJammed ? JAMMED_ACCURACY_PENALTY : 1));
   let damage = computeWeaponDamage(weapon, { accuracyMultiplier: adjustedAccuracy });
   const difficultyScale = getEnemyScale(gameState);
-  damage = Math.max(0, Math.round(damage * (tune.enemyDamageMultiplier ?? 1) * difficultyScale));
+  const predictedDamage = Math.max(
+    0,
+    Math.round(damage * (tune.enemyDamageMultiplier ?? 1) * difficultyScale)
+  );
+  const isHeavy = shouldWarnHeavyAttack(predictedDamage);
+  if (isHeavy) {
+    log("Sensors pick up a heavy attack; brace now to soften the blow!");
+  }
+  damage = predictedDamage;
   if (combat.playerBracing) {
     damage = Math.round(damage * BRACE_DAMAGE_REDUCTION);
   }
@@ -1116,15 +1429,29 @@ function enemyTurn() {
     combat.playerStatus.shieldBoost -= absorbed;
     remaining -= absorbed;
   }
-  if (!gameState.ship.overheated && gameState.ship.shields > 0 && remaining > 0) {
+  if (gameState.ship.shields > 0 && remaining > 0) {
     const absorbed = Math.min(gameState.ship.shields, remaining);
     gameState.ship.shields -= absorbed;
     remaining -= absorbed;
-  } else if (gameState.ship.overheated) {
-    log("Overheat damages bypass shields; hull is exposed.");
   }
   if (remaining > 0) {
     gameState.ship.hp = Math.max(0, gameState.ship.hp - remaining);
+  }
+  const hullDamage = Math.max(0, remaining);
+  const postHp = gameState.ship.hp;
+  const shieldLost = Math.max(0, prevShields - gameState.ship.shields);
+  if (hullDamage > 0) {
+    if (prevHp <= hullDamage && postHp === 1) {
+      addComboRisk("heroic_spike");
+    } else if (hullDamage >= maxShipHp * 0.25) {
+      addComboRisk("heavy_damage");
+    } else {
+      addComboRisk("light_damage");
+    }
+  } else if (shieldLost <= 0) {
+    addComboRisk("perfect_dodge");
+  } else {
+    addComboRisk("near_miss");
   }
   log(`The ${slot.name} hits you with ${weapon.name} for ${damage} damage.`);
   recordCombatDamageTaken(damage);
@@ -1196,29 +1523,36 @@ export function getCombatAdvice(): CombatAdvice | null {
     confidence: choice.confidence
   };
 }
-function tickCooldowns() {
-  const combat = gameState.combat;
-  if (!combat) return;
-  combat.playerCooldowns = combat.playerCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
-  for (const slot of combat.encounter.enemies) {
-    slot.weaponCooldowns = slot.weaponCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
-  }
-  tickStatusEffects(combat);
+  function tickCooldowns() {
+    const combat = gameState.combat;
+    if (!combat) return;
+    combat.playerCooldowns = combat.playerCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
+    for (const slot of combat.encounter.enemies) {
+      slot.weaponCooldowns = slot.weaponCooldowns.map((cd) => (cd > 0 ? cd - 1 : 0));
+    }
+    tickStatusEffects(combat);
 
-  if (combat.playerStatus.maneuverTurns > 0) {
-    combat.playerStatus.maneuverTurns -= 1;
-    if (combat.playerStatus.maneuverTurns <= 0) {
-      combat.playerStatus.maneuverBonus = 0;
+    if (combat.playerStatus.maneuverTurns > 0) {
+      combat.playerStatus.maneuverTurns -= 1;
+      if (combat.playerStatus.maneuverTurns <= 0) {
+        combat.playerStatus.maneuverBonus = 0;
+      }
+    }
+    if (combat.playerStatus.shieldTurns > 0) {
+      combat.playerStatus.shieldTurns -= 1;
+      if (combat.playerStatus.shieldTurns <= 0) {
+        combat.playerStatus.shieldBoost = 0;
+      }
+    }
+    if (combat.moduleAbilityCooldowns) {
+      for (const componentId of Object.keys(combat.moduleAbilityCooldowns)) {
+        const remaining = combat.moduleAbilityCooldowns[componentId];
+        if (remaining > 0) {
+          combat.moduleAbilityCooldowns[componentId] = Math.max(0, remaining - 1);
+        }
+      }
     }
   }
-  if (combat.playerStatus.shieldTurns > 0) {
-    combat.playerStatus.shieldTurns -= 1;
-    if (combat.playerStatus.shieldTurns <= 0) {
-      combat.playerStatus.shieldBoost = 0;
-    }
-  }
-  heatDecay();
-}
 
 function handleVictory() {
   const combat = gameState.combat;

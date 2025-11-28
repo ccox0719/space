@@ -10,6 +10,11 @@ export function getAllComponents(): ComponentDef[] {
   return content.components;
 }
 
+export function getComponentById(componentId: string): ComponentDef | null {
+  if (!content) return null;
+  return content.components.find((c) => c.id === componentId) ?? null;
+}
+
 /**
  * Get components currently installed on the player's ship.
  */
