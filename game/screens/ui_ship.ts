@@ -28,6 +28,9 @@ export function ShipScreen(): string {
   const comps = getInstalledComponents();
   const cooldowns = gameState.combat?.playerCooldowns ?? [];
   const cargoLoad = Object.values(ship.cargo || {}).reduce((sum, qty) => sum + qty, 0);
+  const player = gameState.player;
+  const credits = player.credits;
+  const wanted = player.wanted;
 
   const templateInfo = tpl
     ? `<p class="muted">${tpl.description}</p>`
@@ -49,6 +52,30 @@ export function ShipScreen(): string {
           <span class="app-location">Ship — ${ship.name}</span>
         </div>
       </header>
+
+      <section class="header-stats">
+        <div class="header-stat">
+          <i class="bi bi-cash-stack"></i>
+          <div>
+            <span>Credits</span>
+            <strong>${credits}</strong>
+          </div>
+        </div>
+        <div class="header-stat">
+          <span class="pill-icon icon-cargo"></span>
+          <div>
+            <span>Cargo</span>
+            <strong>${cargoLoad}/${ship.cargoCapacity}</strong>
+          </div>
+        </div>
+        <div class="header-stat">
+          <span class="pill-icon icon-danger"></span>
+          <div>
+            <span>Wanted</span>
+            <strong>${wanted}</strong>
+          </div>
+        </div>
+      </section>
 
       <section class="app-stats">
         <div class="stat-pill">

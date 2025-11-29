@@ -69,6 +69,40 @@ export function TravelScreen(): string {
     .map(({ profile }) => profile.hazardChance)
     .reduce((max, r) => Math.max(max, r), 0);
   const riskPercent = Math.round((riskSample || 0) * 100);
+  const credits = gameState.player.credits;
+  const wanted = gameState.player.wanted;
+  const headerStats = `
+    <section class="header-stats">
+      <div class="header-stat">
+        <i class="bi bi-cash-stack"></i>
+        <div>
+          <span>Credits</span>
+          <strong>${credits}</strong>
+        </div>
+      </div>
+      <div class="header-stat">
+        <span class="pill-icon icon-cargo"></span>
+        <div>
+          <span>Cargo</span>
+          <strong>${cargoLoad}/${gameState.ship.cargoCapacity}</strong>
+        </div>
+      </div>
+      <div class="header-stat">
+        <i class="bi bi-exclamation-triangle"></i>
+        <div>
+          <span>Risk</span>
+          <strong>${riskPercent}%</strong>
+        </div>
+      </div>
+      <div class="header-stat">
+        <span class="pill-icon icon-danger"></span>
+        <div>
+          <span>Wanted</span>
+          <strong>${wanted}</strong>
+        </div>
+      </div>
+    </section>
+  `;
 
   if (!current) {
     return `
@@ -80,6 +114,7 @@ export function TravelScreen(): string {
             <span class="app-location">Loading system...</span>
           </div>
         </header>
+        ${headerStats}
         <main class="app-main">
           <section class="data-panel">
             <h1 class="panel-title">Travel</h1>
@@ -166,24 +201,7 @@ export function TravelScreen(): string {
         </div>
       </header>
 
-      <section class="app-stats">
-        <div class="stat-pill">
-          <span class="stat-label">Credits</span>
-          <span class="stat-value">${gameState.player.credits}</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">Fuel</span>
-          <span class="stat-value">${gameState.ship.fuel}/${gameState.ship.maxFuel}</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">Cargo</span>
-          <span class="stat-value">${cargoLoad}/${gameState.ship.cargoCapacity}</span>
-        </div>
-        <div class="stat-pill">
-          <span class="stat-label">Risk</span>
-          <span class="stat-value stat-risk">${riskPercent}%</span>
-        </div>
-      </section>
+      ${headerStats}
 
       <main class="app-main">
         <section class="data-panel">
