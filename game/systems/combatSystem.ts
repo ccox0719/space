@@ -37,6 +37,7 @@ import { recordCombatKill } from "./missionSystem";
 import { adjustWanted } from "./wantedSystem";
 import { abortMiningSession } from "./miningSystem";
 import { getComponentById } from "./componentSystem";
+import { awardXp, awardShipXp, isPerkUnlocked } from "./perkManager";
 import type { ScreenID } from "../core/navigation";
 import type {
   CombatState,
@@ -828,6 +829,8 @@ export function activateComboFinisher(): boolean {
   }
   if (!executed) return false;
   consumeComboFinish();
+  const comboXp = 10 + (finishType === "risk" ? 5 : finishType === "dodge" ? 3 : 0);
+  awardXp(comboXp, "combat");
   return true;
 }
 
@@ -895,6 +898,8 @@ export function startCombat(enemyId: string, opts: CombatReturn = {}) {
     returnTo: opts.returnScreen,
     returnParams: opts.returnParams,
   };
+
+  awardShipXp(8);
 
   if (enemyCountFactor > 1) {
     gameState.combat.log.push(`Multiple bogies detected (${enemyCountFactor} ships).`);
@@ -1398,18 +1403,34 @@ function enemyTurn() {
       (firstRound ? Math.max(0, 1 - (passive.dodgeBonus ?? 0)) : 1)
   );
   const stanceFactor = getStanceAccuracyFactor(combat.playerStance);
-  const adjustedAccuracy = Math.max(0, baseAccuracy * stanceFactor * (isJammed ? JAMMED_ACCURACY_PENALTY : 1));
+  const precisionBonus =
+    (isPerkUnlocked("precision_t1_targeting_assist") ? 0.05 : 0) +
+    ((isPerkUnlocked("precision_t2_headshot_focus") || isPerkUnlocked("precision_t3_backline_breach")) &&
+    targetSlot.position.row === "back"
+      ? 0.05
+      : 0);
+  const backlineBreachFactor =
+    isPerkUnlocked("precision_t3_backline_breach") && targetSlot.position.row === "back" ? 1.08 : 1;
+  const adjustedAccuracy = Math.max(
+    0,
+    baseAccuracy * stanceFactor * (isJammed ? JAMMED_ACCURACY_PENALTY : 1) * (1 + precisionBonus) * backlineBreachFactor
+  );
   let damage = computeWeaponDamage(weapon, { accuracyMultiplier: adjustedAccuracy });
   const difficultyScale = getEnemyScale(gameState);
   const predictedDamage = Math.max(
     0,
     Math.round(damage * (tune.enemyDamageMultiplier ?? 1) * difficultyScale)
   );
-  const isHeavy = shouldWarnHeavyAttack(predictedDamage);
+  const lowHull = (gameState.ship.hp / (gameState.ship.maxHp || 1)) <= 0.3;
+  const damageAfterLastStand =
+    isPerkUnlocked("survival_t3_last_stand_matrix") && lowHull
+      ? Math.round(predictedDamage * 0.85)
+      : predictedDamage;
+  const isHeavy = shouldWarnHeavyAttack(damageAfterLastStand);
   if (isHeavy) {
     log("Sensors pick up a heavy attack; brace now to soften the blow!");
   }
-  damage = predictedDamage;
+  damage = damageAfterLastStand;
   if (combat.playerBracing) {
     damage = Math.round(damage * BRACE_DAMAGE_REDUCTION);
   }
@@ -1450,8 +1471,10 @@ function enemyTurn() {
     }
   } else if (shieldLost <= 0) {
     addComboRisk("perfect_dodge");
+    awardXp(5, "combat");
   } else {
     addComboRisk("near_miss");
+    awardXp(3, "combat");
   }
   log(`The ${slot.name} hits you with ${weapon.name} for ${damage} damage.`);
   recordCombatDamageTaken(damage);
@@ -1601,6 +1624,11 @@ function handleVictory() {
     adjustTension(gameState, 2);
   }
 
+  const combatXp = Math.max(
+    15,
+    Math.round(20 + encounter.enemies.length * 10 + (quickKill ? 10 : 0) + (lowDamageTaken ? 5 : 0))
+  );
+  awardXp(combatXp, "combat");
   recordCombatVictory();
   recordShipDestroyed();
 

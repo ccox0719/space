@@ -21,6 +21,8 @@ import { adjustWanted } from "./wantedSystem";
 import { getBuySellPrices, getCommodityById } from "./economySystem";
 import { getPassiveEffects } from "../core/passives";
 import { getTradeStrategyEffects } from "./tradeStrategySystem";
+import { getMaintenanceModifier } from "./maintenanceSystem";
+import { awardXp, isPerkUnlocked } from "./perkManager";
 
 declare global {
   interface Window {
@@ -255,25 +257,36 @@ function maybeRunContrabandInspection(system: SystemDef, profile: RouteProfile):
   }
   gameState.ship.cargo = cargo;
 
-  const baseFine = Math.max(25, Math.round(summary.estimatedValue * 0.35));
-  const bonusFine = (summary.illegalUnits || 0) * 15 + (summary.restrictedUnits || 0) * 8;
-  const fine = baseFine + bonusFine;
-  const { fineDiscount } = getTradeStrategyEffects();
-  const discount = Math.round(fine * fineDiscount);
-  const finalFine = Math.max(0, fine - discount);
-  gameState.player.credits = Math.max(0, gameState.player.credits - finalFine);
-  const wantedGain = 3 + Math.min(12, Math.round(summary.illegalUnits * 0.5 + summary.restrictedUnits * 0.25));
-  const wantedReduction = Math.round(wantedGain * fineDiscount * 0.6);
-  const finalWanted = Math.max(0, wantedGain - wantedReduction);
-  adjustWanted(finalWanted);
+    const fightChoice =
+      typeof window !== "undefined" &&
+      window.confirm("Contraband detected. Fight the authorities to keep your haul?");
+    if (fightChoice) {
+      startCombat("navy_interceptor", {
+        returnScreen: "travel",
+        returnParams: { message: "You chose to fight the checkpoint." }
+      });
+      return true;
+    }
 
-  const restrictedNote =
-    summary.restrictedUnits > 0 ? ` (restricted goods fined, not seized)` : "";
-  gameState.notifications.push(
-    `Checkpoint scans flag contraband. Seized ${seizedUnits} illegal units, fined ${finalFine} credits${restrictedNote}, wanted +${finalWanted}.`
-  );
-  return true;
-}
+    const baseFine = Math.max(25, Math.round(summary.estimatedValue * 0.35));
+    const bonusFine = (summary.illegalUnits || 0) * 15 + (summary.restrictedUnits || 0) * 8;
+    const fine = baseFine + bonusFine;
+    const { fineDiscount } = getTradeStrategyEffects();
+    const discount = Math.round(fine * fineDiscount);
+    const finalFine = Math.max(0, fine - discount);
+    gameState.player.credits = Math.max(0, gameState.player.credits - finalFine);
+    const wantedGain = 3 + Math.min(12, Math.round(summary.illegalUnits * 0.5 + summary.restrictedUnits * 0.25));
+    const wantedReduction = Math.round(wantedGain * fineDiscount * 0.6);
+    const finalWanted = Math.max(0, wantedGain - wantedReduction);
+    adjustWanted(finalWanted);
+
+    const restrictedNote =
+      summary.restrictedUnits > 0 ? ` (restricted goods fined, not seized)` : "";
+    gameState.notifications.push(
+      `Checkpoint scans flag contraband. Seized ${seizedUnits} illegal units, fined ${finalFine} credits${restrictedNote}, wanted +${finalWanted}.`
+    );
+    return true;
+  }
 
 function logHazardMitigation(
   profile: RouteProfile,
@@ -326,13 +339,18 @@ export function travelTo(targetSystemId: string): void {
 
   const profile = computeRouteProfile(current, target, route);
   const fuelMultiplier = Math.max(0, devTune.fuelCostMultiplier ?? 1);
-  const fuelCost = Math.max(0, Math.round(profile.fuelCost * fuelMultiplier));
+  const controlHazardReduction = isPerkUnlocked("control_t3_hazard_mapping") ? 0.03 : 0;
+  const controlFuelFactor = isPerkUnlocked("control_t3_hazard_mapping") ? 0.95 : 1;
+  const fuelCost = Math.max(0, Math.round(profile.fuelCost * fuelMultiplier * controlFuelFactor));
   const riskScale = Math.max(0, Math.min(3, (devTune.travelRiskScaling ?? 100) / 100));
   const combatTune = getCombatTune();
   const dangerMult = Math.max(0, combatTune.globalDangerMultiplier ?? 1);
   const scaledHazard = Math.min(
     0.95,
-    Math.max(0, profile.hazardChance * riskScale * dangerMult)
+    Math.max(
+      0,
+      profile.hazardChance * riskScale * dangerMult - controlHazardReduction
+    )
   );
   const scaledProfile: RouteProfile = {
     ...profile,
@@ -340,12 +358,14 @@ export function travelTo(targetSystemId: string): void {
     hazardChance: scaledHazard
   };
 
-  if (gameState.ship.fuel < scaledProfile.fuelCost) {
+  const maintenance = getMaintenanceModifier(gameState);
+  const requiredFuel = Math.ceil(scaledProfile.fuelCost * maintenance.fuel);
+  if (gameState.ship.fuel < requiredFuel) {
     console.warn("Not enough fuel to travel.");
     return;
   }
 
-    gameState.ship.fuel -= scaledProfile.fuelCost;
+  gameState.ship.fuel -= requiredFuel;
     gameState.location.systemId = target.id;
     gameState.lastMiningSystemId = null;
     gameState.location.docked = true;
@@ -378,6 +398,16 @@ export function travelTo(targetSystemId: string): void {
   if (inspectionTriggered) {
     logEncounterDebug("Contraband inspection triggered on arrival.");
   }
+
+  const travelXp = Math.max(
+    5,
+    Math.round(
+      profile.distance * 2 +
+        scaledProfile.hazardChance * 75 +
+        (scaledProfile.routeType === "wild_jump" ? 10 : 0)
+    )
+  );
+  awardXp(travelXp, "travel");
 
   if (maybeTriggerPirateTravel(target)) {
     return;

@@ -13,6 +13,7 @@ import { getWeaponById } from "./weaponSystem";
 import { getSystemById } from "../core/engine";
 import { navigation } from "../core/navigation";
 import { getStarMap, shortestPath } from "../core/map";
+import { awardFactionXp } from "./perkManager";
 
 export interface MissionTemplate {
   id: string;
@@ -164,6 +165,11 @@ function applyRewards(contract: ContractState, status: "completed" | "failed"): 
       .join(", ");
     if (repSummary) {
       gameState.notifications.push(`Mission reward: Reputation updated (${repSummary}).`);
+    }
+    for (const [factionId, delta] of Object.entries(reward.rep)) {
+      if (delta > 0) {
+        awardFactionXp(Math.max(2, Math.round(delta * 8)), factionId);
+      }
     }
   }
   if (reward.weapon) {

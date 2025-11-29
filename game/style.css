@@ -408,6 +408,47 @@ body {
   gap: 10px;
 }
 
+.top-dashboard-collapse {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.dashboard-collapse {
+  padding: 14px;
+}
+
+.dashboard-collapse summary {
+  margin: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  list-style: none;
+}
+
+.dashboard-collapse summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard-collapse summary::after {
+  content: "▼";
+  font-size: 0.7rem;
+}
+
+.dashboard-collapse[open] summary::after {
+  content: "▲";
+}
+
+.dashboard-collapse .details-content {
+  margin-top: 12px;
+}
+
 .weapon-card {
   padding: 8px;
   border-radius: 12px;
@@ -1374,6 +1415,174 @@ body {
   letter-spacing: 0.08em;
   color: var(--text-muted);
   font-family: var(--font-main-pixel);
+}
+
+.xp-track-panel,
+.perk-tree-panel {
+  background: linear-gradient(145deg, #11172b, #090b14);
+}
+
+.xp-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.xp-track-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.xp-track-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.xp-track-title {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.xp-track-level {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.perk-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.perk-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.perk-branch:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.perk-row {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.perk-row.unlocked {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(66, 224, 198, 0.3);
+}
+
+.perk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.perk-desc {
+  margin: 2px 0;
+  color: var(--text-muted);
+}
+
+.perk-meta {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.06em;
+}
+
+.perk-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.perk-badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.xp-track-panel,
+.perk-tree-panel:not(.new-perk-tree) {
+  display: none;
+}
+
+.xp-track-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.xp-track-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.xp-track-progress {
+  height: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.xp-track-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #42e0c6, #bbf7d0);
+  transition: width 0.3s ease;
+}
+
+.xp-track-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.perk-log-panel {
+  background: linear-gradient(145deg, #11172b, #090b14);
+}
+
+.perk-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.perk-log-line {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .value-emphasis {

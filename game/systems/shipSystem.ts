@@ -2,6 +2,7 @@ import { gameState, ShipState, persistLoadout } from "../core/state";
 import { content } from "../core/engine";
 import type { ShipDef } from "../core/contentTypes";
 import { autoEquipAvailableWeapons } from "./weaponSystem";
+import { getMaintenanceModifier } from "./maintenanceSystem";
 
 const DEFAULT_WEAPON_BY_SLOT: Record<string, string | null> = {
   "small:energy": "laser_mk1",
@@ -134,7 +135,8 @@ export function repairShip(): void {
   }
 
   // Very simple formula: 1 credit per point for now
-  const cost = missingHull + missingShields;
+  const maintenance = getMaintenanceModifier(gameState);
+  const cost = Math.max(0, Math.round((missingHull + missingShields) * maintenance.repair));
 
   if (gameState.player.credits < cost) {
     console.warn("Not enough credits to fully repair.");

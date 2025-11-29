@@ -1,0 +1,601 @@
+{
+  "xpTracks": {
+    "mining": {
+      "id": "mining",
+      "displayName": "Mining XP",
+      "description": "Progression earned from mining tiles, going deeper, and surviving hazards.",
+      "type": "activity",
+      "levelThresholds": [0, 100, 300, 600, 1000, 1600, 2300],
+      "maxLevel": 20,
+      "rewardsByLevel": {
+        "2": [
+          { "type": "perkUnlock", "perkId": "extraction_t1_efficient_strikes" }
+        ],
+        "4": [
+          { "type": "perkUnlock", "perkId": "extraction_t2_vein_whisperer" }
+        ],
+        "6": [
+          { "type": "perkUnlock", "perkId": "extraction_t3_deep_delver" }
+        ],
+        "10": [
+          { "type": "perkUnlock", "perkId": "risk_t5_chain_momentum" }
+        ],
+        "14": [
+          { "type": "perkUnlock", "perkId": "economy_t4_hazard_insight" }
+        ]
+      }
+    },
+    "combat": {
+      "id": "combat",
+      "displayName": "Combat XP",
+      "description": "Progression earned from destroying enemies, dodging, and using combos.",
+      "type": "activity",
+      "levelThresholds": [0, 120, 280, 520, 900, 1400],
+      "maxLevel": 20,
+      "rewardsByLevel": {
+        "2": [
+          { "type": "perkUnlock", "perkId": "precision_t1_targeting_assist" }
+        ],
+        "3": [
+          { "type": "perkUnlock", "perkId": "survival_t1_hull_plating" }
+        ],
+        "5": [
+          { "type": "perkUnlock", "perkId": "precision_t2_headshot_focus" }
+        ],
+        "7": [
+          { "type": "perkUnlock", "perkId": "survival_t2_defensive_burst" }
+        ],
+        "12": [
+          { "type": "perkUnlock", "perkId": "precision_t3_backline_breach" }
+        ],
+        "16": [
+          { "type": "perkUnlock", "perkId": "survival_t3_last_stand_matrix" }
+        ]
+      }
+    },
+    "travel": {
+      "id": "travel",
+      "displayName": "Travel XP",
+      "description": "Progression from discovering systems, long jumps, and risky routes.",
+      "type": "activity",
+      "levelThresholds": [0, 80, 200, 420, 750, 1100],
+      "maxLevel": 15,
+      "rewardsByLevel": {
+        "2": [
+          { "type": "perkUnlock", "perkId": "control_t1_quick_cycle" }
+        ],
+        "4": [
+          { "type": "perkUnlock", "perkId": "control_t2_route_insight" }
+        ],
+        "7": [
+          { "type": "perkUnlock", "perkId": "control_t3_hazard_mapping" }
+        ]
+      }
+    },
+    "faction_civilian": {
+      "id": "faction_civilian",
+      "displayName": "Civilian Reputation",
+      "description": "Reputation with civilian factions.",
+      "type": "faction",
+      "levelThresholds": [0, 50, 150, 300, 600, 1000],
+      "maxLevel": 10,
+      "rewardsByLevel": {
+        "2": [
+          { "type": "discount", "scope": "markets_civilian", "value": 0.05 }
+        ],
+        "4": [
+          { "type": "perkUnlock", "perkId": "diplomacy_t2_courier_favor" }
+        ],
+        "6": [
+          { "type": "specialMission", "missionId": "civilian_aid_convoy" }
+        ]
+      }
+    },
+    "faction_pirate": {
+      "id": "faction_pirate",
+      "displayName": "Pirate Reputation",
+      "description": "Reputation with pirate and syndicate networks.",
+      "type": "faction",
+      "levelThresholds": [0, 60, 180, 360, 720],
+      "maxLevel": 10,
+      "rewardsByLevel": {
+        "2": [
+          { "type": "perkUnlock", "perkId": "diplomacy_t1_rift_graffiti" }
+        ],
+        "4": [
+          { "type": "discount", "scope": "black_market", "value": 0.08 }
+        ],
+        "6": [
+          { "type": "perkUnlock", "perkId": "diplomacy_t3_shadow_outreach" }
+        ]
+      }
+    },
+    "ship_interceptor": {
+      "id": "ship_interceptor",
+      "displayName": "Interceptor Mastery",
+      "description": "Ship-specific XP earned while piloting the interceptor.",
+      "type": "ship",
+      "levelThresholds": [0, 50, 150, 300, 600],
+      "maxLevel": 10,
+      "rewardsByLevel": {
+        "2": [
+          {
+            "type": "statBoost",
+            "effects": [
+              {
+                "target": "ship",
+                "stat": "evadeBase",
+                "operation": "addPercent",
+                "value": 0.05
+              }
+            ]
+          }
+        ],
+        "4": [
+          {
+            "type": "modifierUnlock",
+            "id": "interceptor_mobility_combo_boost",
+            "description": "+10% combo gain from mobility actions."
+          }
+        ],
+        "6": [
+          {
+            "type": "specialAbilityUnlock",
+            "abilityId": "phantom_strike",
+            "description": "Once per encounter, perform a guaranteed backline strike after a dodge."
+          }
+        ]
+      }
+    },
+    "ship_hauler": {
+      "id": "ship_hauler",
+      "displayName": "Hauler Mastery",
+      "description": "Progression while piloting large cargo haulers.",
+      "type": "ship",
+      "levelThresholds": [0, 40, 120, 260, 500],
+      "maxLevel": 8,
+      "rewardsByLevel": {
+        "2": [
+          {
+            "type": "statBoost",
+            "effects": [
+              {
+                "target": "ship",
+                "stat": "cargoCapacity",
+                "operation": "addFlat",
+                "value": 15
+              }
+            ]
+          }
+        ],
+        "4": [
+          {
+            "type": "perkUnlock",
+            "perkId": "ship_hauler_hazard_steadiness"
+          }
+        ],
+        "6": [
+          {
+            "type": "specialAbilityUnlock",
+            "abilityId": "emergency_shield_pulse",
+            "description": "Deploy a pulse that restores shields equal to 15% of max."
+          }
+        ]
+      }
+    },
+    "ship_miner": {
+      "id": "ship_miner",
+      "displayName": "Colonial Miner Mastery",
+      "description": "XP gained while using dedicated mining platforms.",
+      "type": "ship",
+      "levelThresholds": [0, 60, 180, 360, 720],
+      "maxLevel": 10,
+      "rewardsByLevel": {
+        "2": [
+          {
+            "type": "statBoost",
+            "effects": [
+              {
+                "target": "mining",
+                "stat": "signalRadius",
+                "operation": "addPercent",
+                "value": 0.10
+              }
+            ]
+          }
+        ],
+        "5": [
+          {
+            "type": "modifierUnlock",
+            "id": "deep_miner_cluster_focus",
+            "description": "Mining shifts reveal two adjacent cells when drilling."
+          }
+        ],
+        "8": [
+          {
+            "type": "specialAbilityUnlock",
+            "abilityId": "resonance_burst",
+            "description": "Emit a resonance burst that rewards guaranteed uncommon loot next drill."
+          }
+        ]
+      }
+    }
+  },
+  "perks": {
+    "survival_t1_hull_plating": {
+      "id": "survival_t1_hull_plating",
+      "branch": "survival",
+      "tier": 1,
+      "displayName": "Hull Plating I",
+      "description": "+5% hull integrity and -10% mining hazard damage.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "ship",
+          "stat": "hullMaxMultiplier",
+          "operation": "mul",
+          "value": 1.05
+        },
+        {
+          "target": "mining",
+          "stat": "hazardDamageMultiplier",
+          "operation": "mul",
+          "value": 0.9
+        }
+      ]
+    },
+    "precision_t1_targeting_assist": {
+      "id": "precision_t1_targeting_assist",
+      "branch": "precision",
+      "tier": 1,
+      "displayName": "Targeting Assist",
+      "description": "+5% weapon accuracy and +10% accuracy vs backline.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "combat",
+          "stat": "accuracyBase",
+          "operation": "addPercent",
+          "value": 0.05
+        },
+        {
+          "target": "combat",
+          "stat": "accuracyBacklineBonus",
+          "operation": "addPercent",
+          "value": 0.10
+        }
+      ]
+    },
+    "extraction_t1_efficient_strikes": {
+      "id": "extraction_t1_efficient_strikes",
+      "branch": "extraction",
+      "tier": 1,
+      "displayName": "Efficient Strikes",
+      "description": "+10% ore yield, -5% drill wear.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "mining",
+          "stat": "oreYieldMultiplier",
+          "operation": "mul",
+          "value": 1.10
+        },
+        {
+          "target": "mining",
+          "stat": "drillWearMultiplier",
+          "operation": "mul",
+          "value": 0.95
+        }
+      ]
+    },
+    "extraction_t2_vein_whisperer": {
+      "id": "extraction_t2_vein_whisperer",
+      "branch": "extraction",
+      "tier": 2,
+      "displayName": "Vein Whisperer",
+      "description": "+10% signal readings and +5% combo gain on surveyed tiles.",
+      "requires": ["extraction_t1_efficient_strikes"],
+      "effects": [
+        {
+          "target": "mining",
+          "stat": "signalBonus",
+          "operation": "addPercent",
+          "value": 0.10
+        },
+        {
+          "target": "mining",
+          "stat": "comboGainMultiplier",
+          "operation": "mul",
+          "value": 1.05
+        }
+      ]
+    },
+    "extraction_t3_deep_delver": {
+      "id": "extraction_t3_deep_delver",
+      "branch": "extraction",
+      "tier": 3,
+      "displayName": "Deep Delver",
+      "description": "+8% rare yield and +8% hazard control from Risk Chain perks.",
+      "requires": ["extraction_t2_vein_whisperer"],
+      "effects": [
+        {
+          "target": "mining",
+          "stat": "rareYieldMultiplier",
+          "operation": "mul",
+          "value": 1.08
+        },
+        {
+          "target": "mining",
+          "stat": "hazardControlBonus",
+          "operation": "addPercent",
+          "value": 0.08
+        }
+      ]
+    },
+    "precision_t2_headshot_focus": {
+      "id": "precision_t2_headshot_focus",
+      "branch": "precision",
+      "tier": 2,
+      "displayName": "Headshot Focus",
+      "description": "+5% crit chance and +8% backline accuracy.",
+      "requires": ["precision_t1_targeting_assist"],
+      "effects": [
+        {
+          "target": "combat",
+          "stat": "critChance",
+          "operation": "addPercent",
+          "value": 0.05
+        },
+        {
+          "target": "combat",
+          "stat": "accuracyBacklineBonus",
+          "operation": "addPercent",
+          "value": 0.08
+        }
+      ]
+    },
+    "survival_t2_defensive_burst": {
+      "id": "survival_t2_defensive_burst",
+      "branch": "survival",
+      "tier": 2,
+      "displayName": "Defensive Burst",
+      "description": "Shield hits trigger 12% faster regen for 2 seconds.",
+      "requires": ["survival_t1_hull_plating"],
+      "effects": [
+        {
+          "target": "combat",
+          "stat": "shieldRegenTriggerBonus",
+          "operation": "addPercent",
+          "value": 0.12
+        }
+      ]
+    },
+    "precision_t3_backline_breach": {
+      "id": "precision_t3_backline_breach",
+      "branch": "precision",
+      "tier": 3,
+      "displayName": "Backline Breach",
+      "description": "Backline strikes ignore 10% of enemy evasion.",
+      "requires": ["precision_t2_headshot_focus"],
+      "effects": [
+        {
+          "target": "combat",
+          "stat": "backlineAccuracyMultiplier",
+          "operation": "mul",
+          "value": 1.10
+        }
+      ]
+    },
+    "survival_t3_last_stand_matrix": {
+      "id": "survival_t3_last_stand_matrix",
+      "branch": "survival",
+      "tier": 3,
+      "displayName": "Last Stand Matrix",
+      "description": "When hull drops below 30%, damage taken is reduced by 15%.",
+      "requires": ["survival_t2_defensive_burst"],
+      "effects": [
+        {
+          "target": "combat",
+          "stat": "lowHullDamageMultiplier",
+          "operation": "mul",
+          "value": 0.85
+        }
+      ]
+    },
+    "control_t1_quick_cycle": {
+      "id": "control_t1_quick_cycle",
+      "branch": "control",
+      "tier": 1,
+      "displayName": "Quick Cycle",
+      "description": "Using different action categories in sequence builds 20% more combo.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "combo",
+          "stat": "variationGainMultiplier",
+          "operation": "mul",
+          "value": 1.20
+        }
+      ]
+    },
+    "control_t2_route_insight": {
+      "id": "control_t2_route_insight",
+      "branch": "control",
+      "tier": 2,
+      "displayName": "Route Insight",
+      "description": "Long-distance jumps refresh 25% faster and reduce hazard chatter.",
+      "requires": ["control_t1_quick_cycle"],
+      "effects": [
+        {
+          "target": "travel",
+          "stat": "jumpCooldownMultiplier",
+          "operation": "mul",
+          "value": 0.75
+        },
+        {
+          "target": "travel",
+          "stat": "hazardDetectionBonus",
+          "operation": "addPercent",
+          "value": 0.08
+        }
+      ]
+    },
+    "control_t3_hazard_mapping": {
+      "id": "control_t3_hazard_mapping",
+      "branch": "control",
+      "tier": 3,
+      "displayName": "Hazard Mapping",
+      "description": "Gain a partial hazard map for the next jump and +5% fuel efficiency in wildspace.",
+      "requires": ["control_t2_route_insight"],
+      "effects": [
+        {
+          "target": "travel",
+          "stat": "nextJumpScan",
+          "operation": "add",
+          "value": 1
+        },
+        {
+          "target": "travel",
+          "stat": "fuelCostMultiplier",
+          "operation": "mul",
+          "value": 0.95
+        }
+      ]
+    },
+    "diplomacy_t1_rift_graffiti": {
+      "id": "diplomacy_t1_rift_graffiti",
+      "branch": "diplomacy",
+      "tier": 1,
+      "displayName": "Rift Graffiti",
+      "description": "+3% intel on pirate routes and first contact goodwill.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "intel",
+          "stat": "pirateRouteDetection",
+          "operation": "addPercent",
+          "value": 0.03
+        },
+        {
+          "target": "faction_pirate",
+          "stat": "reachBonus",
+          "operation": "addPercent",
+          "value": 0.05
+        }
+      ]
+    },
+    "diplomacy_t2_courier_favor": {
+      "id": "diplomacy_t2_courier_favor",
+      "branch": "diplomacy",
+      "tier": 2,
+      "displayName": "Courier Favor",
+      "description": "Civilian markets grant +4% trade intel and reduce smuggling detection by 5%.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "economy",
+          "stat": "intelGainMultiplier",
+          "operation": "addPercent",
+          "value": 0.04
+        },
+        {
+          "target": "smuggling",
+          "stat": "detectionBaseline",
+          "operation": "mul",
+          "value": 0.95
+        }
+      ]
+    },
+    "diplomacy_t3_shadow_outreach": {
+      "id": "diplomacy_t3_shadow_outreach",
+      "branch": "diplomacy",
+      "tier": 3,
+      "displayName": "Shadow Outreach",
+      "description": "Pirate contacts share unique trade routes and trigger a weekly black market mission.",
+      "requires": ["diplomacy_t1_rift_graffiti"],
+      "effects": [
+        {
+          "target": "events",
+          "stat": "pirateMissionWeight",
+          "operation": "addPercent",
+          "value": 0.05
+        }
+      ]
+    },
+    "risk_t5_chain_momentum": {
+      "id": "risk_t5_chain_momentum",
+      "branch": "risk",
+      "tier": 5,
+      "displayName": "Risk Chain Momentum",
+      "description": "Maintain a higher Risk Chain level for two extra turns, unlocking bigger rewards.",
+      "requires": ["extraction_t3_deep_delver"],
+      "effects": [
+        {
+          "target": "mining",
+          "stat": "riskChainDecayDelay",
+          "operation": "add",
+          "value": 2
+        }
+      ]
+    },
+    "economy_t4_hazard_insight": {
+      "id": "economy_t4_hazard_insight",
+      "branch": "economy",
+      "tier": 4,
+      "displayName": "Hazard Insight",
+      "description": "Hazard readings grant +10% payout on rare minerals during extraction.",
+      "requires": ["extraction_t2_vein_whisperer"],
+      "effects": [
+        {
+          "target": "mining",
+          "stat": "rareYieldMultiplier",
+          "operation": "mul",
+          "value": 1.10
+        }
+      ]
+    },
+    "ship_hauler_hazard_steadiness": {
+      "id": "ship_hauler_hazard_steadiness",
+      "branch": "ship",
+      "tier": 1,
+      "displayName": "Hazard Steadiness",
+      "description": "Hauler frame resists hazard damage by 15%.",
+      "requires": [],
+      "effects": [
+        {
+          "target": "ship",
+          "stat": "hazardDamageMultiplier",
+          "operation": "mul",
+          "value": 0.85
+        }
+      ]
+    }
+  },
+  "dangerScaling": {
+    "baseDangerScore": 0,
+    "xpContribution": {
+      "mining": 0.1,
+      "combat": 0.25,
+      "travel": 0.1,
+      "faction_civilian": 0.0,
+      "faction_pirate": 0.15,
+      "ship_interceptor": 0.05,
+      "ship_hauler": 0.05,
+      "ship_miner": 0.05
+    },
+    "perkDangerValues": {
+      "survival_t1_hull_plating": 1,
+      "precision_t1_targeting_assist": 1,
+      "control_t1_quick_cycle": 0.5,
+      "control_t3_hazard_mapping": 1,
+      "diplomacy_t3_shadow_outreach": 1,
+      "ship_hauler_hazard_steadiness": 1
+    },
+    "dangerToGameEffects": {
+      "enemyEliteSpawnChancePerDanger": 0.002,
+      "pirateAmbushChancePerDanger": 0.0015,
+      "hazardChancePerDanger": 0.001,
+      "eventDangerMultiplierPerDanger": 0.0008
+    }
+  }
+}

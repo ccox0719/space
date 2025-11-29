@@ -1,13 +1,23 @@
-import type { GameState, MiningBeltState, MiningSample, MiningCellState } from "../core/state";
-import { devTune, recordMiningYield, scaleTurnDelta } from "../core/state";
+import type {
+  GameState,
+  MiningBeltState,
+  MiningSample,
+  MiningCellState,
+  MiningCluster
+} from "../core/state";
+import { addCreditsEarned, devTune, recordMiningYield, scaleTurnDelta } from "../core/state";
 import { getPassiveEffects } from "../core/passives";
 import { computePirateChance } from "./riskSystem";
 import { getLocalPrice } from "./economySystem";
 import { startCombat } from "./combatSystem";
+import { getMaintenanceModifier } from "./maintenanceSystem";
+import { awardXp, isPerkUnlocked } from "./perkManager";
 import miningContent from "../content/mining_resources.json";
+import depthConfig from "../content/mining_depth_config.json";
 
 const PIRATE_ENCOUNTER_ID = "pirate_cutter";
 const REFINERY_PRICE_MULT = 0.5; // refinery pays 50% of market (half cost)
+const MINING_PAYOUT_REDUCTION = 0.5;
 const REFINERY_PRICE_CAP = 100;
 
 type MiningIntensity = "careful" | "standard" | "overcharge";
@@ -62,6 +72,448 @@ const DEPTH_RULES: Record<
   4: { yieldMultiplier: 1.18, noise: 0.14, stabilityLossScale: 1.15, drillDamageChance: 0.08, drillDamageRange: [2, 5] },
   5: { yieldMultiplier: 1.32, noise: 0.22, stabilityLossScale: 1.35, drillDamageChance: 0.12, drillDamageRange: [3, 6] }
 };
+
+type DropRarity = "common" | "rare" | "ultra";
+
+interface ClusterDefinition {
+  chance: number;
+  minSize: number;
+  maxSize: number;
+  maxClusters: number;
+}
+
+interface DepthBand {
+  id: string;
+  label: string;
+  level: number;
+  depthRange: [number, number];
+  valueMultiplier: number;
+  dropWeights: Partial<Record<DropRarity, number>>;
+  lootTables: Partial<Record<DropRarity, string>>;
+  cluster: ClusterDefinition;
+  comboGain: number;
+}
+
+interface ComboConfig {
+  threshold: number;
+  duration: number;
+  revealTiles: number;
+  guaranteedRarityCount: number;
+  threatReduction: number;
+  bandBonus: number;
+  skipBandBonus: number;
+}
+
+interface DepthConfig {
+  bands: DepthBand[];
+  combo: ComboConfig;
+  clusterSettings: {
+    maxAttemptsPerBand: number;
+  };
+  riskChain: {
+    hazardBaseChance: number;
+    hazardPerChain: number;
+    hazardDamageRange: [number, number];
+    hazardDamageMultiplierPerLevel: number;
+    rewardMultipliers: { maxLevel: number; multiplier: number }[];
+    milestones: number[];
+    cashOutBase: number;
+    cashOutPerLevel: number;
+  };
+}
+
+const DEPTH_CONFIG = depthConfig as DepthConfig;
+const DEPTH_BANDS = DEPTH_CONFIG.bands;
+const DEPTH_BAND_MAP = new Map(DEPTH_BANDS.map((band) => [band.id, band]));
+const DEPTH_BAND_LEVELS = new Map(DEPTH_BANDS.map((band) => [band.id, band.level]));
+const COMBO_CONFIG = DEPTH_CONFIG.combo;
+const CLUSTER_SETTINGS = DEPTH_CONFIG.clusterSettings;
+const RISK_CHAIN_CONFIG = DEPTH_CONFIG.riskChain;
+
+const XP_HAZARD_CHANCE_PER_POINT = 0.00004;
+const XP_HAZARD_CHANCE_CAP = 0.12;
+const XP_DAMAGE_BONUS_PER_POINT = 0.00018;
+const XP_DAMAGE_BONUS_CAP = 0.35;
+const XP_THREAT_SPEED_PER_POINT = 0.00045;
+const XP_THREAT_SPEED_CAP = 0.28;
+
+function getXpHazardBonus(xp: number): number {
+  const normalizedXp = Math.max(0, xp);
+  return Math.min(XP_HAZARD_CHANCE_CAP, normalizedXp * XP_HAZARD_CHANCE_PER_POINT);
+}
+
+function getXpDamageMultiplier(xp: number): number {
+  const bonus = Math.min(XP_DAMAGE_BONUS_CAP, Math.max(0, xp) * XP_DAMAGE_BONUS_PER_POINT);
+  return 1 + bonus;
+}
+
+function getXpThreatFactor(xp: number): number {
+  const bonus = Math.min(XP_THREAT_SPEED_CAP, Math.max(0, xp) * XP_THREAT_SPEED_PER_POINT);
+  return 1 + bonus;
+}
+
+function getDepthBand(depth: number): DepthBand {
+  const found = DEPTH_BANDS.find((band) => depth >= band.depthRange[0] && depth <= band.depthRange[1]);
+  return found ?? DEPTH_BANDS[0];
+}
+
+function chooseDropRarity(band: DepthBand, guaranteed?: DropRarity): DropRarity {
+  if (guaranteed && band.lootTables[guaranteed]) {
+    return guaranteed;
+  }
+  const weights: [DropRarity, number][] = (["common", "rare", "ultra"] as DropRarity[]).map((rarity) => [
+    rarity,
+    band.dropWeights[rarity] ?? 0
+  ]);
+  const total = weights.reduce((sum, [, weight]) => sum + weight, 0);
+  if (total <= 0) return "common";
+  let roll = Math.random() * total;
+  for (const [rarity, weight] of weights) {
+    roll -= weight;
+    if (roll <= 0) return rarity;
+  }
+  return "common";
+}
+
+function rollBandLoot(band: DepthBand, rarity: DropRarity) {
+  const tableId = band.lootTables[rarity] ?? band.lootTables.common;
+  const table = getTable(tableId);
+  return rollTableEntry(table);
+}
+
+function accumulatePendingOre(session: MiningSessionState, commodityId: string, amount: number) {
+  if (amount <= 0) return;
+  const buffer = session.pendingOre || {};
+  buffer[commodityId] = (buffer[commodityId] ?? 0) + amount;
+  session.pendingOre = buffer;
+}
+
+function flushPendingOre(session: MiningSessionState, state: GameState) {
+  const buffer = session.pendingOre || {};
+  const result: Record<string, number> = {};
+  session.pendingOre = {};
+  for (const [commodityId, qty] of Object.entries(buffer)) {
+    const rounded = Math.ceil(Math.max(0, qty));
+    if (rounded <= 0) continue;
+    const added = addCargoWithCapacity(state, commodityId, rounded);
+    if (added > 0) {
+      recordOreGain(session, commodityId, added);
+    }
+    result[commodityId] = added;
+  }
+  return result;
+}
+
+function computeSurveySignal(
+  session: MiningSessionState,
+  row: number,
+  col: number,
+  depth: number
+) {
+  const dx = col - (session.veinCol ?? 0);
+  const dy = row - (session.veinRow ?? 0);
+  const dz = depth - (session.veinDepth ?? 3);
+  const planarDist = Math.sqrt(dx * dx + dy * dy);
+  const penalty = planarDist * 2.6 + Math.abs(dz) * 1.5;
+  const noiseScale = Math.max(0.2, 1 - (session.drillsUsed ?? 0) * 0.04);
+  const noise = (Math.random() * 2 - 1) * noiseScale;
+  const baseSignal = 10 - penalty;
+  let signal = clamp(Math.round(baseSignal + noise), 0, 10);
+  if (session.lowSignalMode) {
+    signal = clamp(signal, 0, 5);
+  }
+  const directionClass = computeDirectionClass(session.veinRow ?? 0, session.veinCol ?? 0, row, col);
+  const depthHint = depthHintClass(depth, session.veinDepth ?? 3);
+  const depthScale = depth <= 3 ? 0.6 : 1;
+  const scaledSignal = clamp(Math.round(signal * depthScale), 0, 10);
+  return {
+    signal: scaledSignal,
+    directionClass,
+    depthHint
+  };
+}
+
+function generateClusters(session: MiningSessionState): MiningCluster[] {
+  const rows = session.gridRows ?? GRID_ROWS;
+  const cols = session.gridCols ?? GRID_COLS;
+  const clusters: MiningCluster[] = [];
+  for (const band of DEPTH_BANDS) {
+    const maxClusters = band.cluster.maxClusters;
+    let placed = 0;
+    for (let attempt = 0; attempt < CLUSTER_SETTINGS.maxAttemptsPerBand && placed < maxClusters; attempt++) {
+      if (Math.random() > band.cluster.chance) continue;
+      const cells = buildClusterCells(rows, cols, band.cluster.minSize, band.cluster.maxSize, clusters);
+      if (cells.length >= band.cluster.minSize) {
+        clusters.push({ bandId: band.id, cells });
+        placed += 1;
+      }
+    }
+  }
+  return clusters;
+}
+
+function buildClusterCells(
+  rows: number,
+  cols: number,
+  minSize: number,
+  maxSize: number,
+  existing: MiningCluster[]
+) {
+  const occupied = new Set(existing.flatMap((cluster) => cluster.cells.map((cell) => `${cell.row}:${cell.col}`)));
+  const targetSize = Math.max(minSize, Math.min(maxSize, randBetween(minSize, maxSize)));
+  const cells: { row: number; col: number }[] = [];
+  const startRow = Math.floor(Math.random() * rows);
+  const startCol = Math.floor(Math.random() * cols);
+  cells.push({ row: startRow, col: startCol });
+  occupied.add(`${startRow}:${startCol}`);
+  const directions = [
+    { dr: -1, dc: 0 },
+    { dr: 1, dc: 0 },
+    { dr: 0, dc: -1 },
+    { dr: 0, dc: 1 }
+  ];
+  let tries = 0;
+  while (cells.length < targetSize && tries < 30) {
+    const cursor = cells[Math.floor(Math.random() * cells.length)];
+    const dir = directions[Math.floor(Math.random() * directions.length)];
+    const candidate = { row: cursor.row + dir.dr, col: cursor.col + dir.dc };
+    if (
+      candidate.row < 0 ||
+      candidate.row >= rows ||
+      candidate.col < 0 ||
+      candidate.col >= cols ||
+      occupied.has(`${candidate.row}:${candidate.col}`)
+    ) {
+      tries += 1;
+      continue;
+    }
+    occupied.add(`${candidate.row}:${candidate.col}`);
+    cells.push(candidate);
+  }
+  return cells;
+}
+
+function findCluster(session: MiningSessionState, row: number, col: number) {
+  return session.clusters?.find((cluster) =>
+    cluster.cells.some((cell) => cell.row === row && cell.col === col)
+  );
+}
+
+function triggerComboFlash(session: MiningSessionState, text: string) {
+  session.comboFlash = text;
+  session.comboFlashTimer = 40;
+}
+
+function tickComboFlash(session: MiningSessionState) {
+  if (session.comboFlashTimer && session.comboFlashTimer > 0) {
+    session.comboFlashTimer -= 1;
+    if (session.comboFlashTimer <= 0) {
+      session.comboFlash = undefined;
+    }
+  }
+}
+
+function updateComboGauge(session: MiningSessionState, band: DepthBand) {
+  const prevLevel = session.lastComboBandId ? DEPTH_BAND_LEVELS.get(session.lastComboBandId) ?? band.level : band.level;
+  let gain = band.comboGain;
+  if (band.level > prevLevel) {
+    const diff = band.level - prevLevel;
+    gain += COMBO_CONFIG.bandBonus * diff;
+    if (diff > 1) {
+      gain += COMBO_CONFIG.skipBandBonus * (diff - 1);
+    }
+  }
+  const prevGauge = session.comboGauge ?? 0;
+  const nextGauge = Math.min(COMBO_CONFIG.threshold, prevGauge + gain);
+  session.comboGauge = nextGauge;
+  session.lastComboBandId = band.id;
+  let triggered = false;
+  if (nextGauge >= COMBO_CONFIG.threshold) {
+    triggered = true;
+    session.comboGauge = 0;
+    session.comboBonusTurns = COMBO_CONFIG.duration;
+    session.comboGuarantyRemaining = COMBO_CONFIG.guaranteedRarityCount;
+    session.comboThreatReduction = COMBO_CONFIG.threatReduction;
+    const reveals = pickComboReveals(session, COMBO_CONFIG.revealTiles);
+    session.comboRevealedCells = reveals;
+    revealCells(session, reveals);
+  }
+  return { gain: nextGauge - prevGauge, triggered };
+}
+
+function pickComboReveals(session: MiningSessionState, count: number) {
+  const grid = session.grid ?? [];
+  const candidates: { row: number; col: number }[] = [];
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < (grid[r] ?? []).length; c++) {
+      const cell = grid[r][c];
+      if (cell && !cell.drilled && cell.hintSignal == null) {
+        candidates.push({ row: r, col: c });
+      }
+    }
+  }
+  const picked: { row: number; col: number }[] = [];
+  for (let i = 0; i < count && candidates.length; i++) {
+    const idx = Math.floor(Math.random() * candidates.length);
+    picked.push(candidates[idx]);
+    candidates.splice(idx, 1);
+  }
+  return picked;
+}
+
+function revealCells(session: MiningSessionState, cells: { row: number; col: number }[]) {
+  const depth = clamp(Math.round(session.depth ?? 3), 1, MAX_DEPTH);
+  const depthBand = getDepthBand(depth);
+  const riskLevel = updateRiskChainLevel(session, depthBand.level, { row: r, col: c });
+  updateComboGauge(session, depthBand);
+  for (const coord of cells) {
+    const gridRow = session.grid?.[coord.row];
+    if (!gridRow) continue;
+    const cell = gridRow[coord.col];
+    if (!cell) continue;
+    const data = computeSurveySignal(session, coord.row, coord.col, depth);
+    cell.hintSignal = data.signal;
+  }
+}
+
+export function getRiskChainRewardMult(level: number): number {
+  for (const tier of RISK_CHAIN_CONFIG.rewardMultipliers) {
+    if (level <= tier.maxLevel) {
+      return tier.multiplier;
+    }
+  }
+  return 1;
+}
+
+export function getRiskChainHazardChance(level: number, xp: number = 0): number {
+  const xpBonus = getXpHazardBonus(xp);
+  return Math.min(
+    1,
+    RISK_CHAIN_CONFIG.hazardBaseChance +
+      level * RISK_CHAIN_CONFIG.hazardPerChain +
+      xpBonus
+  );
+}
+
+function resetRiskChain(session: MiningSessionState) {
+  session.riskChainLevel = 0;
+  session.lastRiskBandLevel = null;
+  session.nextRiskGuaranteedRarity = null;
+  session.riskChainMilestoneLevel = 0;
+}
+
+function revealRiskNeighbors(
+  session: MiningSessionState,
+  coords: { row: number; col: number } | null,
+  count: number
+) {
+  if (!coords || !session.grid) return;
+  const deltas = [
+    { dr: -1, dc: 0 },
+    { dr: 1, dc: 0 },
+    { dr: 0, dc: -1 },
+    { dr: 0, dc: 1 }
+  ];
+  const cells: { row: number; col: number }[] = [];
+  for (const delta of deltas) {
+    const row = coords.row + delta.dr;
+    const col = coords.col + delta.dc;
+    if (row < 0 || row >= (session.grid?.length ?? 0)) continue;
+    if (col < 0 || col >= (session.grid?.[row]?.length ?? 0)) continue;
+    cells.push({ row, col });
+    if (cells.length >= count) break;
+  }
+  if (cells.length) {
+    revealCells(session, cells);
+  }
+}
+
+function handleRiskChainMilestone(
+  session: MiningSessionState,
+  level: number,
+  coords: { row: number; col: number }
+) {
+  const milestones = RISK_CHAIN_CONFIG.milestones ?? [];
+  let currentMilestone = session.riskChainMilestoneLevel ?? 0;
+  for (const milestone of milestones) {
+    if (level >= milestone && currentMilestone < milestone) {
+      currentMilestone = milestone;
+      session.riskChainMilestoneLevel = milestone;
+      if (milestone === 3) {
+        triggerComboFlash(session, "Steady Dig! Rewards climbing.");
+        revealRiskNeighbors(session, coords, 1);
+      } else if (milestone === 5) {
+        triggerComboFlash(session, "Deep Run! Hidden tiles revealed.");
+        revealRiskNeighbors(session, coords, 2);
+        session.nextRiskGuaranteedRarity = "rare";
+      } else if (milestone === 8) {
+        triggerComboFlash(session, "Loaded Veins! Next dig at least uncommon.");
+        session.nextRiskGuaranteedRarity = "rare";
+      } else if (milestone >= 10) {
+        triggerComboFlash(session, "Jackpot Depth! Artifacts imminent.");
+        session.nextRiskGuaranteedRarity = "rare";
+      }
+    }
+  }
+}
+
+function consumeGuaranteedRarity(session: MiningSessionState): DropRarity | undefined {
+  if (session.comboGuarantyRemaining && session.comboGuarantyRemaining > 0) {
+    session.comboGuarantyRemaining -= 1;
+    return "rare";
+  }
+  const next = session.nextRiskGuaranteedRarity;
+  if (next) {
+    session.nextRiskGuaranteedRarity = null;
+    return next as DropRarity;
+  }
+  return undefined;
+}
+
+function updateRiskChainLevel(
+  session: MiningSessionState,
+  bandLevel: number,
+  coords: { row: number; col: number }
+) {
+  const prevBand = session.lastRiskBandLevel ?? -1;
+  if (bandLevel < prevBand) {
+    resetRiskChain(session);
+  }
+  session.lastRiskBandLevel = bandLevel;
+  const nextLevel = Math.max(1, (session.riskChainLevel ?? 0) + 1);
+  session.riskChainLevel = nextLevel;
+  handleRiskChainMilestone(session, nextLevel, coords);
+  return nextLevel;
+}
+
+function applyRiskHazard(
+  session: MiningSessionState,
+  state: GameState,
+  level: number,
+  playerXp: number,
+  extraMultiplier = 1
+) {
+  const baseMultiplier = 1 + level * RISK_CHAIN_CONFIG.hazardDamageMultiplierPerLevel;
+  const multiplier =
+    baseMultiplier * getXpDamageMultiplier(playerXp) * Math.max(0, extraMultiplier);
+  const damage = maybeApplyDrillDamage(
+    state,
+    1,
+    [RISK_CHAIN_CONFIG.hazardDamageRange[0], RISK_CHAIN_CONFIG.hazardDamageRange[1]],
+    multiplier
+  );
+  triggerComboFlash(session, `Risk hazard! -${damage} hull.`);
+  resetRiskChain(session);
+  return damage;
+}
+function decrementComboBonus(session: MiningSessionState) {
+  if (session.comboBonusTurns && session.comboBonusTurns > 0) {
+    session.comboBonusTurns -= 1;
+    if (session.comboBonusTurns <= 0) {
+      session.comboThreatReduction = 0;
+    }
+  }
+}
 
 const INTENSITY_RULES: Record<
   MiningIntensity,
@@ -193,6 +645,15 @@ function maybeApplyDrillDamage(
   state.ship.hp = Math.max(0, state.ship.hp - scaled);
   if (!state.notifications) state.notifications = [];
   state.notifications.push(`Drill backlash damaged hull for ${scaled}.`);
+  const maintenance = getMaintenanceModifier(state);
+  const shieldDrain = Math.round(scaled * (maintenance.shield - 1));
+  if (shieldDrain > 0) {
+    const drained = Math.min(shieldDrain, state.ship.shields);
+    state.ship.shields = Math.max(0, state.ship.shields - drained);
+    if (drained > 0) {
+      state.notifications.push(`Shield wear due to upkeep drains ${drained} shield.`);
+    }
+  }
   return scaled;
 }
 
@@ -309,8 +770,21 @@ export function startMiningSession(
     beltName: belt.name,
     lastMessage: "Belt initialized. Stability nominal.",
     lastYield: undefined,
-    samples: []
+    samples: [],
+    comboGauge: 0,
+    comboBonusTurns: 0,
+    comboGuarantyRemaining: 0,
+    comboThreatReduction: 0,
+    lastComboBandId: null,
+    comboRevealedCells: [],
+    riskChainLevel: 0,
+    lastRiskBandLevel: null,
+    nextRiskGuaranteedRarity: null,
+    riskChainMilestoneLevel: 0,
+    clusters: []
   };
+  state.miningSession.clusters = generateClusters(state.miningSession);
+  resetRiskChain(state.miningSession);
   state.lastMiningSystemId = systemId;
   return true;
 }
@@ -338,64 +812,71 @@ export function drillSurveyCell(state: GameState, row: number, col: number) {
   const c = clamp(Math.round(col), 0, GRID_COLS - 1);
   const depth = clamp(Math.round(session.depth ?? 3), 1, MAX_DEPTH);
   session.depth = depth;
+  const riskLevel = session.riskChainLevel ?? 0;
+  tickComboFlash(session);
   session.grid = session.grid ?? createGrid();
   session.drillsUsed = (session.drillsUsed ?? 0) + 1;
 
-  const dx = c - (session.veinCol ?? 0);
-  const dy = r - (session.veinRow ?? 0);
-  const dz = depth - (session.veinDepth ?? 3);
-  const planarDist = Math.sqrt(dx * dx + dy * dy);
-  const penalty = planarDist * 2.6 + Math.abs(dz) * 1.5;
-  const noiseScale = Math.max(0.2, 1 - session.drillsUsed * 0.04);
-  const noise = (Math.random() * 2 - 1) * noiseScale;
-  const baseSignal = 10 - penalty;
-  let signal = clamp(Math.round(baseSignal + noise), 0, 10);
-  if (session.lowSignalMode) {
-    signal = clamp(signal, 0, 5);
-  }
-
-  const dirClass = computeDirectionClass(session.veinRow ?? 0, session.veinCol ?? 0, r, c);
-  const depthHint = depthHintClass(depth, session.veinDepth ?? 3);
-
+  const signalData = computeSurveySignal(session, r, c, depth);
   const cell = session.grid[r][c];
   const firstDrill = !cell.drilled;
   cell.drilled = true;
-  cell.signal = signal;
-  cell.directionClass = dirClass;
-  cell.depthHint = depthHint.hint;
-  cell.depthClass = depthHint.className;
+  cell.signal = signalData.signal;
+  cell.directionClass = signalData.directionClass;
+  cell.depthHint = signalData.depthHint.hint;
+  cell.depthClass = signalData.depthHint.className;
+  cell.hintSignal = null;
   selectCell(session.grid, r, c);
   session.selectedRow = r;
   session.selectedCol = c;
+
   if (firstDrill) {
     session.uniqueDrills = (session.uniqueDrills ?? 0) + 1;
-    session.explorationScore = Math.min(10, (session.explorationScore ?? 0) + signal / 20);
+    session.explorationScore = Math.min(10, (session.explorationScore ?? 0) + signalData.signal / 20);
   } else {
-    session.explorationScore = Math.min(10, (session.explorationScore ?? 0) + signal / 50);
+    session.explorationScore = Math.min(10, (session.explorationScore ?? 0) + signalData.signal / 50);
   }
 
+  const depthBand = getDepthBand(depth);
+  updateComboGauge(session, depthBand);
+
+  const cluster = findCluster(session, r, c);
+  const clusterActive = Boolean(
+    cluster && depthBand.level >= (DEPTH_BAND_LEVELS.get(cluster.bandId) ?? -1)
+  );
+  cell.clusterHint = clusterActive;
+
+  const orePerSignal = 0.001;
+  let orePulse = Math.max(0, signalData.signal * orePerSignal);
+  if (signalData.signal > 0 && orePulse < 1) orePulse = 1;
+  if (clusterActive) {
+    orePulse += signalData.signal * 0.25;
+  }
+
+  const guaranteedRarity = consumeGuaranteedRarity(session);
+  const rarity = chooseDropRarity(depthBand, guaranteedRarity);
+  const loot = rollBandLoot(depthBand, rarity);
+  const commodityId = loot?.id ?? session.resourceId ?? "aurite_ore";
+  const bonusAmount = loot?.amount ?? 0;
+  const totalOre = orePulse + bonusAmount;
+  accumulatePendingOre(session, commodityId, totalOre);
+
+  const playerXp = Math.max(0, state.player.xp ?? 0);
   const threatMultiplier = Math.max(0, devTune.miningThreatMultiplier ?? 0.7);
   const baseThreatGain = 3 + depth;
-  const threatGain = Math.max(0, Math.round(baseThreatGain * threatMultiplier));
+  const threatReduction = session.comboThreatReduction ?? 0;
+  const xpThreatFactor = getXpThreatFactor(playerXp);
+  const threatGain = Math.max(
+    0,
+    Math.round(
+      baseThreatGain * threatMultiplier * xpThreatFactor * Math.max(0, 1 - threatReduction)
+    )
+  );
   session.threat = clamp((session.threat ?? 0) + threatGain, 0, 100);
   session.currentPirateChance = (session.threat ?? 0) / 100;
-  const orePerSignal = 0.0025;
-  let orePulse = Math.max(0, Math.round(signal * orePerSignal));
-  if (signal > 0 && orePulse === 0) orePulse = 1;
-  const commodityId = session.resourceId ?? "aurite_ore";
-  const addedOre = addCargoWithCapacity(state, commodityId, orePulse);
-  recordOreGain(session, commodityId, addedOre);
-  const refineryPrice = getRefineryPrice(session.systemId, commodityId);
-  const approxValue = Math.round(refineryPrice * addedOre);
-  session.totalValueMined += approxValue;
-  session.lastYield = {
-    commodityId,
-    amount: addedOre,
-    approxValue,
-    rareFind: null
-  };
-
-  session.lastMessage = `Pulse at X${c + 1}, Y${r + 1}, Z${depth}: signal ${signal}. Depth ${depthHint.hint}. Threat +${threatGain}%. Ore +${addedOre}.`;
+  const clusterNote = clusterActive ? " vein" : "";
+  session.lastMessage = `Pulse at X${c + 1}, Y${r + 1}, Z${depth} (${depthBand.label}${clusterNote}): signal ${signalData.signal}. Threat +${threatGain}%. Ore +${Math.round(totalOre)} (queued) Risk x${riskLevel}.`;
+  decrementComboBonus(session);
 
   const fightRoll = Math.random() * 100;
   let fightTriggered = false;
@@ -411,14 +892,15 @@ export function drillSurveyCell(state: GameState, row: number, col: number) {
       returnParams: { message: "Pirates forced you out of the claim." }
     });
     session.threat = 0;
+    state.lastMiningSystemId = null;
     session.currentPirateChance = 0;
     session.lastMessage = "Pirates detected! Threat reset to 0%. Claim locked for 1 day.";
   }
 
   return {
-    signal,
-    directionClass: dirClass,
-    depthHint: depthHint.hint,
+    signal: signalData.signal,
+    directionClass: signalData.directionClass,
+    depthHint: signalData.depthHint.hint,
     fightTriggered,
     threat: session.threat
   };
@@ -432,6 +914,15 @@ export function finalizeSurveyExtraction(state: GameState) {
   if (r === null || c === null) return null;
 
   const depth = clamp(Math.round(session.depth ?? 3), 1, MAX_DEPTH);
+  const depthBand = getDepthBand(depth);
+  const riskLevel = session.riskChainLevel ?? 0;
+  const comboResults = updateComboGauge(session, depthBand);
+  if (comboResults.triggered) {
+    triggerComboFlash(session, "Combo bonus ready!");
+  } else if (comboResults.gain > 0) {
+    triggerComboFlash(session, `Combo +${comboResults.gain}`);
+  }
+  const playerXp = Math.max(0, state.player.xp ?? 0);
   const dx = c - (session.veinCol ?? 0);
   const dy = r - (session.veinRow ?? 0);
   const dz = depth - (session.veinDepth ?? 3);
@@ -440,7 +931,7 @@ export function finalizeSurveyExtraction(state: GameState) {
   const signal = clamp(Math.round(10 - dist * 2 + noise), 0, 10);
 
   const depthBonus = 1 + Math.max(0, depth - 2) * 0.12;
-  const baseYieldPerSignal = 0.2;
+    const baseYieldPerSignal = 0.2;
   const rawYield = Math.max(0, Math.round((signal + depthBonus) * baseYieldPerSignal));
   const explorationBonus = Math.min(0.4, (session.explorationScore ?? 0) / 25);
   const efficiency = computeMiningEfficiency(session);
@@ -448,12 +939,42 @@ export function finalizeSurveyExtraction(state: GameState) {
   const finalBonus = 0.1;
   let yieldWithBonus = Math.max(1, Math.round(rawYield * finalEfficiency * (1 + finalBonus)));
   yieldWithBonus = Math.max(1, Math.round(yieldWithBonus * 0.5));
-  const commodityId = session.resourceId ?? "aurite_ore";
-  const added = addCargoWithCapacity(state, commodityId, yieldWithBonus);
-  recordOreGain(session, commodityId, added);
-  const refineryPrice = getRefineryPrice(session.systemId, commodityId);
-  const payoutMultiplier = Math.max(0.05, devTune.miningPayoutMultiplier ?? 0.35);
-  let approxValue = Math.round(refineryPrice * added * payoutMultiplier);
+  const depthRule = DEPTH_RULES[depth] ?? DEPTH_RULES[3];
+  const drillDamage = maybeApplyDrillDamage(
+    state,
+    depthRule.drillDamageChance,
+    depthRule.drillDamageRange,
+    1 + depthBand.level * 0.1
+  );
+    if (drillDamage > 0) {
+      state.notifications = state.notifications || [];
+      state.notifications.push(`Final drill backlash: -${drillDamage} hull.`);
+    }
+  const guaranteedRarity = consumeGuaranteedRarity(session);
+  const rarity = chooseDropRarity(depthBand, guaranteedRarity);
+  const loot = rollBandLoot(depthBand, rarity);
+  const commodityId = loot?.id ?? session.resourceId ?? "aurite_ore";
+  const bonusAmount = loot?.amount ?? 0;
+  yieldWithBonus += bonusAmount;
+    accumulatePendingOre(session, commodityId, yieldWithBonus);
+    const flushResult = flushPendingOre(session, state);
+  const added = flushResult[commodityId] ?? 0;
+  const localPrice = Math.max(1, getLocalPrice(session.systemId, commodityId));
+  const payoutMultiplier = Math.max(
+    0.05,
+    ((devTune.miningPayoutMultiplier ?? 0.35) * MINING_PAYOUT_REDUCTION)
+  );
+  let approxValue = Math.round(localPrice * added * payoutMultiplier * depthBand.valueMultiplier);
+  const rewardMult = getRiskChainRewardMult(riskLevel);
+  approxValue = Math.round(approxValue * rewardMult);
+  const xpGain = Math.max(
+    0,
+    Math.round(added * depthBand.valueMultiplier * rewardMult * 0.35)
+  );
+  if (xpGain > 0) {
+    awardXp(xpGain, "mining");
+    session.xpEarned = (session.xpEarned ?? 0) + xpGain;
+  }
 
   let rareFind: { id: string; amount: number } | null = null;
   if (signal >= 6 && Math.random() < 0.1 + explorationBonus * 0.5) {
@@ -466,24 +987,46 @@ export function finalizeSurveyExtraction(state: GameState) {
       recordOreGain(session, rareFind.id, rareAdded);
     }
   }
+  const depthRareFind = rarity !== "common" ? { id: commodityId, amount: added } : null;
+  const finalRareFind = rareFind ?? depthRareFind;
 
-  session.totalValueMined += approxValue;
-  session.lastYield = {
-    commodityId,
-    amount: yieldWithBonus,
-    approxValue,
-    rareFind
-  };
+    session.totalValueMined += approxValue;
+    session.lastYield = {
+      commodityId,
+      amount: added,
+      approxValue,
+      rareFind: finalRareFind
+    };
 
   const finalThreatGain = 6 + depth * 2;
   const threatMultiplier = Math.max(0, devTune.miningThreatMultiplier ?? 0.7);
-  const threatGain = Math.max(0, Math.round(finalThreatGain * threatMultiplier));
+  const threatReduction = session.comboThreatReduction ?? 0;
+  const xpThreatFactor = getXpThreatFactor(playerXp);
+  const threatGain = Math.max(
+    0,
+    Math.round(
+      finalThreatGain * threatMultiplier * xpThreatFactor * Math.max(0, 1 - threatReduction)
+    )
+  );
   session.threat = clamp((session.threat ?? 0) + threatGain, 0, 100);
   session.currentPirateChance = (session.threat ?? 0) / 100;
-  session.lastMessage = `Final drill X${c + 1}, Y${r + 1}, Z${depth}: signal ${signal}, efficiency ${(finalEfficiency * 100).toFixed(
+  const damageNote = drillDamage > 0 ? ` Drill backlash: -${drillDamage} hull.` : "";
+  session.lastMessage = `Final drill X${c + 1}, Y${r + 1}, Z${depth} (${depthBand.label}): signal ${signal}, efficiency ${(finalEfficiency * 100).toFixed(
     0
-  )}%, ore ${yieldWithBonus} (${added} stored). Threat +${threatGain}%.`;
+  )}%, ore ${added} stored. Threat +${threatGain}%.${damageNote} Risk x${riskLevel}`;
+  resetRiskChain(session);
 
+  decrementComboBonus(session);
+  const hazardBonus = isPerkUnlocked("extraction_t3_deep_delver") ? 0.05 : 0;
+  const hazardChance = Math.max(
+    0,
+    getRiskChainHazardChance(riskLevel, playerXp) - hazardBonus
+  );
+  let hazardDamage = 0;
+  if (Math.random() < hazardChance) {
+    const haulerReduction = isPerkUnlocked("ship_hauler_hazard_steadiness") ? 0.85 : 1;
+    hazardDamage = applyRiskHazard(session, state, riskLevel, playerXp, haulerReduction);
+  }
   const fightRoll = Math.random() * 100;
   let fightTriggered = false;
   const fightThreshold = session.threat * 0.9;
@@ -496,6 +1039,7 @@ export function finalizeSurveyExtraction(state: GameState) {
     session.threat = 0;
     session.currentPirateChance = 0;
     session.lastMessage = "Pirates detected during extraction! Threat reset.";
+    state.lastMiningSystemId = null;
   } else {
     session.runComplete = true;
     session.active = false;
@@ -617,6 +1161,7 @@ export function performMiningAction(
     session.lastMessage = `Vein collapse! Hull took ${hullLoss} damage.`;
     const beltState = ensureBeltState(state, belt.id);
     beltState.depletedUntilDay = state.time.day + 2;
+    resetRiskChain(session);
   } else {
     const damageNote = drillDamage > 0 ? ` Drill backlash: -${drillDamage} hull.` : "";
     session.lastMessage = `Mined ${added} ${minedCommodityId}${
@@ -715,7 +1260,39 @@ export function abortMiningSession(state: GameState, message: string) {
   session.threat = 0;
   session.currentPirateChance = 0;
   session.lastMessage = message;
+  resetRiskChain(session);
   if (!state.notifications) state.notifications = [];
   state.notifications.push(message);
   state.miningSession = null;
+}
+
+export function cashOutMiningSession(state: GameState): string | null {
+  const session = state.miningSession;
+  if (!session || !session.active) return null;
+  const level = session.riskChainLevel ?? 0;
+  if (level < 3) return null;
+  const flushResult = flushPendingOre(session, state);
+  const total = Object.values(flushResult).reduce((sum, qty) => sum + qty, 0);
+  const bonus = Math.max(
+    0,
+    Math.round(RISK_CHAIN_CONFIG.cashOutBase + level * RISK_CHAIN_CONFIG.cashOutPerLevel)
+  );
+  const depthBand = getDepthBand(session.depth ?? 3);
+  const rewardMult = getRiskChainRewardMult(level);
+  const xpGain = Math.max(
+    0,
+    Math.round(total * depthBand.valueMultiplier * rewardMult * 0.35)
+  );
+  if (xpGain > 0) {
+    awardXp(xpGain, "mining");
+    session.xpEarned = (session.xpEarned ?? 0) + xpGain;
+  }
+  addCreditsEarned(bonus);
+  state.player.credits = Math.max(0, state.player.credits + bonus);
+  resetRiskChain(session);
+  session.runComplete = true;
+  session.active = false;
+  const message = `Cash out (Risk ${level}): rounded ${total} ore + ${bonus} cr bonus.`;
+  session.lastMessage = message;
+  return message;
 }

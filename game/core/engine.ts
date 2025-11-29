@@ -4,7 +4,8 @@ import {
   setGameState,
   gameState,
   loadPersistedLoadout,
-  loadDevTune
+  loadDevTune,
+  loadPersistedXpState
 } from "./state";
 import { navigation } from "./navigation";
 import { render } from "./renderer";
@@ -247,6 +248,12 @@ export async function initGame() {
   setGameState(initialState);
   setStarMap(starMap);
   loadDevTune();
+  const persistedXpState = loadPersistedXpState();
+  if (persistedXpState) {
+    gameState.player.xp = persistedXpState.xp;
+    gameState.player.xpTracks = persistedXpState.xpTracks ?? {};
+    gameState.player.perksUnlocked = persistedXpState.perksUnlocked ?? [];
+  }
 
   const persistedLoadout = loadPersistedLoadout();
   if (persistedLoadout) {

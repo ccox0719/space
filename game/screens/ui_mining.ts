@@ -1,13 +1,26 @@
 import { formatTurn } from "../core/formatters";
 import { navigation } from "../core/navigation";
 import { gameState, MiningCellState } from "../core/state";
+import depthConfig from "../content/mining_depth_config.json";
 import {
+  cashOutMiningSession,
   drillSurveyCell,
   finalizeSurveyExtraction,
+  getRiskChainHazardChance,
+  getRiskChainRewardMult,
   setMiningDepth,
   startMiningSession
 } from "../systems/miningSystem";
 import { getCargoValue } from "../systems/economySystem";
+
+const COMBO_THRESHOLD = Math.max(1, depthConfig.combo.threshold);
+
+function riskColor(level: number): string {
+  if (level >= 10) return "#ff5c7a";
+  if (level >= 6) return "#fb923c";
+  if (level >= 3) return "#facc15";
+  return "#34d399";
+}
 
 declare const nav: (screen: string, params?: Record<string, unknown>) => void;
 
@@ -48,6 +61,13 @@ window.finalizeDrill = () => {
   navigation.go("main", { message });
 };
 
+window.cashOutMining = () => {
+  const message = cashOutMiningSession(gameState);
+  navigation.go("main", {
+    message: message ?? "Risk Chain cash out requires level 3+."
+  });
+};
+
 window.newSurvey = () => {
   startMiningSession(
     gameState,
@@ -76,14 +96,23 @@ function renderGrid(grid: MiningCellState[][] | undefined): string {
       const outerCls = ["mine-cell"];
       if (cell.drilled) outerCls.push("drilled");
       if (cell.selected) outerCls.push("selected");
+      if (cell.clusterHint) outerCls.push("cluster-hint");
 
       const innerCls = ["mine-cell-inner"];
       if (cell.directionClass) innerCls.push(cell.directionClass);
       if (cell.depthClass) innerCls.push(cell.depthClass);
+      if (cell.hintSignal != null && !cell.drilled) innerCls.push("hinted");
       if (cell.signal != null) innerCls.push(signalClass(cell.signal));
 
-      const label =
-        cell.signal != null ? `<span class="cell-signal">${cell.signal}</span>` : `<span class="cell-signal muted">·</span>`;
+      const signalValue =
+        cell.signal != null ? cell.signal : cell.hintSignal != null ? cell.hintSignal : "A";
+      const signalClassName =
+        cell.signal != null
+          ? "cell-signal"
+          : cell.hintSignal != null
+          ? "cell-signal hint"
+          : "cell-signal muted";
+      const label = `<span class="${signalClassName}">${signalValue}</span>`;
 
       cells.push(`
         <div class="${outerCls.join(" ")}" onclick="drillCell(${r}, ${c})">
@@ -120,6 +149,25 @@ export function MiningScreen(): string {
       </div>
     `;
   }
+
+  const comboGauge = Math.min(COMBO_THRESHOLD, session.comboGauge ?? 0);
+  const comboPercent = Math.min(100, Math.round((comboGauge / COMBO_THRESHOLD) * 100));
+  const comboActive = (session.comboBonusTurns ?? 0) > 0;
+  const comboStatus = comboActive
+    ? `Combo bonus active (${session.comboBonusTurns} turns)`
+    : `Combo ${comboPercent}% toward bonus`;
+  const comboThreatReduction = session.comboThreatReduction ?? 0;
+
+  const playerXp = Math.max(0, gameState.player.xp ?? 0);
+  const riskLevel = session.riskChainLevel ?? 0;
+  const riskReward = getRiskChainRewardMult(riskLevel);
+  const riskHazard = Math.round(getRiskChainHazardChance(riskLevel, playerXp) * 100);
+  const riskBarWidth = Math.min(100, Math.round((riskLevel / 12) * 100));
+  const riskLabel = `Risk Chain: ${riskLevel}`;
+  const riskDescription = `Reward x${riskReward.toFixed(2)} • Hazard ${riskHazard}%`;
+  const riskColorValue = riskColor(riskLevel);
+  const showCashOut = riskLevel >= 3 && session.active;
+  const xpGained = session.xpEarned ?? 0;
 
   const threatPct = Math.round(session.threat ?? 0);
   const cargoValue = getCargoValue(gameState, session.systemId);
@@ -186,8 +234,20 @@ export function MiningScreen(): string {
           <span class="stat-value stat-risk">${threatPct}%</span>
         </div>
         <div class="stat-pill">
+          <span class="stat-label">Risk Chain</span>
+          <span class="stat-value" style="color:${riskColorValue}">${riskLabel}</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">Combo</span>
+          <span class="stat-value">${comboPercent}%</span>
+        </div>
+        <div class="stat-pill">
           <span class="stat-label">Ore Value</span>
           <span class="stat-value">${Math.round(cargoValue)} cr</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-label">Mining XP</span>
+          <span class="stat-value">${xpGained}</span>
         </div>
       </section>
 
@@ -216,18 +276,31 @@ export function MiningScreen(): string {
             <p class="label">Depth</p>
             <div class="mode-row">
               ${depthButtons}
-            </div>
-            <p class="muted">Each tile shows signal strength with a gradient pointing toward the vein; glow hints depth (shallow/deep/optimal).</p>
           </div>
+          <p class="muted">Each tile shows signal strength with a gradient pointing toward the vein; glow hints depth (shallow/deep/optimal).</p>
+        </div>
 
-          <div class="panel-card">
-            <p class="label">Controls</p>
-            <div class="mode-row">
-              <button class="chip-btn" onclick="finalizeDrill()">Final Drill</button>
-              <button class="chip-btn" onclick="newSurvey()">New Survey</button>
-              <button class="chip-btn" onclick="leaveMining()">Leave</button>
-            </div>
+        <div class="panel-card">
+          <p class="label">Controls</p>
+          <div class="mode-row">
+            <button class="chip-btn" onclick="finalizeDrill()">Final Drill</button>
+            <button class="chip-btn" onclick="newSurvey()">New Survey</button>
+            <button class="chip-btn" onclick="leaveMining()">Leave</button>
           </div>
+        </div>
+
+        <div class="panel-card">
+          <p class="label">Combo Meter</p>
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:${comboPercent}%;"></div>
+          </div>
+          <p class="muted">${comboStatus}</p>
+          ${
+            comboThreatReduction > 0
+              ? `<p class="muted">Threat -${Math.round(comboThreatReduction * 100)}% while combo is active.</p>`
+              : ""
+          }
+        </div>
 
           <div class="panel-card">
             <p class="label">Threat</p>
@@ -244,6 +317,19 @@ export function MiningScreen(): string {
           </div>
 
           <div class="panel-card">
+            <p class="label">Risk Chain</p>
+            <div class="bar-bg">
+              <div class="bar-fill" style="width:${riskBarWidth}%;background:${riskColorValue};"></div>
+            </div>
+            <p class="muted">${riskDescription}</p>
+            ${
+              showCashOut
+                ? `<button class="chip-btn" onclick="cashOutMining()">Cash Out</button>`
+                : `<span class="muted">Reach level 3 to cash out.</span>`
+            }
+          </div>
+
+          <div class="panel-card">
             <p class="label">Last haul</p>
             <p class="value-emphasis">${lastYield}</p>
           </div>
@@ -254,3 +340,4 @@ export function MiningScreen(): string {
     </div>
   `;
 }
+

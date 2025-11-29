@@ -12,6 +12,18 @@
     "baseSpread": { "buyMultiplier": 1, "sellMultiplier": 0.85 }
   },
   {
+    "id": "boreal_crystal",
+    "name": "Boreal Crystal",
+    "basePrice": 95,
+    "mass": 1,
+    "tags": ["gem", "mining"],
+    "tier": "uncommon",
+    "volatility": 0.33,
+    "legalStatus": "legal",
+    "tradeTags": ["mining", "gem"],
+    "baseSpread": { "buyMultiplier": 1.1, "sellMultiplier": 0.92 }
+  },
+  {
     "id": "steel_ingots",
     "name": "Steel Ingots",
     "basePrice": 85,
@@ -108,6 +120,30 @@
     "baseSpread": { "buyMultiplier": 1.08, "sellMultiplier": 0.82 }
   },
   {
+    "id": "emberite_pearl",
+    "name": "Emberite Pearl",
+    "basePrice": 250,
+    "mass": 1,
+    "tags": ["gem", "luxury"],
+    "tier": "luxury",
+    "volatility": 0.6,
+    "legalStatus": "restricted",
+    "tradeTags": ["luxury", "gem"],
+    "baseSpread": { "buyMultiplier": 1.25, "sellMultiplier": 0.85 }
+  },
+  {
+    "id": "umbrite_shard",
+    "name": "Umbrite Shard",
+    "basePrice": 310,
+    "mass": 1,
+    "tags": ["gem", "artifact"],
+    "tier": "advanced",
+    "volatility": 0.72,
+    "legalStatus": "restricted",
+    "tradeTags": ["black_market", "gem"],
+    "baseSpread": { "buyMultiplier": 1.3, "sellMultiplier": 0.75 }
+  },
+  {
     "id": "polarized_alloys",
     "name": "Polarized Alloys",
     "basePrice": 160,
@@ -190,5 +226,18 @@
     "legalStatus": "illegal",
     "tradeTags": ["black_market", "luxury"],
     "baseSpread": { "buyMultiplier": 1.2, "sellMultiplier": 0.75 }
+  }
+  ,
+  {
+    "id": "quantum_tessera",
+    "name": "Quantum Tessera",
+    "basePrice": 420,
+    "mass": 1,
+    "tags": ["gem", "research"],
+    "tier": "advanced",
+    "volatility": 0.85,
+    "legalStatus": "illegal",
+    "tradeTags": ["black_market", "research"],
+    "baseSpread": { "buyMultiplier": 1.35, "sellMultiplier": 0.65 }
   }
 ]

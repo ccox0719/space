@@ -46,6 +46,9 @@ export interface PlayerState {
   roles: string[];
   wanted: number;
   hasChosenStarter: boolean;
+  xp: number;
+  xpTracks: Record<string, number>;
+  perksUnlocked: string[];
 }
 
 export interface SystemIntel {
@@ -82,6 +85,7 @@ export interface RunStats {
   miningRuns: number;
   oreMinedTotal: number;
   rareFinds: number;
+  xpEarned: number;
 }
 
 export type GameOverReason = "ship_destroyed" | "out_of_fuel" | "story_fail" | "other";
@@ -307,6 +311,13 @@ export interface MiningCellState {
   depthClass?: string | null;
   drilled?: boolean;
   selected?: boolean;
+  hintSignal?: number | null;
+  clusterHint?: boolean;
+}
+
+export interface MiningCluster {
+  bandId: string;
+  cells: { row: number; col: number }[];
 }
 
 export interface MiningSessionState {
@@ -344,7 +355,22 @@ export interface MiningSessionState {
   };
   samples?: MiningSample[];
   lowSignalMode?: boolean;
-}
+  comboGauge?: number;
+  lastComboBandId?: string | null;
+  comboBonusTurns?: number;
+  comboGuarantyRemaining?: number;
+  comboRevealedCells?: { row: number; col: number }[];
+  comboThreatReduction?: number;
+  comboFlash?: string;
+  comboFlashTimer?: number;
+  clusters?: MiningCluster[];
+  pendingOre?: Record<string, number>;
+  xpEarned?: number;
+  riskChainLevel?: number;
+    lastRiskBandLevel?: number | null;
+    nextRiskGuaranteedRarity?: string | null;
+    riskChainMilestoneLevel?: number;
+  }
 
 export interface ReputationTrack {
   [factionId: string]: number;
@@ -424,7 +450,8 @@ export function createRunStats(): RunStats {
     damageTakenTotal: 0,
     miningRuns: 0,
     oreMinedTotal: 0,
-    rareFinds: 0
+    rareFinds: 0,
+    xpEarned: 0
   };
 }
 
@@ -456,6 +483,35 @@ export function persistLoadout(): void {
   window.localStorage.setItem(LOADOUT_KEY, JSON.stringify(payload));
 }
 
+const XP_STATE_KEY = "cosmo_xp_state";
+
+export interface PersistedXpState {
+  xp: number;
+  xpTracks: Record<string, number>;
+  perksUnlocked: string[];
+}
+
+export function persistXpState(): void {
+  if (typeof window === "undefined" || !window.localStorage || !gameState) return;
+  const payload: PersistedXpState = {
+    xp: gameState.player.xp,
+    xpTracks: gameState.player.xpTracks ?? {},
+    perksUnlocked: gameState.player.perksUnlocked ?? []
+  };
+  window.localStorage.setItem(XP_STATE_KEY, JSON.stringify(payload));
+}
+
+export function loadPersistedXpState(): PersistedXpState | null {
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  const raw = window.localStorage.getItem(XP_STATE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as PersistedXpState;
+  } catch {
+    return null;
+  }
+}
+
 export function newGameState(): GameState {
   return {
     version: 1,
@@ -465,7 +521,12 @@ export function newGameState(): GameState {
       credits: 1000,
       roles: ["trader"],
       wanted: 0,
-      hasChosenStarter: false
+      hasChosenStarter: false,
+      xp: 0,
+      xpTracks: {
+        mining: 0
+      },
+      perksUnlocked: []
     },
     ship: {
       templateId: starterTemplate?.id ?? "none",
@@ -596,7 +657,7 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
   marketBurstChance: 5,
   marketCrashChance: 5,
   tradeProfitMultiplier: 1,
-  contractPayoutMultiplier: 1.4,
+    contractPayoutMultiplier: 1.7,
   contractDifficultyMultiplier: 1,
   fuelCostMultiplier: 1,
   travelRiskScaling: 100,
@@ -604,8 +665,8 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
   eventDangerMultiplier: 1,
   eventRewardMultiplier: 1,
   progressionSpeedMultiplier: 1,
-  miningEfficiency: 1,
-  miningPayoutMultiplier: 1,
+    miningEfficiency: 0.85,
+    miningPayoutMultiplier: 0.75,
   drillDamageMultiplier: 1,
   miningThreatMultiplier: 1,
   combat: {
@@ -845,6 +906,15 @@ export function recordMiningYield(amount: number, rare: boolean): void {
   if (rare) {
     gameState.runStats.rareFinds += 1;
   }
+}
+
+export function addXp(amount: number, trackId: string = "mining"): void {
+  if (!gameState || amount <= 0) return;
+  gameState.player.xp += amount;
+  gameState.runStats.xpEarned += amount;
+  const xpTracks = gameState.player.xpTracks || {};
+  xpTracks[trackId] = (xpTracks[trackId] ?? 0) + amount;
+  gameState.player.xpTracks = xpTracks;
 }
 
 export function recordJump(): void {

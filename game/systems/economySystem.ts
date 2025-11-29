@@ -6,6 +6,7 @@ import type { CommodityDef, SystemDef } from "../core/contentTypes";
 import { recordDelivery } from "./missionSystem";
 import { getReputation } from "./reputationSystem";
 import { incrementTradeStrategyProgress } from "./tradeStrategySystem";
+import miningContent from "../content/mining_resources.json";
 
 const MARKET_GLOBAL_MODIFIER = "__global__";
 const DEFAULT_SPREAD = { buyMultiplier: 1, sellMultiplier: 0.85 };
@@ -15,6 +16,12 @@ const TIER_PRICE_MODIFIERS: Record<string, number> = {
   strategic: 1.2,
   luxury: 1.35
 };
+
+const MINING_COMMODITY_IDS = new Set(
+  (miningContent.tables ?? []).flatMap((table: any) =>
+    (table.entries ?? []).map((entry: any) => entry.id)
+  )
+);
 
 export type MarketTrend = "high" | "low" | "stable";
 
@@ -146,7 +153,8 @@ function computeBaseLocalPrice(system: SystemDef, commodity: CommodityDef): numb
     temporary *
     eventMultiplier *
     localDrift;
-  return Math.max(1, Math.round(price));
+  const miningMultiplier = MINING_COMMODITY_IDS.has(commodity.id) ? 0.5 : 1;
+  return Math.max(1, Math.round(price * miningMultiplier));
 }
 
 export function getLocalPrice(systemId: string, commodityId: string): number {
