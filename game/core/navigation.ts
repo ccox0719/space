@@ -11,6 +11,7 @@ export type ScreenID =
   | "shipyard"
   | "ship_select"
   | "mining"
+  | "perks"
   | "gameover";
 
 import type { MapZoomLevel } from "./map";

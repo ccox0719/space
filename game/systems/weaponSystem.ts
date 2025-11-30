@@ -1,4 +1,4 @@
-import { gameState, persistLoadout } from "../core/state";
+import { ensurePlayerInventory, gameState, persistLoadout } from "../core/state";
 import { content, WeaponDef } from "../core/engine";
 import { DAMAGE_TYPE_VS_DEFENSE } from "./combatConstants";
 import type { WeaponDamageType } from "../core/contentTypes";
@@ -21,10 +21,7 @@ export function getEquippedWeapons(): (WeaponDef | null)[] {
 }
 
 function ensureInventory() {
-  if (!gameState.inventory) {
-    gameState.inventory = { weapons: [] };
-  }
-  return gameState.inventory;
+  return ensurePlayerInventory();
 }
 
 export function getInventoryWeaponIds(): string[] {
@@ -84,6 +81,34 @@ export function buyWeapon(weaponId: string): boolean {
   const inventory = ensureInventory();
   inventory.weapons.push(weaponId);
   gameState.player.credits -= weapon.price;
+  persistLoadout();
+  return true;
+}
+
+export const WEAPON_SELL_RATIO = 0.4;
+
+export function sellWeapon(weaponId: string): boolean {
+  const weapon = getWeaponById(weaponId);
+  if (!weapon) return false;
+
+  const inventory = ensureInventory();
+  const slotIndex = gameState.ship.weapons.findIndex((id) => id === weaponId);
+  const inventoryIndex = inventory.weapons.indexOf(weaponId);
+
+  if (slotIndex === -1 && inventoryIndex === -1) {
+    return false;
+  }
+
+  if (slotIndex !== -1) {
+    gameState.ship.weapons[slotIndex] = null;
+  }
+
+  if (inventoryIndex !== -1) {
+    inventory.weapons.splice(inventoryIndex, 1);
+  }
+
+  const sellPrice = Math.floor((weapon.price ?? 0) * WEAPON_SELL_RATIO);
+  gameState.player.credits += sellPrice;
   persistLoadout();
   return true;
 }

@@ -4,8 +4,8 @@ import { navigation } from "../core/navigation";
 import { systemHasTag } from "../systems/systemHelpers";
 import { getSystemById } from "../core/engine";
 import { startMiningSession } from "../systems/miningSystem";
-import { getAllXpTrackStatuses } from "../systems/xpSystem";
-import { getPerkTreeData } from "../systems/perkManager";
+import { unlockPerkWithPoints } from "@src/systems/perkSystem";
+import { getXpDashboard, getUiPerkTree, getLatestNotifications } from "../ui/uiPerks";
 
 declare global {
   interface Window {
@@ -47,6 +47,15 @@ window.startMiningSessionFromMain = () => {
   }
 };
 
+window.unlockPerkAction = (perkId: string) => {
+  if (unlockPerkWithPoints(gameState, perkId)) {
+    navigation.go("main", { message: "Perk unlocked!" });
+  } else {
+    console.warn(`Failed to unlock perk ${perkId}`);
+    navigation.go("main", { message: "Unable to unlock perk (requirements or points missing)." });
+  }
+};
+
 export function MainScreen(): string {
   const s = gameState;
   const system = getSystemById(s.location.systemId);
@@ -56,66 +65,31 @@ export function MainScreen(): string {
     return firstSentence === raw ? raw : `${firstSentence}.`;
   })();
   const cargoLoad = Object.values(s.ship.cargo || {}).reduce((sum, qty) => sum + qty, 0);
-  const xpRecords = s.player.xpTracks ?? {};
-  const xpStatuses = getAllXpTrackStatuses(xpRecords);
-  const xpTrackEntries =
-    xpStatuses.length > 0
-      ? xpStatuses.map((status) => {
-          const progress =
-            status.xpNeededForNextLevel !== null
-              ? `${status.xpIntoLevel}/${status.xpNeededForNextLevel} XP`
-              : `${status.xp} XP (max)`;
-          const xpNeeded = status.xpNeededForNextLevel ?? 0;
-          const percent = xpNeeded > 0 ? Math.round((status.xpIntoLevel / xpNeeded) * 100) : 100;
-          return { status, progress, percent };
-        })
-      : [];
-  const xpTrackPanels =
-    xpTrackEntries.length > 0
-      ? xpTrackEntries
-          .map(({ status, progress, percent }) => `
-              <div class="xp-track-card">
-                <div class="xp-track-header">
-                  <span class="xp-track-title">${status.track.displayName}</span>
-                  <span class="xp-track-level">Level ${status.level}</span>
-                </div>
-                <div class="xp-track-progress">
-                  <div class="xp-track-fill" style="width:${Math.min(percent,100)}%"></div>
-                </div>
-                <div class="xp-track-sub">${progress}</div>
-              </div>
-            `)
-          .join("")
-      : `<div class="xp-track-card muted">No XP tracked yet.</div>`;
+  const xpTrackEntries = getXpDashboard(s);
   const xpTrackRows =
     xpTrackEntries.length > 0
       ? xpTrackEntries
           .map(
-            ({ status, progress, percent }) => `
+            ({ displayName, level, percent, xpIntoLevel, xpNeeded }) => `
               <div class="xp-track-row">
                 <div class="xp-track-row-header">
-                  <span class="xp-track-title">${status.track.displayName}</span>
-                  <span class="xp-track-level">Level ${status.level}</span>
+                  <span class="xp-track-title">${displayName}</span>
+                  <span class="xp-track-level">Level ${level}</span>
                 </div>
                 <div class="xp-track-progress">
-                  <div class="xp-track-fill" style="width:${Math.min(percent,100)}%"></div>
+                  <div class="xp-track-fill" style="width:${Math.min(percent, 100)}%"></div>
                 </div>
-                <div class="xp-track-sub">${progress}</div>
+                <div class="xp-track-sub">
+                  ${xpNeeded !== null ? `${xpIntoLevel}/${xpNeeded} XP` : `${xpIntoLevel} XP (max)`}
+                </div>
               </div>
             `
           )
           .join("")
       : `<div class="xp-track-row muted">No XP tracked yet.</div>`;
-  const perkTree = getPerkTreeData();
-  const branchEntries = Object.entries(perkTree);
-  const lastNote = s.notifications[s.notifications.length - 1];
-  const logEntries = (s.notifications || []).slice(-5).reverse();
-  const perkActivity = (s.notifications || [])
-    .slice()
-    .reverse()
-    .filter((note) => note.toLowerCase().includes("perks unlocked"))
-    .slice(0, 4);
-
+  const latestNotes = getLatestNotifications(s);
+  const lastNote = latestNotes[0];
+  const logEntries = latestNotes;
   return `
     <div class="app-root">
       <header class="app-header app-header--market">
@@ -124,80 +98,6 @@ export function MainScreen(): string {
           <span class="app-location">${system?.name ?? s.location.systemId}</span>
         </div>
       </header>
-
-      <div class="top-dashboard-collapse">
-        <details class="panel-card xp-dashboard-panel dashboard-collapse">
-          <summary>XP Dashboard</summary>
-          <div class="details-content">
-            <div class="xp-track-grid">
-              ${xpTrackPanels}
-            </div>
-          </div>
-        </details>
-        <details class="panel-card perk-tree-panel dashboard-collapse">
-          <summary>Perk Tree</summary>
-          <div class="details-content">
-            <div class="perk-tree">
-              ${
-                branchEntries.length
-                  ? branchEntries
-                      .map(
-                        ([branch, entries]) => `
-                          <div class="perk-branch">
-                            <h4>${branch.charAt(0).toUpperCase() + branch.slice(1)}</h4>
-                            ${entries
-                              .map(
-                                (entry) => `
-                                  <div class="perk-row${entry.unlocked ? " unlocked" : ""}">
-                                    <div class="perk-header">
-                                      <strong>${entry.displayName}</strong>
-                                      <span class="perk-tier">Tier ${entry.tier}</span>
-                                    </div>
-                                    <p class="perk-desc">${entry.description}</p>
-                                    <p class="perk-meta">
-                                      ${
-                                        entry.source
-                                          ? `${entry.source.trackId} L${entry.source.level}`
-                                          : "No XP track"
-                                      }
-                                      ${entry.requires.length ? ` • requires: ${entry.requires.join(", ")}` : ""}
-                                    </p>
-                                    <div class="perk-badges">
-                                      ${entry.effectTargets
-                                        .map(
-                                          (target) =>
-                                            `<span class="perk-badge" title="Affects ${target}" style="margin-right:4px;padding:0 6px;border-radius:999px;background:#222;color:#fff;font-size:0.75rem;">${target}</span>`
-                                        )
-                                        .join("")}
-                                    </div>
-                                  </div>
-                                `
-                              )
-                              .join("")}
-                          </div>
-                        `
-                      )
-                      .join("")
-                  : `<div class="perk-row muted">Perk definitions unavailable.</div>`
-              }
-            </div>
-          </div>
-        </details>
-        <details class="panel-card perk-log-panel dashboard-collapse">
-          <summary>Recent Perk Activity</summary>
-          <div class="details-content">
-            <div class="perk-log">
-              ${
-                perkActivity.length
-                  ? perkActivity
-                      .map((note) => `<div class="perk-log-line">${note}</div>`)
-                      .join("")
-                  : `<div class="perk-log-line muted">No perks unlocked recently.</div>`
-              }
-            </div>
-          </div>
-        </details>
-      </div>
 
       <section class="header-stats">
         <div class="header-stat">
@@ -219,6 +119,13 @@ export function MainScreen(): string {
           <div>
             <span>Wanted</span>
             <strong>${s.player.wanted}</strong>
+          </div>
+        </div>
+        <div class="header-stat">
+          <i class="bi bi-stars"></i>
+          <div>
+            <span>Perk Points</span>
+            <strong>${s.player.perkPoints ?? 0}</strong>
           </div>
         </div>
       </section>
@@ -330,12 +237,13 @@ export function MainScreen(): string {
         <div class="menu-row">
           <div class="menu-group menu-group--system-tools">
             <span class="menu-group__label">System</span>
-            <div class="menu-group__actions">
-              <button class="btn btn-primary" onclick="nav('market')" id="navMarket">Market</button>
-              ${systemHasTag(s.location.systemId, "shipyard")
-                ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
-                : ``}
-            </div>
+        <div class="menu-group__actions">
+          <button class="btn btn-primary" onclick="nav('market')" id="navMarket">Market</button>
+          ${systemHasTag(s.location.systemId, "shipyard")
+            ? `<button class="btn btn-primary" onclick="nav('shipyard')">Shipyard</button>`
+            : ``}
+          <button class="btn btn-primary" onclick="nav('perks')">Perks</button>
+        </div>
             <div class="menu-group__header">
               <span class="menu-group__label">Tools</span>
               <button

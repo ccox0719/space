@@ -13,6 +13,17 @@ interface NewPlayerOptions {
 }
 
 const STARTING_SHIP: Omit<PlayerState, "name" | "roleId" | "reputation" | "credits" | "fuel" | "maxFuel"> = {
+  level: 1,
+  xp: 0,
+  xpToNext: 100,
+  xpTracks: {},
+  perkPoints: 0,
+  perks: [],
+  passives: [],
+  passiveInventory: [],
+  passiveEffects: {},
+  perkEffects: {},
+  notifications: [],
   ship: {
     hull: 100,
     maxHull: 100,
@@ -27,7 +38,9 @@ const STARTING_SHIP: Omit<PlayerState, "name" | "roleId" | "reputation" | "credi
     agility: 6,
     pilotSkill: 2,
     weaponDamage: 10,
-    cargoCapacity: 20
+    cargoCapacity: 20,
+    passiveSlots: 2,
+    weaponSlots: 1
   },
   modules: {
     engines: ["basic_thrusters"],
@@ -156,4 +169,30 @@ export function appendLog(game: GameState, message: string, data?: Record<string
     message,
     data
   });
+}
+
+export function pushNotification(game: GameState, message: string): void {
+  if (!game.player) return;
+  game.player.notifications = game.player.notifications ?? [];
+  game.player.notifications.push(message);
+  console.debug("Notification added:", message);
+}
+
+export function ensureProgressionDefaults(player: PlayerState): void {
+  if (!player) return;
+  const state = player as Partial<PlayerState>;
+  if (state.level == null) state.level = 1;
+  if (state.xp == null) state.xp = 0;
+  if (state.xpToNext == null) state.xpToNext = 100;
+  if (!state.xpTracks) state.xpTracks = {};
+  if (state.perkPoints == null) state.perkPoints = 0;
+  if (!state.perks) state.perks = [];
+  if (!state.passives) state.passives = [];
+  if (!state.passiveInventory) state.passiveInventory = [];
+  if (!state.passiveEffects) state.passiveEffects = {};
+  if (!state.perkEffects) state.perkEffects = {};
+  if (!state.notifications) state.notifications = [];
+  const shipState = player.ship as Partial<PlayerState["ship"]>;
+  if (shipState.passiveSlots == null) shipState.passiveSlots = 0;
+  if (shipState.weaponSlots == null) shipState.weaponSlots = 0;
 }

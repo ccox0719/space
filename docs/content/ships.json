@@ -25,6 +25,7 @@
       }
     ],
     "moduleSlots": 3,
+    "passiveSlots": 1,
     "powerGrid": 45,
     "cpuLimit": 45,
     "maneuverRating": 55,
@@ -66,6 +67,7 @@
       }
     ],
     "moduleSlots": 3,
+    "passiveSlots": 1,
     "powerGrid": 38,
     "cpuLimit": 40,
     "maneuverRating": 50,
@@ -107,6 +109,7 @@
       }
     ],
     "moduleSlots": 4,
+    "passiveSlots": 1,
     "powerGrid": 50,
     "cpuLimit": 46,
     "maneuverRating": 45,
@@ -146,6 +149,7 @@
       }
     ],
     "moduleSlots": 2,
+    "passiveSlots": 1,
     "powerGrid": 42,
     "cpuLimit": 48,
     "maneuverRating": 72,
@@ -187,6 +191,7 @@
       }
     ],
     "moduleSlots": 3,
+    "passiveSlots": 1,
     "powerGrid": 40,
     "cpuLimit": 50,
     "maneuverRating": 68,
@@ -228,6 +233,7 @@
       }
     ],
     "moduleSlots": 3,
+    "passiveSlots": 1,
     "powerGrid": 44,
     "cpuLimit": 55,
     "maneuverRating": 62,
@@ -268,6 +274,7 @@
       }
     ],
     "moduleSlots": 2,
+    "passiveSlots": 2,
     "powerGrid": 50,
     "cpuLimit": 55,
     "maneuverRating": 52,
@@ -307,6 +314,7 @@
       }
     ],
     "moduleSlots": 3,
+    "passiveSlots": 2,
     "powerGrid": 70,
     "cpuLimit": 60,
     "maneuverRating": 65,
@@ -346,6 +354,7 @@
       }
     ],
     "moduleSlots": 4,
+    "passiveSlots": 4,
     "powerGrid": 90,
     "cpuLimit": 60,
     "maneuverRating": 45,
@@ -384,6 +393,7 @@
       }
     ],
     "moduleSlots": 4,
+    "passiveSlots": 2,
     "powerGrid": 80,
     "cpuLimit": 45,
     "maneuverRating": 38,
@@ -424,6 +434,7 @@
       }
     ],
     "moduleSlots": 3,
+    "passiveSlots": 3,
     "powerGrid": 75,
     "cpuLimit": 55,
     "maneuverRating": 48,

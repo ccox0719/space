@@ -4,7 +4,9 @@
 import { Sector } from "../../galaxyTypes";
 import { GameState } from "../game/GameState";
 import { applyDamage, adjustCredits, adjustReputation, appendLog } from "./PlayerState";
+import { applyPerkStatChain } from "./perkSystem";
 import { Rng } from "../rng/SeededRng";
+import { addXp } from "./xpSystem";
 
 type EnemyType = "pirate" | "navy" | "smuggler" | "bounty_target";
 type EnemyStrength = "light" | "standard" | "elite";
@@ -135,6 +137,12 @@ export function resolveCombat(
     creditsDelta
   });
 
+  const xpGain = Math.max(
+    5,
+    (outcome === "win" ? 30 : 12) + (strength === "elite" ? 15 : strength === "standard" ? 8 : 3)
+  );
+  addXp(game, "combat", xpGain);
+
   return { outcome, playerRoll, enemyRoll, damageTaken, creditsDelta, repChanges };
 }
 
@@ -151,7 +159,18 @@ function computePlayerAttack(game: GameState): number {
       (sum, mod) => sum + (COMBAT_CONFIG.moduleBonuses.engines[mod] ?? 0),
       0
     );
-  return base + roleBonus + moduleBonus;
+  const combined = base + roleBonus + moduleBonus;
+  return Math.max(
+    0,
+    Math.round(
+      applyPerkStatChain(
+        game,
+        "combat",
+        ["accuracyBase", "backlineAccuracyMultiplier", "critChance"],
+        combined
+      )
+    )
+  );
 }
 
 function computePlayerDefense(game: GameState): number {
@@ -162,7 +181,11 @@ function computePlayerDefense(game: GameState): number {
     (sum, mod) => sum + (COMBAT_CONFIG.moduleBonuses.scanners[mod] ?? 0),
     0
   );
-  return base + roleBonus + moduleBonus;
+  const combined = base + roleBonus + moduleBonus;
+  return Math.max(
+    0,
+    Math.round(applyPerkStatChain(game, "combat", ["accuracyBase"], combined))
+  );
 }
 
 function reputationAggressionMod(game: GameState, enemyType: EnemyType): number {

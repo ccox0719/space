@@ -263,7 +263,9 @@ export async function initGame() {
       weapons.push(persistedLoadout.weapons[i] ?? null);
     }
     gameState.ship.weapons = weapons;
-    gameState.inventory.weapons = persistedLoadout.inventory;
+    gameState.ship.passives = persistedLoadout.passives ?? [];
+    gameState.inventory.weapons = persistedLoadout.inventoryWeapons ?? [];
+    gameState.inventory.passives = persistedLoadout.inventoryPassives ?? [];
   }
   // Auto-equip any available weapons into empty slots for a smoother start.
   autoEquipAvailableWeapons();

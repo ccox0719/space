@@ -8,6 +8,8 @@ import { EventEngine } from "./EventEngine";
 import { Rng } from "../rng/SeededRng";
 import { tickMissions } from "./MissionSystem";
 import { applyTravelRisk, pirateEncounterChance, decayPirateAttention } from "./RiskSystem";
+import { addXp } from "./xpSystem";
+import { getPerkMultiplier } from "./perkSystem";
 
 interface NewGameOptions {
   name: string;
@@ -63,16 +65,23 @@ export function travelToSector(
     const fromSector = findSector(game.galaxy, fromId);
     const toSector = findSector(game.galaxy, toId);
 
-    adjustFuel(game.player, -1);
-    fuelSpent += 1;
+    const fuelMultiplier = Math.max(0.1, getPerkMultiplier(game, "travel", "fuelCostMultiplier"));
+    adjustFuel(game.player, -fuelMultiplier);
+    fuelSpent += fuelMultiplier;
     game.currentSectorId = toSector.id;
     game.time.cycle += 1;
-    applyTravelRisk(game.player, toSector);
+    applyTravelRisk(game, toSector);
 
     tickMissions(game);
 
+    const travelXp = Math.max(
+      4,
+      5 + (toSector.danger === "high" ? 4 : toSector.danger === "medium" ? 2 : 1)
+    );
+    addXp(game, "travel", travelXp);
+
     let segmentEvent: EventSelection | null = null;
-    const pirateChance = pirateEncounterChance(game.player, toSector);
+    const pirateChance = pirateEncounterChance(game, toSector);
     if (rng.next() < pirateChance) {
       segmentEvent = eventEngine.rollSpecificEvent(game, "pirate_encounter_lane", toSector, rng);
       decayPirateAttention(game.player, 20);

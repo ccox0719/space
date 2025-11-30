@@ -1,10 +1,11 @@
 import {
-  devTune,
-  gameState,
   addCreditsEarned,
+  devTune,
+  ensurePlayerInventory,
+  getCombatTune,
+  gameState,
   recordContractCompletion,
-  recordContractPayout,
-  getCombatTune
+  recordContractPayout
 } from "../core/state";
 import { getIncomeMultiplier, getPassiveEffects } from "../core/passives";
 import type { ContractState, GameState } from "../core/state";
@@ -173,10 +174,8 @@ function applyRewards(contract: ContractState, status: "completed" | "failed"): 
     }
   }
   if (reward.weapon) {
-    const inventory = gameState.inventory ?? { weapons: [] };
-    inventory.weapons = inventory.weapons || [];
+    const inventory = ensurePlayerInventory();
     inventory.weapons.push(reward.weapon);
-    gameState.inventory = inventory;
     const weaponName = getWeaponById(reward.weapon)?.name ?? reward.weapon;
     gameState.notifications.push(`Rewarded weapon: ${weaponName}.`);
   }

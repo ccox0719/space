@@ -9,6 +9,7 @@ import { createMissionOffer } from "./MissionSystem";
 import { decayPirateAttention } from "./RiskSystem";
 import { calculateFleeChance } from "./EscapeSystem";
 import { Rng } from "../rng/SeededRng";
+import { getPerkMultiplier } from "./perkSystem";
 
 type EventCategory = (typeof eventSystem.events.categories)[number];
 
@@ -81,7 +82,7 @@ export class EventEngine {
   rollEvent(game: GameState, sector: Sector, rng: Rng, choiceId?: string): EventSelection | null {
     const pool = this.filterEligibleEvents(game, sector);
     if (!pool.length) return null;
-    const picked = this.weightedPick(pool, game.player, sector, rng);
+    const picked = this.weightedPick(pool, game, sector, rng);
     if (!picked) return null;
 
     const choice = this.pickChoice(picked, game.player, rng, choiceId);
@@ -148,8 +149,13 @@ export class EventEngine {
     return true;
   }
 
-  private weightedPick(events: EventDefinition[], player: PlayerState, sector: Sector, rng: Rng): EventDefinition | null {
-    const weights = events.map((evt) => this.computeWeight(evt, player, sector));
+  private weightedPick(
+    events: EventDefinition[],
+    game: GameState,
+    sector: Sector,
+    rng: Rng
+  ): EventDefinition | null {
+    const weights = events.map((evt) => this.computeWeight(evt, game, sector));
     const total = weights.reduce((a, b) => a + b, 0);
     if (total <= 0) return null;
     let roll = rng.next() * total;
@@ -160,12 +166,16 @@ export class EventEngine {
     return events[events.length - 1];
   }
 
-  private computeWeight(evt: EventDefinition, player: PlayerState, sector: Sector): number {
+  private computeWeight(evt: EventDefinition, game: GameState, sector: Sector): number {
+    const player = game.player;
     const base = config.globalWeights[evt.category] ?? 1;
     const roleWeight = config.roleWeights[player.roleId]?.[evt.category] ?? 1;
     const sectorMod = sector.localModifiers?.events?.[evt.category] ?? 1;
     const rarityMod = evt.rarity ? 1 / evt.rarity : 1;
-    return base * roleWeight * sectorMod * rarityMod;
+    const coreWeight = base * roleWeight * sectorMod * rarityMod;
+    const perkBonus =
+      evt.category === "piracy" ? getPerkMultiplier(game, "events", "pirateMissionWeight") : 1;
+    return coreWeight * perkBonus;
   }
 
   private handleRunIfNeeded(

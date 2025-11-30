@@ -26,6 +26,7 @@
     "sync-content": "node scripts/copy-content.js",
     "export-pages": "node scripts/export-docs.js",
     "preview": "vite preview",
+    "test:perks": "ts-node --project tsconfig.scripts.json scripts/test-perk-flow.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

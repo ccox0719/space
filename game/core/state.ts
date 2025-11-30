@@ -144,6 +144,7 @@ export interface ShipState {
   cargo: Record<string, number>;
   modules: string[];
   weapons: (string | null)[];
+  passives: string[];
   weaponPower: number;
   evasion: number;
   maneuverRating: number;
@@ -405,6 +406,11 @@ export interface MiningBeltState {
   depletedUntilDay?: number;
 }
 
+export interface InventoryState {
+  weapons: string[];
+  passives: string[];
+}
+
 export interface GameState {
   version: number;
   time: TimeState;
@@ -420,9 +426,7 @@ export interface GameState {
   miningBelts: MiningBeltState[];
   notifications: string[];
   transactions: TradeLogEntry[];
-  inventory: {
-    weapons: string[];
-  };
+  inventory: InventoryState;
   lastBattleResult?: import("./contentTypes").BattleResult | null;
   marketState: MarketState;
   tradeStrategy: TradeStrategyState;
@@ -457,9 +461,32 @@ export function createRunStats(): RunStats {
 
 export let gameState: GameState;
 
+export function ensurePlayerInventory(): InventoryState {
+  if (!gameState) {
+    throw new Error("Game state not initialized");
+  }
+  if (!gameState.inventory) {
+    gameState.inventory = { weapons: [], passives: [] };
+  }
+  if (!gameState.inventory.weapons) {
+    gameState.inventory.weapons = [];
+  }
+  if (!gameState.inventory.passives) {
+    gameState.inventory.passives = [];
+  }
+  return gameState.inventory;
+}
+
 const LOADOUT_KEY = "cosmo_weapon_loadout";
 
-export function loadPersistedLoadout(): { weapons: (string | null)[]; inventory: string[] } | null {
+export interface PersistedLoadout {
+  weapons: (string | null)[];
+  passives: string[];
+  inventoryWeapons: string[];
+  inventoryPassives: string[];
+}
+
+export function loadPersistedLoadout(): PersistedLoadout | null {
   if (typeof window === "undefined" || !window.localStorage) return null;
   const raw = window.localStorage.getItem(LOADOUT_KEY);
   if (!raw) return null;
@@ -467,7 +494,9 @@ export function loadPersistedLoadout(): { weapons: (string | null)[]; inventory:
     const parsed = JSON.parse(raw);
     return {
       weapons: Array.isArray(parsed.weapons) ? parsed.weapons : [],
-      inventory: Array.isArray(parsed.inventory) ? parsed.inventory : []
+      passives: Array.isArray(parsed.passives) ? parsed.passives : [],
+      inventoryWeapons: Array.isArray(parsed.inventoryWeapons) ? parsed.inventoryWeapons : [],
+      inventoryPassives: Array.isArray(parsed.inventoryPassives) ? parsed.inventoryPassives : []
     };
   } catch {
     return null;
@@ -475,10 +504,13 @@ export function loadPersistedLoadout(): { weapons: (string | null)[]; inventory:
 }
 
 export function persistLoadout(): void {
-  if (typeof window === "undefined" || !window.localStorage) return;
+  if (typeof window === "undefined" || !window.localStorage || !gameState) return;
+  const inventory = ensurePlayerInventory();
   const payload = {
     weapons: gameState.ship.weapons,
-    inventory: gameState.inventory?.weapons ?? []
+    passives: gameState.ship.passives,
+    inventoryWeapons: inventory.weapons,
+    inventoryPassives: inventory.passives
   };
   window.localStorage.setItem(LOADOUT_KEY, JSON.stringify(payload));
 }
@@ -544,6 +576,7 @@ export function newGameState(): GameState {
         starterTemplate?.hardpoints.map(
           (hp) => STARTER_WEAPON_BY_SLOT[`${hp.size}:${hp.type}`] ?? null
         ) ?? Array(starterHardpoints).fill(null),
+      passives: [],
       weaponPower: 12,
       evasion: 5,
       maneuverRating: starterTemplate?.maneuverRating ?? 0,
@@ -561,7 +594,8 @@ export function newGameState(): GameState {
     notifications: [],
     transactions: [],
     inventory: {
-      weapons: ["laser_mk1"]
+      weapons: ["laser_mk1"],
+      passives: []
     },
     lastBattleResult: null,
     marketState: {

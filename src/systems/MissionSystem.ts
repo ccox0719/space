@@ -5,6 +5,7 @@ import careerSystem from "../../career_system.json";
 import { GameState, MissionDefinition, MissionInstance, MissionRiskLevel, RoleId } from "../game/GameState";
 import { adjustCredits, adjustReputation, appendLog } from "./PlayerState";
 import { Rng } from "../rng/SeededRng";
+import { addXp } from "./xpSystem";
 
 interface CareerDefinition {
   id: RoleId | string;
@@ -98,6 +99,13 @@ export function completeMission(game: GameState, instanceId: string): MissionIns
     instanceId,
     reward: mission.reward
   });
+  const xpByRisk: Record<MissionRiskLevel, number> = {
+    low: 10,
+    medium: 20,
+    high: 30,
+    very_high: 40
+  };
+  addXp(game, "combat", xpByRisk[definition.riskLevel] ?? 10);
   return mission;
 }
 

@@ -1451,6 +1451,26 @@ body {
   font-size: 0.85rem;
 }
 
+.perk-submenu-card {
+  background: linear-gradient(145deg, #11172b, #090b14);
+  padding: 14px;
+  margin-top: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+}
+
+.perk-submenu-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perk-submenu-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .xp-track-row {
   display: flex;
   flex-direction: column;

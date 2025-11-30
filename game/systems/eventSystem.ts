@@ -1,4 +1,11 @@
-import { devTune, gameState, scaleTurnDelta, getCombatTune } from "../core/state";
+import {
+  addCreditsEarned,
+  devTune,
+  ensurePlayerInventory,
+  gameState,
+  getCombatTune,
+  scaleTurnDelta
+} from "../core/state";
 import { getPassiveEffects } from "../core/passives";
 import { content } from "../core/engine";
 import type { GameState } from "../core/state";
@@ -7,7 +14,6 @@ import { acceptMission, tickMissionTimers, getActiveContracts } from "./missionS
 import { adjustReputationBatch } from "./reputationSystem";
 import { applyTemporaryMarketModifier, tickMarket } from "./economySystem";
 import { triggerGameOver } from "../core/gameFlow";
-import { addCreditsEarned } from "../core/state";
 
 const EVENT_CACHE_KEY = "space-events-cache";
 
@@ -153,7 +159,8 @@ export function applyConsequence(choice: EventChoice): ChoiceResolution {
   }
 
   if (outcomes.giveWeapon) {
-    gameState.inventory.weapons.push(outcomes.giveWeapon);
+    const inventory = ensurePlayerInventory();
+    inventory.weapons.push(outcomes.giveWeapon);
     gameState.notifications.push(`Acquired weapon: ${outcomes.giveWeapon}.`);
   }
 

@@ -58,7 +58,7 @@ export function ShipyardScreen(): string {
   }
 
   const ships = getBuyableShips();
-  const comps = getAllComponents();
+  const comps = getAllComponents().filter((c) => c.slot !== "passive");
   const weapons = getAllWeapons();
   const inventoryNames = getInventoryWeaponIds()
     .map((id) => getWeaponById(id)?.name)

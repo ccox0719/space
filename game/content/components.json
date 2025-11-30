@@ -68,6 +68,7 @@
     "name": "Mining LiDAR Suite",
     "description": "Precision scanners map veins faster, boosting mining yield and speed.",
     "cost": 1100,
+    "slot": "passive",
     "effects": {
       "miningYield": 1.15,
       "miningSpeed": 0.9
@@ -78,6 +79,7 @@
     "name": "Geological Sampling Lab",
     "description": "Onboard lab improves assay quality, raising rare find odds and smoothing payouts.",
     "cost": 1200,
+    "slot": "passive",
     "effects": {
       "rareFindChance": 1.2,
       "miningPayoutMultiplier": 1.1
@@ -88,6 +90,7 @@
     "name": "Trade Forecaster Core",
     "description": "Predictive market suite that marginally boosts sale prices sector-wide.",
     "cost": 900,
+    "slot": "passive",
     "effects": {
       "sellBonus": 1.05,
       "incomeMultiplier": 1.05
@@ -98,6 +101,7 @@
     "name": "Customs Liaison",
     "description": "Embedded liaison smooths paperwork and lowers local tariffs on your trades.",
     "cost": 1000,
+    "slot": "passive",
     "effects": {
       "marketTax": 0.92,
       "buyBonus": 0.97

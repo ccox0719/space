@@ -14,6 +14,8 @@ import {
 import { createRng, Rng } from "../rng/SeededRng";
 import commoditiesJson from "../data/commodities.json";
 import { applyMiningRisk, MiningMode } from "./RiskSystem";
+import { applyPerkStatChain, getPerkMultiplier } from "./perkSystem";
+import { addXp } from "./xpSystem";
 
 type VolumeLevel = "none" | "low" | "medium" | "high" | "very_high";
 type VolatilityLevel = "none" | "low" | "medium" | "high";
@@ -247,17 +249,21 @@ export function resolveMining(
   const yieldUnits = ECONOMY_CONFIG.miningYieldByRichness[richness] ?? 0;
   const variance = rng.next() * 0.3 + 0.85; // slight randomness 0.85-1.15
   const finalYield = Math.max(1, Math.round(yieldUnits * variance));
+  const perkAdjustedYield = Math.max(
+    1,
+    Math.round(applyPerkStatChain(game, "mining", ["oreYieldMultiplier", "rareYieldMultiplier"], finalYield))
+  );
 
   const commodityId =
     richness === "very_high" || richness === "high" ? "ore_aurite" : "ore_ironite";
 
   adjustFuel(game.player, -ECONOMY_CONFIG.miningFuelCost);
-  applyMiningRisk(game.player, sector, mode);
+  applyMiningRisk(game, sector, mode);
 
   const used = game.player.cargo.reduce((sum, c) => sum + c.quantity, 0);
   const free = Math.max(0, game.player.ship.cargoCapacity - used);
-  const collected = Math.min(finalYield, free);
-  const overflow = finalYield - collected;
+  const collected = Math.min(perkAdjustedYield, free);
+  const overflow = Math.max(0, perkAdjustedYield - collected);
   if (collected > 0) {
     addCargo(game.player, { commodityId, quantity: collected });
   }
@@ -269,6 +275,9 @@ export function resolveMining(
     overflow,
     commodityId
   });
+
+  const xpGain = Math.max(5, collected * 2 + (richness === "very_high" ? 4 : richness === "high" ? 3 : 1));
+  addXp(game, "mining", xpGain);
 
   return {
     commodityId,
@@ -298,7 +307,8 @@ export function resolveSmuggling(
     (game.player.reputation["syndicate"] ?? 0) >= ECONOMY_CONFIG.smuggling.repEffect.threshold
       ? -ECONOMY_CONFIG.smuggling.repEffect.reduction
       : 0;
-  const detectionChance = Math.max(0, baseDetection + toleranceModifier + repModifier);
+  const detectionBaseline = getPerkMultiplier(game, "smuggling", "detectionBaseline");
+  const detectionChance = Math.max(0, (baseDetection + toleranceModifier + repModifier) * detectionBaseline);
   const detected = rng.next() < detectionChance;
 
   if (detected) {

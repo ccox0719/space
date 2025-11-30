@@ -37,6 +37,8 @@ export interface ShipStats {
   pilotSkill?: number;
   weaponDamage: number;
   cargoCapacity: number;
+  passiveSlots: number;
+  weaponSlots: number;
 }
 
 export interface CargoItem {
@@ -65,6 +67,16 @@ export interface ReputationMap {
 export interface PlayerState {
   name: string;
   roleId: RoleId;
+  level: number;
+  xp: number;
+  xpToNext: number;
+  xpTracks: Record<string, number>;
+  perkPoints: number;
+  perks: string[];
+  passives: string[];
+  passiveInventory: string[];
+  passiveEffects: Record<string, number>;
+  perkEffects: Record<string, { multiplier: number; flat: number }>;
   credits: number;
   fuel: number;
   maxFuel: number;
@@ -78,6 +90,7 @@ export interface PlayerState {
     pirateAttention: number; // 0-100, influences pirate encounter chance
   };
   statuses: string[];
+  notifications: string[];
 }
 
 export interface TimeState {

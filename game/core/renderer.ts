@@ -14,6 +14,7 @@ import { WeaponSlotsScreen } from "../screens/ui_weapon_slots";
 import { WeaponSelectScreen } from "../screens/ui_weapon_select";
 import { MiningScreen } from "../screens/ui_mining";
 import { GameOverScreen } from "../screens/ui_gameover";
+import { PerkScreen } from "../screens/ui_perks";
 import { startCombat } from "../systems/combatSystem";
 import { startMiningSession } from "../systems/miningSystem";
 import {
@@ -403,6 +404,9 @@ export function render() {
       break;
     case "mining":
       html = MiningScreen();
+      break;
+    case "perks":
+      html = PerkScreen();
       break;
     case "gameover":
       html = GameOverScreen();

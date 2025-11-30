@@ -1,4 +1,4 @@
-import { addCreditsEarned, devTune, gameState, getCombatTune } from "../core/state";
+import { addCreditsEarned, devTune, ensurePlayerInventory, gameState, getCombatTune } from "../core/state";
 import type { LootTable, LootEntry, BattleResult } from "../core/contentTypes";
 import { acceptMission } from "./missionSystem";
 
@@ -69,7 +69,8 @@ function applyLootEntry(entry: LootEntry, result: BattleResult): void {
     }
     case "weapon": {
       if (entry.id) {
-        gameState.inventory.weapons.push(entry.id);
+        const inventory = ensurePlayerInventory();
+        inventory.weapons.push(entry.id);
         result.weapons.push(entry.id);
       }
       break;

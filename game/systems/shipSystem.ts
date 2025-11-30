@@ -74,6 +74,7 @@ export function applyShipTemplate(templateId: string, customName?: string) {
     weapons: tpl.hardpoints.map(
       (hp, idx) => DEFAULT_WEAPON_BY_SLOT[`${hp.size}:${hp.type}`] ?? emptyWeapons[idx]
     ),
+    passives: [],
     weaponPower: 0,
     evasion: 0,
     maneuverRating: tpl.maneuverRating,
@@ -119,6 +120,27 @@ export function buyShip(templateId: string): boolean {
 
   gameState.player.credits -= tpl.cost;
   applyShipTemplate(templateId);
+  return true;
+}
+
+export const SHIP_SELL_RATIO = 0.5;
+
+export function sellShip(): boolean {
+  const current = getCurrentShipTemplate();
+  if (!current) {
+    console.warn("Cannot sell an unknown ship.");
+    return false;
+  }
+
+  const starter = getStarterShips()[0];
+  if (!starter) {
+    console.warn("No starter ship available to replace with after sale.");
+    return false;
+  }
+
+  const sellPrice = Math.floor((current.cost ?? 0) * SHIP_SELL_RATIO);
+  gameState.player.credits += sellPrice;
+  applyShipTemplate(starter.id);
   return true;
 }
 
