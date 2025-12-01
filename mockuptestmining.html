@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mining Grid — Visual Only</title>
+  <style>
+  body {
+    background: #0b1120;
+    font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+    color: #eee;
+    padding: 20px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(7, 48px);
+    grid-template-rows: repeat(7, 48px);
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .cell {
+    width: 48px;
+    height: 48px;
+    background: #162033;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: filter 0.2s;
+  }
+
+  .cell:hover {
+    filter: brightness(1.2);
+  }
+
+  /* ===== Direction Gradients ===== */
+
+  .dir-n  { background: linear-gradient(to bottom, rgba(0,150,255,0.35), transparent); }
+  .dir-ne { background: linear-gradient(135deg, rgba(0,150,255,0.35), transparent); }
+  .dir-e  { background: linear-gradient(to left,   rgba(0,150,255,0.35), transparent); }
+  .dir-se { background: linear-gradient(225deg, rgba(0,150,255,0.35), transparent); }
+  .dir-s  { background: linear-gradient(to top,    rgba(0,150,255,0.35), transparent); }
+  .dir-sw { background: linear-gradient(315deg, rgba(0,150,255,0.35), transparent); }
+  .dir-w  { background: linear-gradient(to right,  rgba(0,150,255,0.35), transparent); }
+  .dir-nw { background: linear-gradient(45deg,  rgba(0,150,255,0.35), transparent); }
+
+  /* ===== Depth Hints ===== */
+  .depth-shallow {
+    box-shadow: inset 0 8px 18px rgba(255,200,0,0.35);
+  }
+
+  .depth-perfect {
+    box-shadow: 0 0 8px rgba(0,255,150,0.65);
+  }
+
+  .depth-deep {
+    box-shadow: inset 0 -8px 18px rgba(0,200,255,0.35);
+  }
+
+  .panel {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+</style>
+</head>
+<body>
+
+<h2>Mining Grid — Visual Mockup Only</h2>
+<p>Click any tile to preview a random direction gradient + depth hint.</p>
+
+<div class="grid" id="grid"></div>
+
+<div class="panel">
+  <strong>Direction classes:</strong> dir-n, dir-ne, dir-e, dir-se, dir-s, dir-sw, dir-w, dir-nw<br>
+  <strong>Depth classes:</strong> depth-shallow, depth-perfect, depth-deep
+</div>
+
+<script>
+  const dirs = ["dir-n","dir-ne","dir-e","dir-se","dir-s","dir-sw","dir-w","dir-nw"];
+  const depths = ["depth-shallow","depth-perfect","depth-deep"];
+
+  const grid = document.getElementById("grid");
+
+  for (let i = 0; i < 49; i++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    
+    cell.addEventListener("click", () => {
+      // Reset classes
+      cell.className = "cell";
+
+      // Add a random direction gradient
+      const dir = dirs[Math.floor(Math.random() * dirs.length)];
+      cell.classList.add(dir);
+
+      // Add a random depth hint
+      const depth = depths[Math.floor(Math.random() * depths.length)];
+      cell.classList.add(depth);
+    });
+
+    grid.appendChild(cell);
+  }
+</script>
+
+</body>
+</html>

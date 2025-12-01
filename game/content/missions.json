@@ -1,0 +1,451 @@
+[
+  {
+    "id": "deliver_med_supplies",
+    "name": "Deliver Medical Supplies",
+    "factionId": "helion_republic",
+    "type": "delivery",
+    "description": "Transport emergency medical crates to Argent Gate.",
+    "requirements": {
+      "deliver": {
+        "systemId": "argent_gate",
+        "commodityId": "medical_supplies",
+        "quantity": 3
+      }
+    },
+    "reward": {
+      "credits": 360,
+      "rep": {
+        "helion_republic": 3
+      }
+    }
+  },
+  {
+    "id": "patrol_rift",
+    "name": "Frontier Patrol",
+    "factionId": "helion_republic",
+    "type": "travel",
+    "description": "Travel to Dawn Reach and report on pirate activity.",
+    "requirements": {
+      "travel": {
+        "systemId": "dawn_reach"
+      }
+    },
+    "reward": {
+      "credits": 240,
+      "rep": {
+        "helion_republic": 2
+      }
+    }
+  },
+  {
+    "id": "bounty_raider",
+    "name": "Bounty: Raider Skiff",
+    "factionId": "helion_republic",
+    "type": "combat",
+    "description": "Hunt down a raider skiff operating near Dawn Reach.",
+    "requirements": {
+      "combat": {
+        "enemyId": "pirate_cutter"
+      }
+    },
+    "reward": {
+      "credits": 500,
+      "rep": {
+        "helion_republic": 4
+      }
+    }
+  },
+  {
+    "id": "cargo_relay",
+    "name": "Cargo Relay",
+    "factionId": "frontier_clans",
+    "type": "delivery",
+    "description": "Deliver refined ore to Dawn Reach as part of a relay network.",
+    "requirements": {
+      "deliver": {
+        "systemId": "dawn_reach",
+        "commodityId": "steel_ingots",
+        "quantity": 4
+      },
+      "failureAfterTurns": 7
+    },
+    "reward": {
+      "credits": 440,
+      "rep": {
+        "frontier_clans": 3
+      }
+    }
+  },
+  {
+    "id": "multi_hop_patrol",
+    "name": "Multi-Hop Patrol",
+    "factionId": "helion_republic",
+    "type": "patrol",
+    "description": "Sweep Argent Gate and Dawn Reach, then stay alert for hostiles.",
+    "requirements": {
+      "multiTravel": [
+        "argent_gate",
+        "dawn_reach"
+      ],
+      "failureAfterTurns": 9,
+      "triggerEventId": "patrol_ambush"
+    },
+    "reward": {
+      "credits": 400,
+      "rep": {
+        "helion_republic": 3
+      }
+    }
+  },
+  {
+    "id": "urgent_dispatch",
+    "name": "Urgent Dispatch",
+    "factionId": "helion_republic",
+    "type": "delivery",
+    "description": "Rushed medical data must reach Helion Prime in under five turns.",
+    "requirements": {
+      "travel": {
+        "systemId": "helion_prime"
+      },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 520,
+      "rep": {
+        "helion_republic": 5
+      }
+    }
+  },
+  {
+    "id": "signal_run",
+    "name": "Signal Run",
+    "factionId": "rift_syndicate",
+    "type": "clue",
+    "description": "Follow the signal to Rift Expanses and see what the distress call was about.",
+    "requirements": {
+      "travel": {
+        "systemId": "rift_expanses"
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 360,
+      "rep": {
+        "rift_syndicate": 2
+      }
+    }
+  },
+  {
+    "id": "aurora_guard",
+    "name": "Aurora Guard",
+    "factionId": "frontier_clans",
+    "type": "escort",
+    "description": "Protect a convoy of salvage rigs en route to Aurora Belt from pirates.",
+    "requirements": {
+      "travel": {
+        "systemId": "aurora_belt"
+      },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 420,
+      "rep": {
+        "frontier_clans": 3
+      }
+    }
+  },
+  {
+    "id": "rift_relay",
+    "name": "Rift Relay Run",
+    "factionId": "rift_syndicate",
+    "type": "delivery",
+    "description": "Deliver a cache of ore to the pirate clans deep in the Rift Expanses.",
+    "requirements": {
+      "travel": {
+        "systemId": "rift_expanses"
+      },
+      "deliver": {
+        "systemId": "rift_expanses",
+        "commodityId": "aurite_ore",
+        "quantity": 2
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 560,
+      "rep": {
+        "rift_syndicate": 3,
+        "pirate": 1
+      }
+    }
+  },
+  {
+    "id": "lost_convoy",
+    "name": "Lost Convoy",
+    "description": "A fragmented distress beacon points to a missing convoy somewhere beyond the rim.",
+    "type": "story",
+    "steps": [
+      {
+        "id": "find_signal",
+        "description": "Track the source of the beacon."
+      },
+      {
+        "id": "investigate_field",
+        "description": "Scan the debris field for survivors."
+      },
+      {
+        "id": "escort_survivor",
+        "description": "Escort the damaged vessel back to friendly space."
+      }
+    ],
+    "reward": {
+      "credits": 1000,
+      "rep": {
+        "helion_republic": 5
+      }
+    }
+  },
+  {
+    "id": "signal_fragment",
+    "name": "Encrypted Signal Fragment",
+    "description": "A mysterious shard of encoded data. Someone in the black market will pay handsomely for a complete set.",
+    "type": "collection",
+    "steps": [
+      {
+        "id": "decode",
+        "description": "Find a decoder capable of interpreting the fragment."
+      },
+      {
+        "id": "hunt_sources",
+        "description": "Locate other fragments scattered across pirate sectors."
+      }
+    ],
+    "reward": {
+      "credits": 600,
+      "weapon": "ion_disruptor"
+    }
+  },
+  {
+    "id": "veil_security_sweep",
+    "name": "Veil Security Sweep",
+    "factionId": "helion_republic",
+    "type": "patrol",
+    "description": "Report to Veil Station and assist with an outbound security sweep.",
+    "requirements": {
+      "travel": {
+        "systemId": "veil_station"
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 360,
+      "rep": {
+        "helion_republic": 2
+      }
+    }
+  },
+  {
+    "id": "fathom_prototype_parts",
+    "name": "Prototype Parts Delivery",
+    "factionId": "helion_republic",
+    "type": "delivery",
+    "description": "Deliver experimental ship components to Fathom Dock for testing.",
+    "requirements": {
+      "deliver": {
+        "systemId": "fathom_dock",
+        "commodityId": "ship_parts",
+        "quantity": 2
+      },
+      "failureAfterTurns": 7
+    },
+    "reward": {
+      "credits": 520,
+      "rep": {
+        "helion_republic": 3
+      }
+    }
+  },
+  {
+    "id": "unity_pilgrimage",
+    "name": "Unity Pilgrimage Escort",
+    "factionId": "unity_church",
+    "type": "escort",
+    "description": "Escort a group of pilgrims safely to the Unity Enclave.",
+    "requirements": {
+      "travel": {
+        "systemId": "unity_enclave"
+      },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 420,
+      "rep": {
+        "unity_church": 4
+      }
+    }
+  },
+  {
+    "id": "argent_checkpoint_run",
+    "name": "Checkpoint Clearance Run",
+    "factionId": "helion_republic",
+    "type": "delivery",
+    "description": "Carry sealed customs data packs to Argent Gate without delays.",
+    "requirements": {
+      "travel": {
+        "systemId": "argent_gate"
+      },
+      "failureAfterTurns": 4
+    },
+    "reward": {
+      "credits": 380,
+      "rep": {
+        "helion_republic": 2
+      }
+    }
+  },
+  {
+    "id": "halcyon_tunnel_test",
+    "name": "Halcyon Tunnel Test",
+    "factionId": "helion_republic",
+    "type": "patrol",
+    "description": "Stress-test the Halcyon Gate's smuggling tunnel sensors by making a round trip.",
+    "requirements": {
+      "multiTravel": [
+        "halcyon_gate",
+        "argent_gate"
+      ],
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 460,
+      "rep": {
+        "helion_republic": 3
+      }
+    }
+  },
+  {
+    "id": "thrynn_smuggler_contact",
+    "name": "Smuggler Contact",
+    "factionId": "pirate",
+    "type": "delivery",
+    "description": "Deliver encoded data to a contact at Thrynn Outpost. Avoid inspections.",
+    "requirements": {
+      "travel": {
+        "systemId": "thrynn_outpost"
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 480,
+      "rep": {
+        "rift_syndicate": 2,
+        "pirate": 2
+      }
+    }
+  },
+  {
+    "id": "polar_anomaly_scan",
+    "name": "Polar Distortion Scan",
+    "factionId": "frontier_clans",
+    "type": "exploration",
+    "description": "Collect anomaly readings at Polar Distortion for scientific study.",
+    "requirements": {
+      "travel": {
+        "systemId": "polar_distortion"
+      },
+      "failureAfterTurns": 7
+    },
+    "reward": {
+      "credits": 520,
+      "rep": {
+        "frontier_clans": 3,
+        "unity_church": 1
+      }
+    }
+  },
+  {
+    "id": "echo_salvage_recovery",
+    "name": "Echo Salvage Recovery",
+    "factionId": "frontier_clans",
+    "type": "combat",
+    "description": "Clear hostile scavengers around Echo Rapture and recover marked salvage.",
+    "requirements": {
+      "travel": {
+        "systemId": "echo_rapture"
+      },
+      "combat": {
+        "enemyId": "pirate_cutter"
+      },
+      "failureAfterTurns": 6
+    },
+    "reward": {
+      "credits": 600,
+      "rep": {
+        "frontier_clans": 3
+      }
+    }
+  },
+  {
+    "id": "wild_mirage_drop",
+    "name": "Wild Mirage Dead Drop",
+    "factionId": "rift_syndicate",
+    "type": "delivery",
+    "description": "Run a covert cargo drop at Wild Mirage and return with the receipt token.",
+    "requirements": {
+      "travel": {
+        "systemId": "wild_mirage"
+      },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 520,
+      "rep": {
+        "rift_syndicate": 3
+      }
+    }
+  },
+  {
+    "id": "blood_mire_raid",
+    "name": "Blood Mire Raid",
+    "factionId": "pirate",
+    "type": "combat",
+    "description": "Join a pirate strike on Blood Mire to break a rival crew's cache.",
+    "requirements": {
+      "travel": {
+        "systemId": "blood_mire"
+      },
+      "combat": {
+        "enemyId": "navy_interceptor"
+      }
+    },
+    "reward": {
+      "credits": 640,
+      "rep": {
+        "pirate": 3,
+        "rift_syndicate": 1
+      }
+    }
+  },
+  {
+    "id": "shatter_spine_trial",
+    "name": "Shatter Spine Trial",
+    "factionId": "pirate",
+    "type": "combat",
+    "description": "Prove yourself in a duel at Shatter Spine's training spires.",
+    "requirements": {
+      "travel": {
+        "systemId": "shatter_spine"
+      },
+      "combat": {
+        "enemyId": "raider_skiff"
+      },
+      "failureAfterTurns": 5
+    },
+    "reward": {
+      "credits": 560,
+      "rep": {
+        "pirate": 3
+      }
+    }
+  }
+]

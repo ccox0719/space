@@ -1,0 +1,466 @@
+{
+  "factions": [
+    {
+      "id": "helion_republic",
+      "name": "Helion Republic",
+      "type": "government",
+      "description": "A trade-focused democratic republic controlling many core systems.",
+      "reputationTrack": "navy",
+      "primaryAlignments": ["law"],
+      "tags": ["lawful", "trade", "navy"],
+      "color": "#4BA3FF"
+    },
+    {
+      "id": "rift_syndicate",
+      "name": "Rift Syndicate",
+      "type": "criminal",
+      "description": "A loose coalition of pirate clans, smugglers, and black market brokers.",
+      "reputationTrack": "syndicate",
+      "primaryAlignments": ["chaos"],
+      "tags": ["pirate", "smuggling", "underworld"],
+      "color": "#D13B3B"
+    },
+    {
+      "id": "unity_church",
+      "name": "Unity Church",
+      "type": "religious",
+      "description": "A theocratic order blending biotech and spirituality.",
+      "reputationTrack": "researcher",
+      "primaryAlignments": ["law"],
+      "tags": ["biotech", "pious", "zealots"],
+      "color": "#F2D15B"
+    },
+    {
+      "id": "celestial_directorate",
+      "name": "Celestial Directorate",
+      "type": "technocracy",
+      "description": "An AI-steered technocratic state focused on research and control.",
+      "reputationTrack": "researcher",
+      "primaryAlignments": ["law"],
+      "tags": ["high_tech", "ai", "strict"],
+      "color": "#9E68FF"
+    },
+    {
+      "id": "frontier_clans",
+      "name": "Frontier Clans",
+      "type": "frontier",
+      "description": "Independent miners, haulers, and settlers in the outer belts.",
+      "reputationTrack": "miner",
+      "primaryAlignments": ["neutral"],
+      "tags": ["mining", "frontier", "scrappy"],
+      "color": "#7BC76E"
+    }
+  ],
+
+  "sectorTypes": [
+    {
+      "id": "core_trade_hub",
+      "name": "Core Trade Hub",
+      "description": "Highly populated, safe systems with strong law enforcement and busy markets.",
+      "baseDanger": "low",
+      "baseLaw": "high",
+      "resourceRichness": {
+        "minerals": "low",
+        "gas": "low",
+        "salvage": "low",
+        "anomalies": "low"
+      },
+      "marketProfile": {
+        "volume": "very_high",
+        "priceVolatility": "low",
+        "illegalTolerance": "very_low"
+      },
+      "preferredFactions": ["helion_republic", "celestial_directorate"],
+      "eventWeightModifiers": {
+        "piracy": 0.4,
+        "law_enforcement": 1.8,
+        "market": 1.6,
+        "smuggling": 0.4
+      },
+      "tags": ["core", "trade", "safe"]
+    },
+    {
+      "id": "industrial_world",
+      "name": "Industrial World",
+      "description": "Manufacturing-focused system with moderate law and strong demand for resources.",
+      "baseDanger": "medium",
+      "baseLaw": "medium",
+      "resourceRichness": {
+        "minerals": "medium",
+        "gas": "low",
+        "salvage": "medium",
+        "anomalies": "low"
+      },
+      "marketProfile": {
+        "volume": "high",
+        "priceVolatility": "medium",
+        "illegalTolerance": "low"
+      },
+      "preferredFactions": ["helion_republic", "frontier_clans"],
+      "eventWeightModifiers": {
+        "piracy": 1.1,
+        "law_enforcement": 1.2,
+        "market": 1.3,
+        "mining": 1.1
+      },
+      "tags": ["industry", "manufacturing"]
+    },
+    {
+      "id": "mining_belt",
+      "name": "Mining Belt",
+      "description": "Dense asteroid fields and refineries, rich in minerals but risky to traverse.",
+      "baseDanger": "medium",
+      "baseLaw": "low",
+      "resourceRichness": {
+        "minerals": "very_high",
+        "gas": "medium",
+        "salvage": "medium",
+        "anomalies": "medium"
+      },
+      "marketProfile": {
+        "volume": "medium",
+        "priceVolatility": "high",
+        "illegalTolerance": "medium"
+      },
+      "preferredFactions": ["frontier_clans", "helion_republic"],
+      "eventWeightModifiers": {
+        "mining": 2.0,
+        "piracy": 1.4,
+        "salvage": 1.3,
+        "law_enforcement": 0.7
+      },
+      "tags": ["mining", "frontier"]
+    },
+    {
+      "id": "pirate_stronghold",
+      "name": "Pirate Stronghold",
+      "description": "Lawless sectors controlled by pirate clans and smugglers.",
+      "baseDanger": "high",
+      "baseLaw": "very_low",
+      "resourceRichness": {
+        "minerals": "low",
+        "gas": "low",
+        "salvage": "high",
+        "anomalies": "medium"
+      },
+      "marketProfile": {
+        "volume": "medium",
+        "priceVolatility": "high",
+        "illegalTolerance": "very_high"
+      },
+      "preferredFactions": ["rift_syndicate"],
+      "eventWeightModifiers": {
+        "piracy": 2.5,
+        "smuggling": 2.0,
+        "law_enforcement": 0.2,
+        "combat": 1.5,
+        "salvage": 1.2
+      },
+      "tags": ["pirate", "black_market", "dangerous"]
+    },
+    {
+      "id": "research_node",
+      "name": "Research Node",
+      "description": "High-tech system full of labs, observatories, and classified projects.",
+      "baseDanger": "low",
+      "baseLaw": "high",
+      "resourceRichness": {
+        "minerals": "low",
+        "gas": "low",
+        "salvage": "low",
+        "anomalies": "high"
+      },
+      "marketProfile": {
+        "volume": "medium",
+        "priceVolatility": "low",
+        "illegalTolerance": "low"
+      },
+      "preferredFactions": ["celestial_directorate", "unity_church"],
+      "eventWeightModifiers": {
+        "exploration": 1.8,
+        "rare_story": 1.5,
+        "research_support": 2.0,
+        "piracy": 0.6
+      },
+      "tags": ["research", "science", "ai"]
+    },
+    {
+      "id": "frontier_outpost",
+      "name": "Frontier Outpost",
+      "description": "Sparse but strategic system on the edge of known space.",
+      "baseDanger": "medium",
+      "baseLaw": "low",
+      "resourceRichness": {
+        "minerals": "medium",
+        "gas": "medium",
+        "salvage": "medium",
+        "anomalies": "medium"
+      },
+      "marketProfile": {
+        "volume": "low",
+        "priceVolatility": "high",
+        "illegalTolerance": "medium"
+      },
+      "preferredFactions": ["frontier_clans"],
+      "eventWeightModifiers": {
+        "exploration": 1.4,
+        "mining": 1.4,
+        "piracy": 1.3,
+        "salvage": 1.3
+      },
+      "tags": ["frontier", "outpost"]
+    },
+    {
+      "id": "dead_system",
+      "name": "Dead System",
+      "description": "An abandoned or dead system with no permanent population.",
+      "baseDanger": "high",
+      "baseLaw": "none",
+      "resourceRichness": {
+        "minerals": "low",
+        "gas": "low",
+        "salvage": "very_high",
+        "anomalies": "high"
+      },
+      "marketProfile": {
+        "volume": "none",
+        "priceVolatility": "none",
+        "illegalTolerance": "n_a"
+      },
+      "preferredFactions": [],
+      "eventWeightModifiers": {
+        "salvage": 2.2,
+        "exploration": 1.7,
+        "rare_story": 1.4,
+        "piracy": 0.8
+      },
+      "tags": ["dead", "derelicts", "anomalies"]
+    }
+  ],
+
+  "generatorConfig": {
+    "galaxySize": {
+      "small": { "sectors": 16 },
+      "medium": { "sectors": 24 },
+      "large": { "sectors": 36 }
+    },
+    "defaultSize": "medium",
+
+    "sectorTypeWeights": {
+      "core_trade_hub": 3,
+      "industrial_world": 4,
+      "mining_belt": 4,
+      "pirate_stronghold": 3,
+      "research_node": 2,
+      "frontier_outpost": 4,
+      "dead_system": 2
+    },
+
+    "factionSpread": {
+      "helion_republic": {
+        "core_trade_hub": 0.6,
+        "industrial_world": 0.4,
+        "frontier_outpost": 0.2
+      },
+      "rift_syndicate": {
+        "pirate_stronghold": 0.7,
+        "frontier_outpost": 0.3
+      },
+      "unity_church": {
+        "research_node": 0.5,
+        "industrial_world": 0.3,
+        "core_trade_hub": 0.2
+      },
+      "celestial_directorate": {
+        "research_node": 0.7,
+        "core_trade_hub": 0.3
+      },
+      "frontier_clans": {
+        "mining_belt": 0.6,
+        "frontier_outpost": 0.6,
+        "dead_system": 0.2
+      }
+    },
+
+    "connectionRules": {
+      "minConnectionsPerSector": 2,
+      "maxConnectionsPerSector": 5,
+      "coreClusterSize": 4,
+      "frontierDistanceMin": 3,
+      "frontierDistanceMax": 6
+    },
+
+    "lawDangerOverrides": {
+      "lawLevels": ["none", "very_low", "low", "medium", "high"],
+      "dangerLevels": ["low", "medium", "high"],
+      "pirateStrongholdLaw": "very_low",
+      "deadSystemLaw": "none",
+      "coreTradeHubLaw": "high"
+    }
+  },
+
+  "exampleGeneratedGalaxy": {
+    "id": "galaxy_seed_72193",
+    "size": "medium",
+    "sectors": [
+      {
+        "id": "helion_prime",
+        "name": "Helion Prime",
+        "typeId": "core_trade_hub",
+        "factionId": "helion_republic",
+        "danger": "low",
+        "law": "high",
+        "coords": { "x": 0, "y": 0 },
+        "tags": ["core", "capital"],
+        "connections": ["unity_station", "keth_gate", "orion_exchange"],
+        "localModifiers": {
+          "market": { "volume": "very_high" },
+          "events": { "law_enforcement": 2.0, "piracy": 0.3 }
+        },
+        "pointsOfInterest": [
+          {
+            "id": "helion_exchange",
+            "type": "market",
+            "name": "Helion Grand Exchange",
+            "effects": {
+              "tradeBonus": 0.1,
+              "missionBoard": ["contract_delivery", "speculation_run"]
+            }
+          },
+          {
+            "id": "navy_office",
+            "type": "navy_hq",
+            "name": "Helion Navy Command",
+            "effects": {
+              "missionBoard": ["sector_patrol", "frontline_conflict"]
+            }
+          }
+        ]
+      },
+      {
+        "id": "unity_station",
+        "name": "Unity Station",
+        "typeId": "research_node",
+        "factionId": "unity_church",
+        "danger": "low",
+        "law": "high",
+        "coords": { "x": 1, "y": 2 },
+        "tags": ["research", "pilgrimage"],
+        "connections": ["helion_prime", "aurora_belt"],
+        "localModifiers": {
+          "events": { "exploration": 1.6, "rare_story": 1.4 }
+        },
+        "pointsOfInterest": [
+          {
+            "id": "bio_temple",
+            "type": "lab",
+            "name": "Temple of Living Code",
+            "effects": {
+              "dataSellMultiplier": 1.3
+            }
+          }
+        ]
+      },
+      {
+        "id": "aurora_belt",
+        "name": "Aurora Belt",
+        "typeId": "mining_belt",
+        "factionId": "frontier_clans",
+        "danger": "medium",
+        "law": "low",
+        "coords": { "x": 3, "y": 3 },
+        "tags": ["mining"],
+        "connections": ["unity_station", "keth_gate"],
+        "localModifiers": {
+          "events": { "mining": 2.2, "piracy": 1.3 }
+        },
+        "pointsOfInterest": [
+          {
+            "id": "clan_hub",
+            "type": "station",
+            "name": "Clan Hub Delta",
+            "effects": {
+              "miningContractsBoard": ["mining_contract", "deep_core_mining"]
+            }
+          }
+        ]
+      },
+      {
+        "id": "keth_gate",
+        "name": "Keth Gate",
+        "typeId": "frontier_outpost",
+        "factionId": "frontier_clans",
+        "danger": "medium",
+        "law": "low",
+        "coords": { "x": -2, "y": -1 },
+        "tags": ["frontier"],
+        "connections": ["helion_prime", "aurora_belt", "rift_den"],
+        "localModifiers": {
+          "events": { "salvage": 1.3, "piracy": 1.2 }
+        },
+        "pointsOfInterest": [
+          {
+            "id": "transit_bar",
+            "type": "bar",
+            "name": "The Last Stable Orbit",
+            "effects": {
+              "crewRecruitment": true
+            }
+          }
+        ]
+      },
+      {
+        "id": "rift_den",
+        "name": "Rift Den",
+        "typeId": "pirate_stronghold",
+        "factionId": "rift_syndicate",
+        "danger": "high",
+        "law": "very_low",
+        "coords": { "x": -5, "y": -3 },
+        "tags": ["pirate", "black_market"],
+        "connections": ["keth_gate"],
+        "localModifiers": {
+          "events": {
+            "piracy": 2.5,
+            "smuggling": 2.0,
+            "law_enforcement": 0.1
+          }
+        },
+        "pointsOfInterest": [
+          {
+            "id": "black_ring",
+            "type": "black_market",
+            "name": "The Black Ring",
+            "effects": {
+              "blackMarketAccess": ["basic_contraband", "weapon_upgrades"]
+            }
+          }
+        ]
+      },
+      {
+        "id": "silent_shroud",
+        "name": "Silent Shroud",
+        "typeId": "dead_system",
+        "factionId": null,
+        "danger": "high",
+        "law": "none",
+        "coords": { "x": 6, "y": -4 },
+        "tags": ["dead", "derelicts"],
+        "connections": ["keth_gate"],
+        "localModifiers": {
+          "events": { "salvage": 2.4, "rare_story": 1.6 }
+        },
+        "pointsOfInterest": [
+          {
+            "id": "derelict_flagship",
+            "type": "derelict",
+            "name": "Drifting War Relic",
+            "effects": {
+              "missionBoard": ["derelict_flagship"]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

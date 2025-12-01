@@ -1,0 +1,289 @@
+{
+  "reputationSystem": {
+    "globalRange": {
+      "min": -100,
+      "max": 100,
+      "neutral": 0
+    },
+
+    "tracks": [
+      {
+        "id": "merchant",
+        "name": "Merchant Guilds",
+        "description": "Represents how trusted you are among traders, corporations, and commercial hubs.",
+        "visible": true,
+        "effects": {
+          "discounts": [
+            { "threshold": 20, "value": 0.05 },
+            { "threshold": 50, "value": 0.10 },
+            { "threshold": 80, "value": 0.20 }
+          ],
+          "pricePenalty": [
+            { "threshold": -20, "value": 0.05 },
+            { "threshold": -50, "value": 0.12 },
+            { "threshold": -80, "value": 0.25 }
+          ],
+          "eventWeights": {
+            "trade_contract_offers": {
+              "low": 0.5,
+              "mid": 1.0,
+              "high": 1.5
+            }
+          }
+        },
+        "tiers": [
+          { "name": "Blacklisted", "min": -100, "max": -51 },
+          { "name": "Distrusted", "min": -50, "max": -11 },
+          { "name": "Neutral", "min": -10, "max": 10 },
+          { "name": "Preferred Partner", "min": 11, "max": 49 },
+          { "name": "Key Supplier", "min": 50, "max": 79 },
+          { "name": "Guild Icon", "min": 80, "max": 100 }
+        ]
+      },
+
+      {
+        "id": "navy",
+        "name": "Navy / Lawful Authorities",
+        "description": "Measures your standing with lawful governments, patrols, and official militaries.",
+        "visible": true,
+        "effects": {
+          "patrolBehavior": {
+            "hostileThreshold": -30,
+            "scanThreshold": -5,
+            "escortThreshold": 50
+          },
+          "accessLevels": [
+            {
+              "threshold": 20,
+              "unlocks": ["low_security_docks", "basic_military_contracts"]
+            },
+            {
+              "threshold": 50,
+              "unlocks": ["restricted_weapons", "priority_resupply"]
+            },
+            {
+              "threshold": 80,
+              "unlocks": ["classified_operations", "flagship_support"]
+            }
+          ]
+        },
+        "tiers": [
+          { "name": "Enemy of the State", "min": -100, "max": -51 },
+          { "name": "Wanted", "min": -50, "max": -11 },
+          { "name": "Unregistered", "min": -10, "max": 10 },
+          { "name": "Auxiliary", "min": 11, "max": 49 },
+          { "name": "Commissioned", "min": 50, "max": 79 },
+          { "name": "Decorated Officer", "min": 80, "max": 100 }
+        ]
+      },
+
+      {
+        "id": "pirate",
+        "name": "Pirate Clans",
+        "description": "Your infamy and respect among raiders, warlords, and criminal fleets.",
+        "visible": true,
+        "effects": {
+          "pirateBehavior": {
+            "ignoreThreshold": 40,
+            "autoAssistThreshold": 70
+          },
+          "raiderEvents": {
+            "allyChanceAtHighRep": 0.25,
+            "doubleCrossChanceAtLowRep": 0.35
+          }
+        },
+        "tiers": [
+          { "name": "Spineless Merchant", "min": -100, "max": -21 },
+          { "name": "Unknown", "min": -20, "max": 10 },
+          { "name": "Small-Time Raider", "min": 11, "max": 39 },
+          { "name": "Feared Captain", "min": 40, "max": 79 },
+          { "name": "Warlord", "min": 80, "max": 100 }
+        ]
+      },
+
+      {
+        "id": "syndicate",
+        "name": "Syndicate / Underworld",
+        "description": "Your relationship with organized crime, smugglers, and black market brokers.",
+        "visible": true,
+        "effects": {
+          "blackMarketAccess": [
+            { "threshold": 10, "unlocks": ["basic_contraband"] },
+            { "threshold": 40, "unlocks": ["weapon_upgrades", "fake_ids"] },
+            { "threshold": 70, "unlocks": ["prototype_tech", "ghost_transponder"] }
+          ],
+          "betrayalRisk": [
+            { "threshold": -100, "chance": 0.40 },
+            { "threshold": -50, "chance": 0.25 },
+            { "threshold": 0, "chance": 0.10 }
+          ]
+        },
+        "tiers": [
+          { "name": "Police Informant", "min": -100, "max": -51 },
+          { "name": "Suspect", "min": -50, "max": -11 },
+          { "name": "Unknown", "min": -10, "max": 10 },
+          { "name": "Associate", "min": 11, "max": 39 },
+          { "name": "Trusted Fixer", "min": 40, "max": 79 },
+          { "name": "Shadow Broker", "min": 80, "max": 100 }
+        ]
+      },
+
+      {
+        "id": "miner",
+        "name": "Frontier Miners",
+        "description": "Rep with mining guilds, frontier clans, and resource cartels.",
+        "visible": true,
+        "effects": {
+          "contractPriority": [
+            { "threshold": 20, "weightMultiplier": 1.25 },
+            { "threshold": 50, "weightMultiplier": 1.6 }
+          ],
+          "dockFeesReduction": [
+            { "threshold": 30, "value": 0.10 }
+          ]
+        },
+        "tiers": [
+          { "name": "Claim Jumper", "min": -100, "max": -31 },
+          { "name": "Unwelcome", "min": -30, "max": -11 },
+          { "name": "Stranger", "min": -10, "max": 10 },
+          { "name": "Reliable Hauler", "min": 11, "max": 49 },
+          { "name": "Guild Partner", "min": 50, "max": 79 },
+          { "name": "Legend of the Belt", "min": 80, "max": 100 }
+        ]
+      },
+
+      {
+        "id": "researcher",
+        "name": "Scientific Community",
+        "description": "Rep with research labs, xenologists, and anomaly study groups.",
+        "visible": true,
+        "effects": {
+          "dataPayoutMultiplier": [
+            { "threshold": 20, "value": 1.15 },
+            { "threshold": 50, "value": 1.35 },
+            { "threshold": 80, "value": 1.70 }
+          ],
+          "specialProjectsChance": [
+            { "threshold": 40, "chance": 0.15 },
+            { "threshold": 70, "chance": 0.30 }
+          ]
+        },
+        "tiers": [
+          { "name": "Crank", "min": -100, "max": -31 },
+          { "name": "Discredited", "min": -30, "max": -11 },
+          { "name": "Independent", "min": -10, "max": 10 },
+          { "name": "Field Contributor", "min": 11, "max": 49 },
+          { "name": "Recognized Expert", "min": 50, "max": 79 },
+          { "name": "Pioneer of the Unknown", "min": 80, "max": 100 }
+        ]
+      }
+    ],
+
+    "alignmentTracks": [
+      {
+        "id": "law",
+        "name": "Law",
+        "description": "Tendency to support order, governments, and official structures.",
+        "hidden": false,
+        "range": { "min": 0, "max": 100 },
+        "effects": {
+          "lawfulMissionAccessThreshold": 40,
+          "smugglerPenaltyThreshold": 60
+        }
+      },
+      {
+        "id": "chaos",
+        "name": "Chaos",
+        "description": "Tendency to support piracy, sabotage, and destabilizing forces.",
+        "hidden": false,
+        "range": { "min": 0, "max": 100 },
+        "effects": {
+          "pirateEventBoostThreshold": 40,
+          "navyAggroThreshold": 60
+        }
+      }
+    ],
+
+    "changeRules": {
+      "decay": {
+        "enabled": true,
+        "perTurn": 0,
+        "perJump": 0,
+        "perDay": 0.1,
+        "towardNeutralOnly": true
+      },
+      "hardLocks": [
+        {
+          "condition": "navy <= -80",
+          "effects": ["no_navy_contracts", "navy_shoot_on_sight"]
+        },
+        {
+          "condition": "pirate >= 80 && law >= 60",
+          "effects": ["internal_conflict_events"]
+        }
+      ],
+
+      "roleTags": [
+        {
+          "tag": "lawful_action",
+          "reputationDeltas": {
+            "navy": 2,
+            "pirate": -1,
+            "syndicate": -1
+          },
+          "alignmentDeltas": {
+            "law": 2,
+            "chaos": -1
+          }
+        },
+        {
+          "tag": "piracy",
+          "reputationDeltas": {
+            "navy": -4,
+            "merchant": -2,
+            "pirate": 3,
+            "syndicate": 1
+          },
+          "alignmentDeltas": {
+            "law": -3,
+            "chaos": 3
+          }
+        },
+        {
+          "tag": "smuggling",
+          "reputationDeltas": {
+            "navy": -3,
+            "merchant": -1,
+            "syndicate": 3
+          },
+          "alignmentDeltas": {
+            "law": -2,
+            "chaos": 2
+          }
+        },
+        {
+          "tag": "trade_support",
+          "reputationDeltas": {
+            "merchant": 2
+          },
+          "alignmentDeltas": {}
+        },
+        {
+          "tag": "mining_support",
+          "reputationDeltas": {
+            "miner": 2,
+            "merchant": 1
+          },
+          "alignmentDeltas": {}
+        },
+        {
+          "tag": "research_support",
+          "reputationDeltas": {
+            "researcher": 3
+          },
+          "alignmentDeltas": {}
+        }
+      ]
+    }
+  }
+}

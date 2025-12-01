@@ -1,0 +1,249 @@
+{
+  "belts": [
+    {
+      "id": "dawn_reach_outer_belt",
+      "name": "Dawn Reach — Outer Belt",
+      "systemId": "dawn_reach",
+      "tags": ["ore", "starter", "mining_belt"],
+      "stability": {
+        "start": 100,
+        "carefulLoss": { "min": 2, "max": 4 },
+        "standardLoss": { "min": 5, "max": 10 },
+        "overchargeLoss": { "min": 10, "max": 18 }
+      },
+      "commonTableId": "basic_ore_common",
+      "rareTableId": "basic_ore_rare",
+      "baseRareChance": 0.03
+    },
+    {
+      "id": "aurora_rich_field",
+      "name": "Aurora Belt — Rich Field",
+      "systemId": "aurora_belt",
+      "tags": ["ore", "rich", "mining_belt"],
+      "stability": {
+        "start": 90,
+        "carefulLoss": { "min": 3, "max": 6 },
+        "standardLoss": { "min": 7, "max": 12 },
+        "overchargeLoss": { "min": 12, "max": 22 }
+      },
+      "commonTableId": "rich_ore_common",
+      "rareTableId": "rich_ore_rare",
+      "baseRareChance": 0.05
+    },
+    {
+      "id": "rift_shadow_grave",
+      "name": "Rift Expanses — Shadow Grave",
+      "systemId": "rift_expanses",
+      "tags": ["salvage", "black_market", "mining_belt"],
+      "stability": {
+        "start": 80,
+        "carefulLoss": { "min": 4, "max": 8 },
+        "standardLoss": { "min": 9, "max": 15 },
+        "overchargeLoss": { "min": 14, "max": 26 }
+      },
+      "commonTableId": "salvage_common",
+      "rareTableId": "salvage_rare",
+      "baseRareChance": 0.06
+    },
+    {
+      "id": "unity_shard_field",
+      "name": "Unity Enclave – Shard Pilgrimage Field",
+      "systemId": "unity_enclave",
+      "tags": ["anomaly", "restricted", "mining_belt"],
+      "stability": {
+        "start": 85,
+        "carefulLoss": { "min": 3, "max": 6 },
+        "standardLoss": { "min": 7, "max": 13 },
+        "overchargeLoss": { "min": 13, "max": 24 }
+      },
+      "commonTableId": "relic_common",
+      "rareTableId": "relic_rare",
+      "baseRareChance": 0.05
+    }
+    ,
+    {
+      "id": "global_easy_signal_belt",
+      "name": "Low-Signal Relay Field",
+      "systemId": "global_easy_signal",
+      "tags": ["mining_belt", "easy_signal", "global"],
+      "stability": {
+        "start": 70,
+        "carefulLoss": { "min": 1, "max": 3 },
+        "standardLoss": { "min": 3, "max": 6 },
+        "overchargeLoss": { "min": 6, "max": 10 }
+      },
+      "commonTableId": "global_easy_common",
+      "rareTableId": "global_easy_rare",
+      "baseRareChance": 0.02
+    }
+  ],
+  "tables": [
+    {
+      "id": "basic_ore_common",
+      "entries": [
+        { "type": "commodity", "id": "aurite_ore", "min": 1, "max": 4, "weight": 1 },
+        { "type": "commodity", "id": "steel_ingots", "min": 1, "max": 2, "weight": 0.45 },
+        { "type": "commodity", "id": "food_rations", "min": 1, "max": 2, "weight": 0.25 }
+      ]
+    },
+    {
+      "id": "basic_ore_rare",
+      "entries": [
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 1, "weight": 0.2 },
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 1, "weight": 0.1 },
+        { "type": "commodity", "id": "medical_supplies", "min": 1, "max": 1, "weight": 0.25 }
+      ]
+    },
+    {
+      "id": "rich_ore_common",
+      "entries": [
+        { "type": "commodity", "id": "aurite_ore", "min": 2, "max": 6, "weight": 1 },
+        { "type": "commodity", "id": "steel_ingots", "min": 2, "max": 4, "weight": 0.6 },
+        { "type": "commodity", "id": "synthetic_fuel", "min": 1, "max": 2, "weight": 0.35 }
+      ]
+    },
+    {
+      "id": "rich_ore_rare",
+      "entries": [
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 2, "weight": 0.3 },
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 1, "weight": 0.25 },
+        { "type": "commodity", "id": "contraband_data", "min": 1, "max": 1, "weight": 0.2 }
+      ]
+    },
+    {
+      "id": "salvage_common",
+      "entries": [
+        { "type": "commodity", "id": "aurite_ore", "min": 1, "max": 3, "weight": 0.4 },
+        { "type": "commodity", "id": "contraband_data", "min": 1, "max": 2, "weight": 0.6 },
+        { "type": "commodity", "id": "steel_ingots", "min": 1, "max": 3, "weight": 0.5 }
+      ]
+    },
+    {
+      "id": "salvage_rare",
+      "entries": [
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 2, "weight": 0.35 },
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 1, "weight": 0.15 },
+        { "type": "commodity", "id": "medical_supplies", "min": 1, "max": 2, "weight": 0.3 }
+      ]
+    },
+    {
+      "id": "relic_common",
+      "entries": [
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 2, "weight": 0.9 },
+        { "type": "commodity", "id": "contraband_data", "min": 1, "max": 1, "weight": 0.4 }
+      ]
+    },
+    {
+      "id": "relic_rare",
+      "entries": [
+        { "type": "commodity", "id": "unity_relics", "min": 2, "max": 3, "weight": 0.4 },
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 2, "weight": 0.3 },
+        { "type": "commodity", "id": "medical_supplies", "min": 1, "max": 2, "weight": 0.2 }
+      ]
+    }
+    ,
+    {
+      "id": "global_easy_common",
+      "entries": [
+        { "type": "commodity", "id": "aurite_ore", "min": 0, "max": 2, "weight": 1 },
+        { "type": "commodity", "id": "titanium_wire", "min": 0, "max": 2, "weight": 0.75 },
+        { "type": "commodity", "id": "purified_water", "min": 0, "max": 3, "weight": 0.6 },
+        { "type": "commodity", "id": "textile_fiber", "min": 0, "max": 1, "weight": 0.45 }
+      ]
+    },
+    {
+      "id": "global_easy_rare",
+      "entries": [
+        { "type": "commodity", "id": "luxury_spice", "min": 0, "max": 1, "weight": 0.3 },
+        { "type": "commodity", "id": "medical_supplies", "min": 0, "max": 1, "weight": 0.35 },
+        { "type": "commodity", "id": "contraband_data", "min": 0, "max": 1, "weight": 0.2 },
+        { "type": "commodity", "id": "forbidden_ai_logic", "min": 0, "max": 1, "weight": 0.1 }
+      ]
+    }
+    ,
+    {
+      "id": "depth_surface_common",
+      "entries": [
+        { "type": "commodity", "id": "aurite_ore", "min": 1, "max": 3, "weight": 1 },
+        { "type": "commodity", "id": "steel_ingots", "min": 1, "max": 2, "weight": 0.5 },
+        { "type": "commodity", "id": "purified_water", "min": 1, "max": 2, "weight": 0.35 }
+      ]
+    },
+    {
+      "id": "depth_surface_rare",
+      "entries": [
+        { "type": "commodity", "id": "medical_supplies", "min": 1, "max": 1, "weight": 0.45 },
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 1, "weight": 0.35 },
+        { "type": "commodity", "id": "textile_fiber", "min": 1, "max": 2, "weight": 0.2 }
+      ]
+    },
+    {
+      "id": "depth_mid_common",
+      "entries": [
+        { "type": "commodity", "id": "steel_ingots", "min": 2, "max": 4, "weight": 0.8 },
+        { "type": "commodity", "id": "synthetic_fuel", "min": 1, "max": 3, "weight": 0.65 },
+        { "type": "commodity", "id": "textile_fiber", "min": 1, "max": 2, "weight": 0.45 }
+      ]
+    },
+    {
+      "id": "depth_mid_rare",
+      "entries": [
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 2, "weight": 0.2 },
+        { "type": "commodity", "id": "emberite_pearl", "min": 1, "max": 1, "weight": 0.2 },
+        { "type": "commodity", "id": "contraband_data", "min": 1, "max": 1, "weight": 0.15 },
+        { "type": "commodity", "id": "medical_supplies", "min": 1, "max": 1, "weight": 0.05 }
+      ]
+    },
+    {
+      "id": "depth_deep_common",
+      "entries": [
+        { "type": "commodity", "id": "contraband_data", "min": 1, "max": 3, "weight": 0.4 },
+        { "type": "commodity", "id": "boreal_crystal", "min": 1, "max": 3, "weight": 0.5 },
+        { "type": "commodity", "id": "synthetic_fuel", "min": 2, "max": 4, "weight": 0.55 },
+        { "type": "commodity", "id": "steel_ingots", "min": 2, "max": 5, "weight": 0.4 }
+      ]
+    },
+    {
+      "id": "depth_deep_rare",
+      "entries": [
+        { "type": "commodity", "id": "luxury_spice", "min": 1, "max": 3, "weight": 0.15 },
+        { "type": "commodity", "id": "umbrite_shard", "min": 1, "max": 2, "weight": 0.2 },
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 2, "weight": 0.2 },
+        { "type": "commodity", "id": "medical_supplies", "min": 2, "max": 3, "weight": 0.1 }
+      ]
+    },
+    {
+      "id": "depth_deep_ultra",
+      "entries": [
+        { "type": "commodity", "id": "forbidden_ai_logic", "min": 0, "max": 1, "weight": 0.6 },
+        { "type": "commodity", "id": "ship_parts", "min": 1, "max": 2, "weight": 0.4 }
+      ]
+    },
+    {
+      "id": "depth_core_common",
+      "entries": [
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 3, "weight": 0.8 },
+        { "type": "commodity", "id": "contraband_data", "min": 1, "max": 2, "weight": 0.5 },
+        { "type": "commodity", "id": "boreal_crystal", "min": 1, "max": 2, "weight": 0.4 },
+        { "type": "commodity", "id": "ship_parts", "min": 1, "max": 2, "weight": 0.35 }
+      ]
+    },
+    {
+      "id": "depth_core_rare",
+      "entries": [
+        { "type": "commodity", "id": "forbidden_ai_logic", "min": 1, "max": 1, "weight": 0.2 },
+        { "type": "commodity", "id": "umbrite_shard", "min": 1, "max": 2, "weight": 0.25 },
+        { "type": "commodity", "id": "ship_parts", "min": 1, "max": 2, "weight": 0.25 },
+        { "type": "commodity", "id": "unity_relics", "min": 2, "max": 3, "weight": 0.15 }
+      ]
+    },
+    {
+      "id": "depth_core_ultra",
+      "entries": [
+        { "type": "commodity", "id": "quantum_tessera", "min": 1, "max": 1, "weight": 0.6 },
+        { "type": "commodity", "id": "forbidden_ai_logic", "min": 1, "max": 1, "weight": 0.4 },
+        { "type": "commodity", "id": "unity_relics", "min": 1, "max": 2, "weight": 0.35 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,262 @@
+[
+  {
+    "id": "tutorial_duel_1v1",
+    "name": "Crash at the Dock",
+    "description": "A lone pirate cutter challenges your ship; learn to read its fire.",
+    "difficulty": "tutorial",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "wave_1",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          {
+            "enemyDefinitionId": "pirate_cutter",
+            "roleOverride": "anchor",
+            "initialPosition": "front",
+            "focusHint": "hull"
+          }
+        ]
+      }
+    ],
+    "tags": ["pirate", "tutorial"]
+  },
+  {
+    "id": "tutorial_anchor_and_flanker",
+    "name": "Shield Wall and Raider",
+    "description": "One bulky anchor takes point while a skiff tries to strike from the flank.",
+    "difficulty": "tutorial",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "wave_anchor",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          {
+            "enemyDefinitionId": "pirate_bulwark",
+            "roleOverride": "anchor",
+            "initialPosition": "front",
+            "focusHint": "shields"
+          }
+        ]
+      },
+      {
+        "id": "wave_flanker",
+        "spawnCondition": { "type": "on_round_reached", "roundThreshold": 3 },
+        "enemies": [
+          {
+            "enemyDefinitionId": "raider_skiff",
+            "roleOverride": "flanker",
+            "initialPosition": "right_flank",
+            "focusHint": "weapons"
+          }
+        ]
+      }
+    ],
+    "tags": ["tutorial", "pirate"]
+  },
+  {
+    "id": "pirate_screen_and_artillery",
+    "name": "Staggered Screen",
+    "description": "A shielded escort protects a heavy gunboat that can lay down punishment.",
+    "difficulty": "normal",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "screen",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          {
+            "enemyDefinitionId": "pirate_cover_skiff",
+            "roleOverride": "support",
+            "initialPosition": "back",
+            "focusHint": "shields"
+          },
+          {
+            "enemyDefinitionId": "pirate_bulwark",
+            "roleOverride": "anchor",
+            "initialPosition": "front",
+            "focusHint": "hull"
+          }
+        ]
+      },
+      {
+        "id": "artillery",
+        "spawnCondition": { "type": "on_round_reached", "roundThreshold": 4 },
+        "enemies": [
+          {
+            "enemyDefinitionId": "armored_gunboat",
+            "roleOverride": "support",
+            "initialPosition": "mid",
+            "focusHint": "weapons"
+          }
+        ]
+      }
+    ],
+    "enemyModifiers": { "globalDamageMultiplier": 1.1 },
+    "tags": ["pirate", "convoy"]
+  },
+  {
+    "id": "shield_wall_convoy",
+    "name": "Shield Wall Convoy",
+    "description": "Heavy hulls brace up front while nimble escorts circle wide.",
+    "difficulty": "hard",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "front_formation",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          {
+            "enemyDefinitionId": "pirate_bulwark",
+            "roleOverride": "anchor",
+            "initialPosition": "front",
+            "focusHint": "shields"
+          },
+          {
+            "enemyDefinitionId": "pirate_cover_skiff",
+            "roleOverride": "support",
+            "initialPosition": "back",
+            "focusHint": "engines"
+          },
+          {
+            "enemyDefinitionId": "raider_skiff",
+            "roleOverride": "flanker",
+            "initialPosition": "left_flank",
+            "focusHint": "weapons"
+          }
+        ]
+      }
+    ],
+    "enemyModifiers": { "globalAccuracyMultiplier": 1.05 },
+    "tags": ["pirate", "convoy", "elite"]
+  },
+  {
+    "id": "swarm_ambush",
+    "name": "Swarm Ambush",
+    "description": "Raiders drop from the periphery in waves to overwhelm your sensors.",
+    "difficulty": "easy",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "first_burst",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          { "enemyDefinitionId": "raider_skiff", "roleOverride": "flanker", "initialPosition": "left_flank" },
+          { "enemyDefinitionId": "raider_skiff", "roleOverride": "flanker", "initialPosition": "right_flank" }
+        ]
+      },
+      {
+        "id": "follow_through",
+        "spawnCondition": { "type": "on_round_reached", "roundThreshold": 3 },
+        "enemies": [
+          { "enemyDefinitionId": "pirate_reaver", "roleOverride": "flanker", "initialPosition": "mid", "focusHint": "weapons" }
+        ]
+      }
+    ],
+    "tags": ["pirate", "ambush"]
+  },
+  {
+    "id": "artillery_battery",
+    "name": "Artillery Battery",
+    "description": "Focused fire from multiple heavy mounts keeps you under constant pressure.",
+    "difficulty": "hard",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "battery",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          { "enemyDefinitionId": "armored_gunboat", "roleOverride": "support", "initialPosition": "mid" },
+          {
+            "enemyDefinitionId": "cult_frigate",
+            "roleOverride": "anchor",
+            "initialPosition": "front",
+            "focusHint": "weapons"
+          }
+        ]
+      }
+    ],
+    "enemyModifiers": { "globalDamageMultiplier": 1.2, "allowRetreat": false },
+    "tags": ["elite", "artillery"]
+  },
+  {
+    "id": "desperation_flagship",
+    "name": "Desperation Flagship",
+    "description": "A single, damaged anchor holds a reactor breach; it fights reckless.",
+    "difficulty": "elite",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "flagship",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          {
+            "enemyDefinitionId": "armored_gunboat",
+            "roleOverride": "anchor",
+            "initialPosition": "front",
+            "focusHint": "hull"
+          }
+        ]
+      }
+    ],
+    "playerModifiers": { "startingShieldMultiplier": 0.9 },
+    "enemyModifiers": { "allowRetreat": false, "globalDamageMultiplier": 1.3 },
+    "tags": ["elite", "pirate"]
+  },
+  {
+    "id": "hit_and_run_raiders",
+    "name": "Hit-and-Run Raiders",
+    "description": "Flankers strike, then pull back to the void if you push too hard.",
+    "difficulty": "normal",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "strike_pulse",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          { "enemyDefinitionId": "raider_skiff", "roleOverride": "flanker", "initialPosition": "right_flank" },
+          { "enemyDefinitionId": "raider_skiff", "roleOverride": "flanker", "initialPosition": "left_flank" }
+        ]
+      },
+      {
+        "id": "fallback",
+        "spawnCondition": { "type": "on_enemy_destroyed", "enemyIdTrigger": "raider_skiff" },
+        "enemies": [
+          {
+            "enemyDefinitionId": "pirate_reaver",
+            "roleOverride": "flanker",
+            "initialPosition": "mid",
+            "focusHint": "engines"
+          }
+        ]
+      }
+    ],
+    "enemyModifiers": { "globalAccuracyMultiplier": 1.1 },
+    "tags": ["pirate", "raider"]
+  },
+  {
+    "id": "navy_checkpoint_pursuit",
+    "name": "Checkpoint Pursuit",
+    "description": "Republic interceptors rush to keep lawless lanes under control.",
+    "difficulty": "hard",
+    "objectives": ["destroy_all"],
+    "waves": [
+      {
+        "id": "interceptor_wall",
+        "spawnCondition": { "type": "on_start" },
+        "enemies": [
+          { "enemyDefinitionId": "navy_interceptor", "roleOverride": "anchor", "initialPosition": "front" },
+          {
+            "enemyDefinitionId": "armored_gunboat",
+            "roleOverride": "support",
+            "initialPosition": "back",
+            "focusHint": "weapons"
+          }
+        ]
+      }
+    ],
+    "enemyModifiers": { "globalDamageMultiplier": 1.15 },
+    "tags": ["navy", "checkpoint"]
+  }
+]

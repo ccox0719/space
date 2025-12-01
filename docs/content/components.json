@@ -1,0 +1,138 @@
+[
+  {
+    "id": "reinforced_plating",
+    "name": "Reinforced Plating",
+    "description": "Bolts on extra armor plates, increasing hull integrity by +20.",
+    "cost": 1200,
+    "effectType": "hull",
+    "value": 20
+  },
+  {
+    "id": "shield_booster",
+    "name": "Shield Booster Array",
+    "description": "Augments shield emitters, increasing shield capacity by +15.",
+    "cost": 1400,
+    "effectType": "shields",
+    "value": 15
+  },
+  {
+    "id": "cargo_expansion",
+    "name": "Cargo Expansion Frame",
+    "description": "External cargo frames increase capacity by +20.",
+    "cost": 1000,
+    "effectType": "cargo",
+    "value": 20
+  },
+  {
+    "id": "aux_fuel_tanks",
+    "name": "Auxiliary Fuel Tanks",
+    "description": "Additional fuel tanks increase max fuel by +10.",
+    "cost": 900,
+    "effectType": "fuel",
+    "value": 10
+  },
+  {
+    "id": "inertial_dampers",
+    "name": "Inertial Dampers",
+    "description": "Stability systems that reduce hull strain in risky maneuvers; increases hull by +12.",
+    "cost": 1300,
+    "effectType": "hull",
+    "value": 12
+  },
+  {
+    "id": "mining_relay",
+    "name": "Mining Relay",
+    "description": "Optimized drill servos and scanners improve yield consistency; boosts cargo by +15 for ore runs.",
+    "cost": 1100,
+    "effectType": "cargo",
+    "value": 15
+  },
+  {
+    "id": "pirate_decoy_buoys",
+    "name": "Pirate Decoy Buoys",
+    "description": "Spoof beacons draw hostile scans away; reinforces shields by +10 to shrug off potshots.",
+    "cost": 1250,
+    "effectType": "shields",
+    "value": 10
+  },
+  {
+    "id": "ore_compression_bay",
+    "name": "Ore Compression Bay",
+    "description": "Micro-presses shrink bulk ore, effectively adding +25 cargo capacity for minerals.",
+    "cost": 1600,
+    "effectType": "cargo",
+    "value": 25
+  },
+  {
+    "id": "mining_lidar_suite",
+    "name": "Mining LiDAR Suite",
+    "description": "Precision scanners map veins faster, boosting mining yield and speed.",
+    "cost": 1100,
+    "slot": "passive",
+    "effects": {
+      "miningYield": 1.15,
+      "miningSpeed": 0.9
+    }
+  },
+  {
+    "id": "geo_sampling_lab",
+    "name": "Geological Sampling Lab",
+    "description": "Onboard lab improves assay quality, raising rare find odds and smoothing payouts.",
+    "cost": 1200,
+    "slot": "passive",
+    "effects": {
+      "rareFindChance": 1.2,
+      "miningPayoutMultiplier": 1.1
+    }
+  },
+  {
+    "id": "trade_forecaster",
+    "name": "Trade Forecaster Core",
+    "description": "Predictive market suite that marginally boosts sale prices sector-wide.",
+    "cost": 900,
+    "slot": "passive",
+    "effects": {
+      "sellBonus": 1.05,
+      "incomeMultiplier": 1.05
+    }
+  },
+  {
+    "id": "customs_liaison",
+    "name": "Customs Liaison",
+    "description": "Embedded liaison smooths paperwork and lowers local tariffs on your trades.",
+    "cost": 1000,
+    "slot": "passive",
+    "effects": {
+      "marketTax": 0.92,
+      "buyBonus": 0.97
+    }
+  },
+  {
+    "id": "grappler_array",
+    "name": "Grappler Array",
+    "description": "Reel in distant threats with a powered tether; ready for entrance control.",
+    "cost": 1150,
+    "ability": {
+      "id": "grappler_pull",
+      "type": "pull",
+      "description": "Pull a back-line enemy into the front row and jam their systems for 1 turn.",
+      "cooldown": 3,
+      "statusEffect": "jammed",
+      "effectDuration": 1
+    }
+  },
+  {
+    "id": "repulsor_pulse",
+    "name": "Repulsor Pulse",
+    "description": "Eject a crushing concussive wave that shoves foes backward into containment.",
+    "cost": 1200,
+    "ability": {
+      "id": "repulsor_push",
+      "type": "push",
+      "description": "Push a front-line enemy backward and immobilize them for 1 turn.",
+      "cooldown": 3,
+      "statusEffect": "immobilized",
+      "effectDuration": 1
+    }
+  }
+]

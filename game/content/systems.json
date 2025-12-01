@@ -1,0 +1,556 @@
+﻿[
+  {
+    "id": "helion_prime",
+    "name": "Helion Prime",
+    "description": "A bustling core trade world and political capital of the Helion Republic.",
+    "region": "core",
+    "coords": { "x": 0, "y": 0 },
+    "baseDanger": 1,
+    "security": "high",
+    "faction": "helion_republic",
+    "tags": ["core", "trade_hub", "shipyard"],
+    "economyTags": ["trade_hub", "industrial", "political"],
+    "traits": ["navy_presence_high", "seat_of_government"],
+    "neighbors": [
+      { "id": "veil_station", "distance": 2, "laneType": "core_lane" },
+      { "id": "fathom_dock", "distance": 2, "laneType": "core_lane" },
+      { "id": "unity_enclave", "distance": 1, "laneType": "core_lane" }
+    ],
+    "marketModifiers": {
+      "food_rations": 0.9,
+      "steel_ingots": 1,
+      "aurite_ore": 1.1,
+      "synthetic_fuel": 0.95,
+      "medical_supplies": 0.92,
+      "luxury_spice": 1.15,
+      "contraband_data": 0.9
+    },
+    "marketProfile": {
+      "imports": ["aurite_ore", "steel_ingots", "luxury_spice"],
+      "exports": ["medical_supplies", "synthetic_fuel", "food_rations"],
+      "blackMarket": false,
+      "taxRate": 0.08
+    },
+    "eventWeights": {
+      "navy_inspection": 0.22,
+      "trade_opportunity": 0.12,
+      "anomaly_spike": 0.04,
+      "smuggler_contact": 0.03,
+      "convoy_rescue": 0.04,
+      "derelict_ship": 0.02
+    }
+  },
+  {
+    "id": "veil_station",
+    "name": "Veil Station",
+    "description": "Naval staging platform that keeps a watchful eye on traffic leaving the core.",
+    "region": "core",
+    "coords": { "x": -2, "y": 1 },
+    "baseDanger": 1,
+    "security": "high",
+    "faction": "helion_republic",
+    "tags": ["core", "navy_base", "trade_lane", "shipyard"],
+    "economyTags": ["naval", "diplomatic"],
+    "traits": ["repair_bay", "navy_presence_medium"],
+    "neighbors": [
+      { "id": "helion_prime", "distance": 2, "laneType": "core_lane" },
+      { "id": "fathom_dock", "distance": 2, "laneType": "core_lane" },
+      { "id": "argent_gate", "distance": 3, "laneType": "frontier_lane" }
+    ],
+    "marketModifiers": {
+      "synthetic_fuel": 0.95,
+      "medical_supplies": 0.98,
+      "ship_parts": 0.9
+    },
+    "marketProfile": {
+      "imports": ["synthetic_fuel", "medical_supplies"],
+      "exports": ["ship_parts", "luxury_spice"],
+      "blackMarket": false,
+      "taxRate": 0.06
+    },
+    "eventWeights": {
+      "navy_inspection": 0.18,
+      "diplomatic_cable": 0.12,
+      "trade_opportunity": 0.05
+    }
+  },
+  {
+    "id": "fathom_dock",
+    "name": "Fathom Dock",
+    "description": "Shipyards and research labs that prototype the Helion Navy's next generation.",
+    "region": "core",
+    "coords": { "x": 1, "y": 2 },
+    "baseDanger": 1,
+    "security": "medium",
+    "faction": "helion_republic",
+    "tags": ["core", "shipyard", "research"],
+    "economyTags": ["heavy_industry", "research"],
+    "traits": ["shipwrights", "lab_access"],
+    "neighbors": [
+      { "id": "helion_prime", "distance": 2, "laneType": "core_lane" },
+      { "id": "veil_station", "distance": 2, "laneType": "core_lane" },
+      { "id": "argent_gate", "distance": 3, "laneType": "frontier_lane" }
+    ],
+    "marketModifiers": {
+      "steel_ingots": 0.95,
+      "synthetic_fuel": 0.92,
+      "medical_supplies": 0.9
+    },
+    "marketProfile": {
+      "imports": ["steel_ingots", "medical_supplies"],
+      "exports": ["ship_parts", "composite_structures"],
+      "blackMarket": false,
+      "taxRate": 0.05
+    },
+    "eventWeights": {
+      "trade_opportunity": 0.1,
+      "research_breakthrough": 0.08,
+      "navy_inspection": 0.04
+    }
+  },
+  {
+    "id": "unity_enclave",
+    "name": "Unity Enclave",
+    "description": "Pilgrimage world and seat of the Church of Unity, heavily patrolled.",
+    "region": "core",
+    "coords": { "x": -1, "y": -2 },
+    "baseDanger": 2,
+    "security": "high",
+    "faction": "unity_church",
+    "tags": ["religious", "restricted"],
+    "economyTags": ["religious", "pilgrimage"],
+    "traits": ["unity_presence", "restricted_airspace"],
+    "neighbors": [
+      { "id": "helion_prime", "distance": 1, "laneType": "core_lane" }
+    ],
+    "marketModifiers": {
+      "unity_relics": 1.5,
+      "medical_supplies": 0.9,
+      "contraband_data": 0.95,
+      "luxury_spice": 1.25,
+      "food_rations": 1.05,
+      "biotech_samples": 0.8
+    },
+    "marketProfile": {
+      "imports": ["medical_supplies", "food_rations", "luxury_spice", "polarized_alloys"],
+      "exports": ["unity_relics", "biotech_samples"],
+      "blackMarket": false,
+      "taxRate": 0.1
+    },
+    "eventWeights": {
+      "unity_checkpoint": 0.25,
+      "navy_inspection": 0.05,
+      "anomaly_echo": 0.08,
+      "anomaly_spike": 0.03,
+      "derelict_ship": 0.03,
+      "trade_opportunity": 0.02
+    }
+  },
+  {
+    "id": "argent_gate",
+    "name": "Argent Gate",
+    "description": "Strategic customs and logistics hub controlling access to the outer routes.",
+    "region": "border",
+    "coords": { "x": 3, "y": 0 },
+    "baseDanger": 2,
+    "security": "medium",
+    "faction": "helion_republic",
+    "tags": ["checkpoint", "trade_lane", "frontier", "shipyard"],
+    "economyTags": ["checkpoint", "logistics"],
+    "traits": ["customs_watch", "trade_mandates"],
+    "neighbors": [
+      { "id": "veil_station", "distance": 3, "laneType": "frontier_lane" },
+      { "id": "fathom_dock", "distance": 3, "laneType": "frontier_lane" },
+      { "id": "dawn_reach", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "halcyon_gate", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "rift_expanses", "distance": 4, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "synthetic_fuel": 0.9,
+      "medical_supplies": 1.1,
+      "luxury_spice": 1.4,
+      "contraband_data": 0.9,
+      "polarized_alloys": 1.2
+    },
+    "marketProfile": {
+      "imports": ["aurite_ore", "luxury_spice", "contraband_data", "medical_supplies", "polarized_alloys"],
+      "exports": ["synthetic_fuel", "medical_supplies", "xenon_isotopes"],
+      "blackMarket": false,
+      "taxRate": 0.07
+    },
+    "eventWeights": {
+      "navy_inspection": 0.18,
+      "smuggler_contact": 0.06,
+      "trade_opportunity": 0.05,
+      "convoy_rescue": 0.04,
+      "anomaly_spike": 0.03,
+      "pirate_ambush": 0.03
+    }
+  },
+  {
+    "id": "dawn_reach",
+    "name": "Dawn Reach",
+    "description": "Frontier mining belt with sparse oversight and plentiful anomalies.",
+    "region": "border",
+    "coords": { "x": 5, "y": 1 },
+    "baseDanger": 3,
+    "security": "low",
+    "faction": "frontier_clans",
+    "tags": ["mining_belt", "frontier", "shipyard"],
+    "economyTags": ["mining", "anomaly"],
+    "traits": ["anomaly_rich", "frontier_outpost"],
+    "neighbors": [
+      { "id": "argent_gate", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "aurora_belt", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "rift_expanses", "distance": 3, "laneType": "wildspace" },
+      { "id": "halcyon_gate", "distance": 2, "laneType": "frontier_lane" }
+    ],
+    "marketModifiers": {
+      "aurite_ore": 0.78,
+      "steel_ingots": 1.2,
+      "food_rations": 1.1,
+      "medical_supplies": 1.05,
+      "synthetic_fuel": 1.1,
+      "contraband_data": 0.95,
+      "xenon_isotopes": 1.05,
+      "polarized_alloys": 0.95
+    },
+    "marketProfile": {
+      "exports": ["aurite_ore", "steel_ingots"],
+      "imports": ["food_rations", "steel_ingots", "medical_supplies", "synthetic_fuel", "polarized_alloys"],
+      "blackMarket": true,
+      "taxRate": 0.05
+    },
+    "eventWeights": {
+      "mining_rich_vein": 0.28,
+      "mining_fragment_field": 0.2,
+      "pirate_ambush": 0.12,
+      "anomaly_spike": 0.08,
+      "derelict_ship": 0.05,
+      "smuggler_contact": 0.04
+    }
+  },
+  {
+    "id": "aurora_belt",
+    "name": "Aurora Belt",
+    "description": "A fringe cluster of mining rigs, salvage crews, and a floating barter bazaar.",
+    "region": "border",
+    "coords": { "x": 6, "y": 3 },
+    "baseDanger": 3,
+    "security": "low",
+    "faction": "frontier_clans",
+    "tags": ["mining_belt", "salvage", "frontier", "shipyard"],
+    "economyTags": ["mining", "salvage"],
+    "traits": ["salvage_ring", "anomaly_field"],
+    "neighbors": [
+      { "id": "dawn_reach", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "rift_expanses", "distance": 3, "laneType": "wildspace" },
+      { "id": "thrynn_outpost", "distance": 3, "laneType": "frontier_lane" }
+    ],
+    "marketModifiers": {
+      "aurite_ore": 0.72,
+      "steel_ingots": 1.3,
+      "food_rations": 1.2,
+      "unity_relics": 1.5,
+      "medical_supplies": 1.05,
+      "luxury_spice": 1.4,
+      "contraband_data": 0.95,
+      "xenon_isotopes": 1.15
+    },
+    "marketProfile": {
+      "exports": ["aurite_ore", "steel_ingots", "xenon_isotopes"],
+      "imports": ["food_rations", "synthetic_fuel", "medical_supplies", "luxury_spice", "polarized_alloys"],
+      "blackMarket": true,
+      "taxRate": 0.04
+    },
+    "eventWeights": {
+      "mining_rich_vein": 0.24,
+      "mining_fragment_field": 0.18,
+      "pirate_ambush": 0.12,
+      "smuggler_contact": 0.12,
+      "derelict_ship": 0.08,
+      "anomaly_spike": 0.05,
+      "black_market_raid": 0.05
+    }
+  },
+  {
+    "id": "rift_expanses",
+    "name": "Rift Expanses",
+    "description": "Lawless void beyond the frontier where pirate mobs, smugglers, and cults wrestle over salvage.",
+    "region": "pirate",
+    "coords": { "x": 7, "y": 0 },
+    "baseDanger": 4,
+    "security": "low",
+    "faction": "rift_syndicate",
+    "tags": ["pirate_stronghold", "anomaly", "black_market", "shipyard"],
+    "economyTags": ["pirate", "salvage"],
+    "traits": ["black_market_hub", "anomaly_gate"],
+    "neighbors": [
+      { "id": "argent_gate", "distance": 4, "laneType": "wildspace" },
+      { "id": "dawn_reach", "distance": 3, "laneType": "wildspace" },
+      { "id": "aurora_belt", "distance": 3, "laneType": "wildspace" },
+      { "id": "blood_mire", "distance": 3, "laneType": "wildspace" },
+      { "id": "halcyon_gate", "distance": 3, "laneType": "wildspace" },
+      { "id": "shatter_spine", "distance": 3, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "unity_relics": 0.8,
+      "aurite_ore": 0.65,
+      "synthetic_fuel": 1.25,
+      "contraband_data": 0.95,
+      "luxury_spice": 0.9,
+      "medical_supplies": 1.3,
+      "biotech_samples": 1.1
+    },
+    "marketProfile": {
+      "exports": ["unity_relics", "contraband_data", "luxury_spice", "xenon_isotopes"],
+      "imports": ["food_rations", "synthetic_fuel", "medical_supplies", "biotech_samples"],
+      "blackMarket": true,
+      "taxRate": 0.02
+    },
+    "eventWeights": {
+      "pirate_ambush": 0.32,
+      "smuggler_contact": 0.25,
+      "black_market_raid": 0.18,
+      "derelict_ship": 0.08,
+      "anomaly_spike": 0.06,
+      "trade_opportunity": 0.04
+    }
+  },
+  {
+    "id": "thrynn_outpost",
+    "name": "Thrynn Outpost",
+    "description": "Hidden docks favored by smugglers, with a rumor of a secret lane to the wilds.",
+    "region": "border",
+    "coords": { "x": 8, "y": 4 },
+    "baseDanger": 3,
+    "security": "medium",
+    "faction": "frontier_clans",
+    "tags": ["trade_post", "smuggling", "frontier", "black_market", "shipyard"],
+    "economyTags": ["trade_post", "smuggling"],
+    "traits": ["smuggler_nexus", "hidden_market"],
+    "neighbors": [
+      { "id": "aurora_belt", "distance": 3, "laneType": "frontier_lane" },
+      { "id": "polar_distortion", "distance": 3, "laneType": "frontier_lane" },
+      { "id": "shatter_spine", "distance": 4, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "contraband_data": 0.85,
+      "food_rations": 1.1,
+      "luxury_spice": 1.15
+    },
+    "marketProfile": {
+      "imports": ["food_rations", "synthetic_fuel"],
+      "exports": ["contraband_data"],
+      "blackMarket": true,
+      "taxRate": 0.03
+    },
+    "eventWeights": {
+      "smuggler_contact": 0.2,
+      "pirate_ambush": 0.12,
+      "trade_opportunity": 0.06
+    }
+  },
+  {
+    "id": "polar_distortion",
+    "name": "Polar Distortion",
+    "description": "A ghostly fringe corridor where navigation is warped by a slow-moving anomaly.",
+    "region": "fringe",
+    "coords": { "x": 9, "y": 6 },
+    "baseDanger": 4,
+    "security": "low",
+    "faction": "frontier_clans",
+    "tags": ["anomaly", "fringe", "mining_belt"],
+    "economyTags": ["anomaly", "research"],
+    "traits": ["temporal_flare", "unstable_field"],
+    "neighbors": [
+      { "id": "thrynn_outpost", "distance": 3, "laneType": "frontier_lane" },
+      { "id": "echo_rapture", "distance": 2, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "medical_supplies": 1.1,
+      "anomaly_data": 0.9
+    },
+    "marketProfile": {
+      "imports": ["medical_supplies", "synthetic_fuel"],
+      "exports": ["anomaly_data"],
+      "blackMarket": false,
+      "taxRate": 0.05
+    },
+    "eventWeights": {
+      "anomaly_spike": 0.3,
+      "mining_fragment_field": 0.18,
+      "mining_rich_vein": 0.08,
+      "derelict_ship": 0.05
+    }
+  },
+  {
+    "id": "echo_rapture",
+    "name": "Echo Rapture",
+    "description": "Salvage crews and cultists argue over the ruins of an ancient gate.",
+    "region": "fringe",
+    "coords": { "x": 11, "y": 6 },
+    "baseDanger": 4,
+    "security": "low",
+    "faction": "frontier_clans",
+    "tags": ["anomaly", "salvage", "fringe"],
+    "economyTags": ["anomaly", "salvage"],
+    "traits": ["echo_field", "salvage_hub"],
+    "neighbors": [
+      { "id": "polar_distortion", "distance": 2, "laneType": "wildspace" },
+      { "id": "wild_mirage", "distance": 2, "laneType": "wildspace" },
+      { "id": "blood_mire", "distance": 4, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "luxury_spice": 1.2,
+      "contraband_data": 0.95
+    },
+    "marketProfile": {
+      "imports": ["luxury_spice", "medical_supplies"],
+      "exports": ["anomaly_data", "contraband_data"],
+      "blackMarket": true,
+      "taxRate": 0.04
+    },
+    "eventWeights": {
+      "anomaly_spike": 0.25,
+      "mining_fragment_field": 0.1,
+      "derelict_ship": 0.1,
+      "pirate_ambush": 0.1
+    }
+  },
+  {
+    "id": "wild_mirage",
+    "name": "Wild Mirage",
+    "description": "Distorted coordinates and shimmering nebulae hide a fast lane for daring smugglers.",
+    "region": "wild",
+    "coords": { "x": 12, "y": 4 },
+    "baseDanger": 5,
+    "security": "low",
+    "faction": "rift_syndicate",
+    "tags": ["wildspace", "black_market"],
+    "economyTags": ["illicit", "anomaly"],
+    "traits": ["ghost_waypoint", "distorted_grav"],
+    "neighbors": [
+      { "id": "echo_rapture", "distance": 2, "laneType": "wildspace" },
+      { "id": "blood_mire", "distance": 3, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "contraband_data": 0.8,
+      "luxury_spice": 1.25
+    },
+    "marketProfile": {
+      "imports": ["contraband_data", "luxury_spice"],
+      "exports": ["anomaly_data"],
+      "blackMarket": true,
+      "taxRate": 0.07
+    },
+    "eventWeights": {
+      "pirate_ambush": 0.25,
+      "anomaly_spike": 0.2,
+      "black_market_raid": 0.1
+    }
+  },
+  {
+    "id": "blood_mire",
+    "name": "Blood Mire",
+    "description": "Pirate wedge choked with wreckage and black market caches.",
+    "region": "pirate",
+    "coords": { "x": 9, "y": -1 },
+    "baseDanger": 5,
+    "security": "low",
+    "faction": "rift_syndicate",
+    "tags": ["pirate_stronghold", "black_market"],
+    "economyTags": ["pirate_stronghold", "black_market"],
+    "traits": ["pirate_wedge", "magnet_for_raiders"],
+    "neighbors": [
+      { "id": "rift_expanses", "distance": 3, "laneType": "wildspace" },
+      { "id": "echo_rapture", "distance": 4, "laneType": "wildspace" },
+      { "id": "wild_mirage", "distance": 3, "laneType": "wildspace" },
+      { "id": "shatter_spine", "distance": 2, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "contraband_data": 0.8,
+      "medical_supplies": 1.3
+    },
+    "marketProfile": {
+      "imports": ["food_rations", "synthetic_fuel"],
+      "exports": ["contraband_data", "black_market_goods"],
+      "blackMarket": true,
+      "taxRate": 0.02
+    },
+    "eventWeights": {
+      "pirate_ambush": 0.35,
+      "black_market_raid": 0.2,
+      "derelict_ship": 0.05
+    }
+  },
+  {
+    "id": "shatter_spine",
+    "name": "Shatter Spine",
+    "description": "Ridge of asteroid spires used as a relay and training ground for pirate squads.",
+    "region": "pirate",
+    "coords": { "x": 10, "y": -3 },
+    "baseDanger": 5,
+    "security": "low",
+    "faction": "rift_syndicate",
+    "tags": ["pirate_stronghold", "training"],
+    "economyTags": ["warband", "salvage"],
+    "traits": ["pirate_relay", "war_training"],
+    "neighbors": [
+      { "id": "rift_expanses", "distance": 3, "laneType": "wildspace" },
+      { "id": "halcyon_gate", "distance": 3, "laneType": "wildspace" },
+      { "id": "blood_mire", "distance": 2, "laneType": "wildspace" },
+      { "id": "thrynn_outpost", "distance": 4, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "contraband_data": 0.7,
+      "salvage_parts": 0.9
+    },
+    "marketProfile": {
+      "imports": ["contraband_data", "black_market_goods"],
+      "exports": ["salvage"],
+      "blackMarket": true,
+      "taxRate": 0.01
+    },
+    "eventWeights": {
+      "pirate_ambush": 0.4,
+      "derelict_ship": 0.08,
+      "navy_inspection": 0.02
+    }
+  },
+  {
+    "id": "halcyon_gate",
+    "name": "Halcyon Gate",
+    "description": "A restless mid-ring hub where smugglers test a tunnel hidden in the bureaucracy.",
+    "region": "border",
+    "coords": { "x": 5, "y": -2 },
+    "baseDanger": 3,
+    "security": "medium",
+    "faction": "helion_republic",
+    "tags": ["checkpoint", "smuggling", "frontier", "black_market", "shipyard"],
+    "economyTags": ["checkpoint", "smuggling"],
+    "traits": ["dual_watch", "black_market_tunnel"],
+    "neighbors": [
+      { "id": "argent_gate", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "dawn_reach", "distance": 2, "laneType": "frontier_lane" },
+      { "id": "rift_expanses", "distance": 3, "laneType": "frontier_lane" },
+      { "id": "shatter_spine", "distance": 3, "laneType": "wildspace" }
+    ],
+    "marketModifiers": {
+      "synthetic_fuel": 0.92,
+      "contraband_data": 0.85,
+      "medical_supplies": 1.05
+    },
+    "marketProfile": {
+      "imports": ["synthetic_fuel", "contraband_data"],
+      "exports": ["medical_supplies"],
+      "blackMarket": true,
+      "taxRate": 0.05
+    },
+    "eventWeights": {
+      "navy_inspection": 0.15,
+      "smuggler_contact": 0.2,
+      "pirate_ambush": 0.1
+    }
+  }
+]

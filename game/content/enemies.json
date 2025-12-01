@@ -1,0 +1,114 @@
+[
+  {
+    "id": "pirate_cutter",
+    "name": "Pirate Cutter",
+    "hull": 68,
+    "shields": 21,
+    "canEscape": true,
+    "weaponIds": ["coil_autocannon"],
+    "hardpoints": [{ "size": "small", "type": "projectile" }],
+    "tags": ["pirate", "raider"]
+  },
+  {
+    "id": "raider_skiff",
+    "name": "Raider Skiff",
+    "hull": 51,
+    "shields": 13,
+    "canEscape": true,
+    "weaponIds": ["laser_mk1", "stinger_missiles"],
+    "hardpoints": [
+      { "size": "small", "type": "energy" },
+      { "size": "small", "type": "missile" }
+    ],
+    "tags": ["raider", "skiff", "pirate"]
+  },
+  {
+    "id": "syndicate_raider",
+    "name": "Syndicate Raider",
+    "hull": 94,
+    "shields": 26,
+    "canEscape": true,
+    "weaponIds": ["railgun_mk1", "stinger_missiles"],
+    "hardpoints": [
+      { "size": "medium", "type": "projectile" },
+      { "size": "small", "type": "missile" }
+    ],
+    "tags": ["syndicate", "pirate"]
+  },
+  {
+    "id": "navy_interceptor",
+    "name": "Republic Interceptor",
+    "hull": 125,
+    "shields": 65,
+    "canEscape": false,
+    "weaponIds": ["scatter_laser", "ion_disruptor"],
+    "hardpoints": [
+      { "size": "small", "type": "energy" },
+      { "size": "small", "type": "energy" }
+    ],
+    "tags": ["navy", "lawful"]
+  },
+  {
+    "id": "cult_frigate",
+    "name": "Cult Frigate",
+    "hull": 140,
+    "shields": 70,
+    "canEscape": false,
+    "weaponIds": ["plasma_caster", "ion_disruptor"],
+    "hardpoints": [
+      { "size": "medium", "type": "energy" },
+      { "size": "small", "type": "energy" }
+    ],
+    "tags": ["cult", "mystic"]
+  },
+  {
+    "id": "armored_gunboat",
+    "name": "Armored Gunboat",
+    "hull": 180,
+    "shields": 80,
+    "canEscape": false,
+    "weaponIds": ["mass_driver", "railgun_mk1"],
+    "hardpoints": [
+      { "size": "large", "type": "projectile" },
+      { "size": "medium", "type": "projectile" }
+    ],
+    "tags": ["navy", "elite"]
+  }
+  ,
+  {
+    "id": "pirate_bulwark",
+    "name": "Pirate Bulwark",
+    "hull": 144,
+    "shields": 76,
+    "canEscape": false,
+    "weaponIds": ["mass_driver", "coil_autocannon"],
+    "hardpoints": [
+      { "size": "large", "type": "projectile" },
+      { "size": "small", "type": "projectile" }
+    ],
+    "tags": ["pirate", "tank"]
+  },
+  {
+    "id": "pirate_reaver",
+    "name": "Pirate Reaver",
+    "hull": 81,
+    "shields": 21,
+    "canEscape": true,
+    "weaponIds": ["railgun_mk1", "stinger_missiles"],
+    "hardpoints": [
+      { "size": "medium", "type": "projectile" },
+      { "size": "small", "type": "missile" }
+    ],
+    "tags": ["pirate", "raider"]
+  },
+  {
+    "id": "pirate_cover_skiff",
+    "name": "Cover Skiff",
+    "hull": 60,
+    "shields": 26,
+    "canEscape": true,
+    "weaponIds": ["laser_mk1"],
+    "hardpoints": [{ "size": "small", "type": "energy" }],
+    "tags": ["pirate", "support"]
+  }
+]

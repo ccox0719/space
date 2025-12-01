@@ -1,0 +1,23 @@
+[
+  {
+    "id": "raiders",
+    "name": "Raiders",
+    "description": "Frontline bruisers favor kinetic & explosive volleys; expect heavy hull punching with a mix of projectiles.",
+    "preferredDamage": ["kinetic", "explosive"],
+    "role": "frontline"
+  },
+  {
+    "id": "ghost_fleet",
+    "name": "Ghost Fleet",
+    "description": "Spectral disruptors that jam and disable shields before moving in with energy arcs.",
+    "preferredDamage": ["disruptive", "energy"],
+    "role": "support"
+  },
+  {
+    "id": "corsairs",
+    "name": "Corsairs",
+    "description": "High-precision energy beams and shields; their carriers soften you before closing hard.",
+    "preferredDamage": ["energy"],
+    "role": "backline"
+  }
+]

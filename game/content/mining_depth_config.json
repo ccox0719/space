@@ -1,0 +1,111 @@
+{
+  "bands": [
+    {
+      "id": "surface",
+      "label": "Surface",
+      "level": 0,
+      "depthRange": [1, 2],
+      "valueMultiplier": 1,
+      "dropWeights": { "common": 0.96, "rare": 0.04 },
+      "lootTables": {
+        "common": "depth_surface_common",
+        "rare": "depth_surface_rare"
+      },
+      "cluster": {
+        "chance": 0,
+        "minSize": 0,
+        "maxSize": 0,
+        "maxClusters": 0
+      },
+      "comboGain": 5
+    },
+    {
+      "id": "mid",
+      "label": "Mid",
+      "level": 1,
+      "depthRange": [3, 3],
+      "valueMultiplier": 1.5,
+      "dropWeights": { "common": 0.9, "rare": 0.08, "ultra": 0.02 },
+      "lootTables": {
+        "common": "depth_mid_common",
+        "rare": "depth_mid_rare"
+      },
+      "cluster": {
+        "chance": 0.25,
+        "minSize": 2,
+        "maxSize": 2,
+        "maxClusters": 2
+      },
+      "comboGain": 7
+    },
+    {
+      "id": "deep",
+      "label": "Deep",
+      "level": 2,
+      "depthRange": [4, 4],
+      "valueMultiplier": 2,
+      "dropWeights": { "common": 0.75, "rare": 0.2, "ultra": 0.05 },
+      "lootTables": {
+        "common": "depth_deep_common",
+        "rare": "depth_deep_rare",
+        "ultra": "depth_deep_ultra"
+      },
+      "cluster": {
+        "chance": 0.55,
+        "minSize": 2,
+        "maxSize": 3,
+        "maxClusters": 3
+      },
+      "comboGain": 9
+    },
+    {
+      "id": "core",
+      "label": "Core",
+      "level": 3,
+      "depthRange": [5, 5],
+      "valueMultiplier": 3,
+      "dropWeights": { "common": 0.7, "rare": 0.25, "ultra": 0.05 },
+      "lootTables": {
+        "common": "depth_core_common",
+        "rare": "depth_core_rare",
+        "ultra": "depth_core_ultra"
+      },
+      "cluster": {
+        "chance": 0.7,
+        "minSize": 3,
+        "maxSize": 5,
+        "maxClusters": 3
+      },
+      "comboGain": 11
+    }
+  ],
+  "combo": {
+    "threshold": 100,
+    "duration": 3,
+    "revealTiles": 3,
+    "guaranteedRarityCount": 2,
+    "threatReduction": 0.15,
+    "bandBonus": 6,
+    "skipBandBonus": 8
+  },
+  "clusterSettings": {
+    "maxAttemptsPerBand": 3
+  }
+  ,
+  "riskChain": {
+    "hazardBaseChance": 0.05,
+    "hazardPerChain": 0.02,
+    "hazardDamageRange": [1, 3],
+    "hazardDamageMultiplierPerLevel": 0.1,
+    "rewardMultipliers": [
+      { "maxLevel": 2, "multiplier": 1 },
+      { "maxLevel": 4, "multiplier": 1.2 },
+      { "maxLevel": 7, "multiplier": 1.5 },
+      { "maxLevel": 10, "multiplier": 2 },
+      { "maxLevel": 1000, "multiplier": 2.5 }
+    ],
+    "milestones": [3, 5, 8, 10],
+    "cashOutBase": 25,
+    "cashOutPerLevel": 15
+  }
+}

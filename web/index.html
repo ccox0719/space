@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space Opera Sandbox</title>
+  <style>
+    :root {
+      font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+      background: #0c0f14;
+      color: #d6e2f3;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .panel {
+      border: 1px solid #1f2530;
+      border-radius: 8px;
+      padding: 12px;
+      background: #11161f;
+      box-shadow: 0 0 0 1px #0c0f14 inset;
+    }
+    h1, h2, h3 {
+      margin: 0 0 8px 0;
+    }
+    button {
+      background: #1f3a5f;
+      color: #d6e2f3;
+      border: 1px solid #29466d;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px 4px 4px 0;
+    }
+    button:hover { background: #25508f; }
+    #log, #missions {
+      min-height: 80px;
+      white-space: pre-wrap;
+      background: #0c1017;
+      border-radius: 6px;
+      padding: 8px;
+      border: 1px solid #1f2530;
+    }
+    #connections button { display: block; width: 100%; text-align: left; }
+    .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Space Opera Sandbox (Text)</h1>
+    <div id="player-stats"></div>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <h2 id="sector-name">Sector</h2>
+      <div id="sector-meta"></div>
+      <h3>Connections</h3>
+      <div id="connections"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Actions</h3>
+      <button id="btn-mine">Mine</button>
+      <h3>Market (only where available)</h3>
+      <div id="market-list"></div>
+      <button id="btn-combat">Combat vs Pirate</button>
+      <h3>Guidance</h3>
+      <div id="guidance"></div>
+      <h3>Missions</h3>
+      <div id="missions"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Log (last 10)</h3>
+    <div id="log"></div>
+  </div>
+
+  <script type="module" src="./bundle.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "depthValueMultipliers": [
+    { "depthRange": [1, 3], "multiplier": 0.25 },
+    { "depthRange": [4, 6], "multiplier": 0.5 },
+    { "depthRange": [7, 10], "multiplier": 1 },
+    { "depthRange": [11, 20], "multiplier": 1.4 }
+  ],
+  "yieldReduction": {
+    "min": 0.3,
+    "max": 0.5
+  },
+  "emptyChance": [
+    { "depthRange": [1, 3], "chance": 0.25 },
+    { "depthRange": [4, 6], "chance": 0.15 },
+    { "depthRange": [7, 10], "chance": 0.08 },
+    { "depthRange": [11, 20], "chance": 0.03 }
+  ],
+  "clusterGateDepth": 7,
+  "fragmentation": {
+    "splitDepth": 6,
+    "minFragments": 2,
+    "maxFragments": 4,
+    "fragmentValueRange": [0.1, 0.35]
+  },
+  "drillDepthCaps": {
+    "basic": 5,
+    "mid": 8,
+    "advanced": 12
+  }
+}
