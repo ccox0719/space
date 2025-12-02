@@ -354,10 +354,30 @@ export function clearEventCache(): void {
 
 function mergeEvents(base: GameEvent[], overrides: GameEvent[] | null): GameEvent[] {
   if (!overrides?.length) return base;
-  const map = new Map<string, GameEvent>();
-  for (const entry of base) map.set(entry.id, entry);
-  for (const entry of overrides) map.set(entry.id, entry);
-  return Array.from(map.values());
+
+  const overrideMap = new Map(overrides.map((entry) => [entry.id, entry]));
+  const merged: GameEvent[] = base.map((entry) => {
+    const override = overrideMap.get(entry.id);
+    if (!override) {
+      return entry;
+    }
+    const patched: GameEvent = { ...entry };
+    for (const key of Object.keys(override) as Array<keyof GameEvent>) {
+      const value = override[key];
+      if (value === undefined) continue;
+      (patched as Record<string, unknown>)[key] = value;
+    }
+    return patched;
+  });
+
+  const baseIds = new Set(base.map((entry) => entry.id));
+  for (const entry of overrides) {
+    if (!baseIds.has(entry.id)) {
+      merged.push(entry);
+    }
+  }
+
+  return merged;
 }
 
 function loadPersistedEvents(): GameEvent[] | null {

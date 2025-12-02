@@ -130,6 +130,19 @@ function applyProfileModifiers(system: SystemDef, commodity: CommodityDef): numb
   return modifier;
 }
 
+function computeSellIncentive(system: SystemDef, commodity: CommodityDef): number {
+  const profile = system.marketProfile;
+  if (!profile) return 1;
+  let incentive = 1;
+  if (profile.imports?.includes(commodity.id)) {
+    incentive += 0.12;
+  }
+  if (profile.blackMarket && commodity.legalStatus === "illegal") {
+    incentive += 0.08;
+  }
+  return Math.min(1.35, Math.max(0.85, incentive));
+}
+
 function getEffectiveVolatility(commodity: CommodityDef): number {
   const base = Math.min(Math.max(commodity.volatility ?? 0.25, 0), 1);
   const scale = Math.min(2, Math.max(0, (devTune.marketPriceVolatility ?? 100) / 100));
@@ -188,6 +201,7 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
   const buyBonus = Math.max(0.5, passive.buyBonus ?? 1);
   const sellBonus = Math.max(0, passive.sellBonus ?? 1);
   const taxBonus = Math.max(0.5, passive.marketTax ?? 1);
+  const sellIncentive = computeSellIncentive(system, commodity);
   const buy = Math.max(
     1,
     Math.round(
@@ -206,6 +220,8 @@ export function getBuySellPrices(systemId: string, commodityId: string): MarketP
         incomeScale *
         sellBonus *
         taxBonus
+        *
+        sellIncentive
     )
   );
   const sellPrice = Math.max(1, Math.min(unsaltedSell, buy - 1));

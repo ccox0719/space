@@ -262,7 +262,13 @@ export const PLAYER_ACTIONS: PlayerActionDefinition[] = [
         return false;
       }
       combat.enemyStatus.weaponJammedTurns = Math.min(3, combat.enemyStatus.weaponJammedTurns + 2);
-      log(`EMP energy floods ${target.name}, rattling its systems.`);
+      combat.enemyStatus.shieldLockoutTurns = Math.max(
+        combat.enemyStatus.shieldLockoutTurns,
+        SHIELD_LOCKOUT_DURATION
+      );
+      log(
+        `EMP energy floods ${target.name}, rattling its systems and keeping shield recovery offline for ${SHIELD_LOCKOUT_DURATION} turns.`
+      );
       return true;
     }
   },
@@ -317,7 +323,14 @@ export const PLAYER_ACTIONS: PlayerActionDefinition[] = [
         log("Signal Jam needs a foe to latch onto.");
         return false;
       }
-      log(`Signal noise blankets ${target.name}, muddying its preparations.`);
+      const immobilized = addStatusEffect(target, "immobilized", IMMOBILIZED_DURATION);
+      if (immobilized) {
+        log(
+          `Signal noise blankets ${target.name}, freezing its maneuvers for ${IMMOBILIZED_DURATION} turns.`
+        );
+      } else {
+        log(`${target.name} is already struggling; Signal Jam pushes the disruption deeper.`);
+      }
       return true;
     }
   }
@@ -467,6 +480,8 @@ const BURN_DURATION = 3;
 const BREACH_TICK_DAMAGE = 2;
 const BURN_TICK_DAMAGE = 3;
 const JAMMED_ACCURACY_PENALTY = 0.7;
+const SHIELD_LOCKOUT_DURATION = 3;
+const IMMOBILIZED_DURATION = 3;
 
 function addStatusEffect(slot: EnemySlot, type: StatusEffectType, duration: number): boolean {
   const existing = slot.statusEffects.find((status) => status.type === type);
@@ -1000,6 +1015,9 @@ function chooseEnemyIntent(enemy: EnemySlot, combat: CombatState): EnemyIntent {
     const hpRatio = enemy.maxHp ? enemy.hp / enemy.maxHp : 1;
     if (hpRatio <= instabilityConfig.thresholds.major && type === "retreat") weight *= 2;
     if (hpRatio <= instabilityConfig.thresholds.minor && type === "flank_shot") weight *= 1.2;
+    if (type === "shield_boost" && combat.enemyStatus.shieldLockoutTurns > 0) {
+      weight = 0;
+    }
     return { type, weight };
   });
   const total = weights.reduce((sum, entry) => sum + entry.weight, 0);
@@ -1380,7 +1398,8 @@ function startCombatLegacy(enemyId: string, opts: CombatReturn = {}) {
       shieldTurns: 0
     },
     enemyStatus: {
-      weaponJammedTurns: 0
+      weaponJammedTurns: 0,
+      shieldLockoutTurns: 0
     },
     canEscape: tpl.canEscape,
     totalRounds: 1,
@@ -1434,7 +1453,8 @@ function startCombatFromTemplate(template: EncounterTemplate, opts: CombatReturn
       hullBuffer: Math.max(0, Math.round(gameState.ship.maxHp * (hullMultiplier - 1)))
     },
     enemyStatus: {
-      weaponJammedTurns: 0
+      weaponJammedTurns: 0,
+      shieldLockoutTurns: 0
     },
     canEscape: !template.playerModifiers?.disableRetreat,
     totalRounds: 1,
@@ -1465,6 +1485,17 @@ export function startScaledCombat(systemId?: string) {
   startCombat(enemyId);
 }
 
+function smoothRampProgress(value: number, clampAt: number): number {
+  if (clampAt <= 0) return 1;
+  const ratio = Math.max(0, Math.min(1, value / clampAt));
+  return 1 - Math.pow(1 - ratio, 2); // ease-out quad to soften early growth
+}
+
+function applyRampFactor(raw: number, ramp: number): number {
+  const delta = raw - 1;
+  return 1 + delta * Math.max(0, Math.min(1, ramp));
+}
+
 function chooseEnemyId(systemId?: string): string {
   if (!content?.enemies?.length) return "pirate_cutter";
   const playerPower = computePlayerPower(gameState);
@@ -1472,7 +1503,11 @@ function chooseEnemyId(systemId?: string): string {
   const tune = getCombatTune();
   const perDayFactor = 1 + Math.max(0, tune.difficultyScalePerDay ?? 0) / 100 * Math.max(0, gameState.time.day - 1);
   const shipScale = Math.max(0, tune.difficultyScalePerShipPower ?? 1);
-  const effectivePower = playerPower * shipScale * perDayFactor;
+  const dayRamp = smoothRampProgress(gameState.time.day, 15);
+  const powerRamp = smoothRampProgress(Math.log10(playerPower + 1) * 2, 6);
+  const effectivePerDay = applyRampFactor(perDayFactor, dayRamp);
+  const effectiveShipScale = Math.max(0.1, applyRampFactor(shipScale, powerRamp));
+  const effectivePower = playerPower * effectiveShipScale * effectivePerDay;
 
   let minEnemyPower = effectivePower * (0.6 + 0.2 * dayPressure);
   let maxEnemyPower = effectivePower * (0.9 + 0.4 * dayPressure);
@@ -1985,7 +2020,9 @@ function shouldWarnHeavyAttack(damage: number): boolean {
 function enemyTurn() {
   const combat = gameState.combat;
   if (!combat) return;
-  const prevHp = gameState.ship.hp;
+  const shieldLockoutActive = combat.enemyStatus.shieldLockoutTurns > 0;
+  try {
+    const prevHp = gameState.ship.hp;
   const prevShields = gameState.ship.shields;
   const maxShipHp = gameState.ship.maxHp || 100;
     if (combat.enemyStatus.weaponJammedTurns > 0) {
@@ -2009,6 +2046,13 @@ function enemyTurn() {
   slot.nextIntent = intent;
   slot.intentDamageMultiplier = 1;
   if (intent.type === "shield_boost") {
+    if (shieldLockoutActive) {
+      log(
+        `${slot.name} tries to reroute power into shields, but residual EMP interference keeps the banks collapsed.`
+      );
+      slot.nextIntent = undefined;
+      return;
+    }
     slot.shields = Math.min(slot.maxShields, slot.shields + 12);
     log(`${slot.name} shunts power into shields instead of firing.`);
     slot.nextIntent = undefined;
@@ -2180,8 +2224,13 @@ function enemyTurn() {
   adjustTension(gameState, -Math.min(6, Math.floor(damage / 10)));
   slot.weaponCooldowns[choice.idx] = weapon.cooldown + (isJammed ? 1 : 0);
   applyAreaEffects(board, weapon, targetSlot, damage);
-  slot.nextIntent = undefined;
-  slot.intentDamageMultiplier = 1;
+    slot.nextIntent = undefined;
+    slot.intentDamageMultiplier = 1;
+  } finally {
+    if (shieldLockoutActive && combat.enemyStatus.shieldLockoutTurns > 0) {
+      combat.enemyStatus.shieldLockoutTurns -= 1;
+    }
+  }
 }
 export type CombatAdviceSuggestion = StanceId;
 

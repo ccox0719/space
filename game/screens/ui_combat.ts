@@ -88,49 +88,149 @@ function describeIntent(slot?: EnemySlot): string {
   return `⚡ ${label}`;
 }
 
-function renderLaneCard(
+const INTENT_ICON_MAP: Record<string, string> = {
+  heavy_attack: "⚔",
+  shield_boost: "🛡",
+  flank_shot: "🚀",
+  debuff: "❓",
+  retreat: "❓",
+  charge_weapon: "⚔"
+};
+
+const STATUS_ICON_MAP: Record<string, { icon: string; label: string }> = {
+  breach: { icon: "🛠", label: "Breach" },
+  jammed: { icon: "⚡", label: "Jammed" },
+  burn: { icon: "🔥", label: "Burn" },
+  immobilized: { icon: "⛓", label: "Immobilized" }
+};
+
+function getIntentIcon(slot?: EnemySlot): string {
+  if (!slot?.nextIntent?.type) {
+    return "❓";
+  }
+  return INTENT_ICON_MAP[slot.nextIntent.type] ?? "❓";
+}
+
+function renderStatusIcons(slot: EnemySlot): string {
+  if (!slot.statusEffects || slot.statusEffects.length === 0) {
+    return `<span class="muted">—</span>`;
+  }
+  return slot.statusEffects
+    .map((status) => {
+      const mapping = STATUS_ICON_MAP[status.type];
+      const label = mapping?.label ?? status.type;
+      const icon = mapping?.icon ?? "❔";
+      return `<span class="enemy-status-icon" title="${escapeHtml(label)}" style="margin-right:4px;">${icon}</span>`;
+    })
+    .join("");
+}
+
+function getBlockStateLabel(state?: string): string {
+  if (state === "blocking") return "BLOCKING";
+  if (state === "blocked") return "BLOCKED";
+  if (state === "exposed" || state === "alone") return "EXPOSED";
+  return "—";
+}
+
+function renderBarRow(label: string, value: number, max: number, fillClass: string): string {
+  const safeMax = Math.max(1, max);
+  const safeValue = Math.max(0, value);
+  const percent = max > 0 ? Math.min(100, Math.round((safeValue / safeMax) * 100)) : 0;
+  const valueLabel = max > 0 ? `${safeValue}/${max}` : `${safeValue}`;
+  return `
+    <div class="stat-row enemy-card-bar">
+      <span class="stat-label">${label}</span>
+      <div class="stat-meter">
+        <div class="stat-meter-fill ${fillClass}" style="width:${percent}%;"></div>
+      </div>
+      <span class="stat-value">${valueLabel}</span>
+    </div>
+  `;
+}
+
+function renderEmptySlot(positionLabel: "Front" | "Back"): string {
+  return `
+    <div class="enemy-slot enemy-slot--empty">
+      <span class="enemy-slot-name">Empty ${positionLabel}</span>
+      <span class="enemy-slot-meta muted">Awaiting reinforcements</span>
+    </div>
+  `;
+}
+
+function renderEnemyCard(
+  lane: number,
+  slot: EnemySlot,
+  selectedEnemyId?: string
+): string {
+  const isSelected = slot.id === selectedEnemyId;
+  const selectionAttrs = `onclick="selectEnemySlot('${slot.id}')" role="button" tabindex="0"`;
+  const blockLabel = getBlockStateLabel(slot.blockState);
+  const hullRow = renderBarRow("HULL", slot.hp, slot.maxHp, "");
+  const shieldRow = renderBarRow("SHLD", slot.shields, slot.maxShields, "stat-meter-fill--shield");
+  const shipIconMarkup = `<i class="bi bi-ship" title="Enemy vessel"></i>`;
+  const positionBadge =
+    slot.position.row === "front"
+      ? `<span class="cover-badge" title="Frontline"><i class="bi bi-arrow-up-circle-fill"></i></span>`
+      : `<span class="cover-badge" title="Backline"><i class="bi bi-arrow-down-circle-fill"></i></span>`;
+  const blockIconMap: Record<string, { icon: string; label: string }> = {
+    blocking: { icon: "bi-shield-fill-check", label: "Blocking" },
+    blocked: { icon: "bi-shield-lock-fill", label: "Blocked" },
+    exposed: { icon: "bi-exclamation-triangle-fill", label: "Exposed" },
+    alone: { icon: "bi-person-fill", label: "Isolated" },
+    none: { icon: "bi-shield-fill", label: "Neutral" }
+  };
+  const blockMeta = blockIconMap[slot.blockState ?? ""] ?? {
+    icon: "bi-shield-fill",
+    label: blockLabel
+  };
+  const blockBadge = `<span class="cover-badge" title="${escapeHtml(blockMeta.label)}"><i class="bi ${blockMeta.icon}"></i></span>`;
+  return `
+    <article class="enemy-slot ${isSelected ? "is-selected" : ""}" ${selectionAttrs}>
+      <div class="enemy-card-header" style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+        <span class="enemy-slot-icon">${shipIconMarkup}</span>
+        <div>
+          <span class="enemy-slot-name" style="font-variant:small-caps;">${escapeHtml(slot.name)}</span>
+          <div class="enemy-card-badges" style="display:flex;gap:4px;margin-top:2px;">
+            ${positionBadge}
+            ${blockBadge}
+          </div>
+        </div>
+      </div>
+      <div class="enemy-card-bars" style="display:flex;flex-direction:column;gap:4px;">
+        ${hullRow}
+        ${shieldRow}
+      </div>
+      <div
+        class="enemy-card-footer"
+        style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:6px;"
+      >
+        <span class="enemy-intent-icon" title="${describeIntent(slot)}">${getIntentIcon(slot)}</span>
+        <span class="enemy-card-status">${renderStatusIcons(slot)}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderLaneStack(
   lane: number,
   front?: EnemySlot,
   back?: EnemySlot,
-  selectedEnemyId?: string
+  selectedEnemyId?: string | null
 ): string {
-  const displaySlot = front ?? back;
-  const laneLabel = `LANE ${lane + 1}`;
-  const name = displaySlot ? escapeHtml(displaySlot.name) : "Empty";
-  const hullLine = displaySlot ? `Hull ${displaySlot.hp}/${displaySlot.maxHp}` : "—";
-  const shieldLine = displaySlot ? `Shield ${displaySlot.shields}/${displaySlot.maxShields}` : "—";
-  const intentText = displaySlot ? describeIntent(displaySlot) : "⚠ Unknown";
-  const intentDetails = displaySlot?.nextIntent?.description
-    ? ` · ${escapeHtml(displaySlot.nextIntent.description)}`
-    : "";
-  const frontLabel = front ? "Front" : "—";
-  const backLabel = back ? "Back" : "—";
-  const isSelected = displaySlot?.id === selectedEnemyId;
-  const statusBadges =
-    displaySlot?.statusEffects && displaySlot.statusEffects.length
-      ? displaySlot.statusEffects
-          .map((status) => `<span class="lane-status-pill">${escapeHtml(status.type)}</span>`)
-          .join("")
-      : "";
-  const selectionAttrs = displaySlot
-    ? `onclick="selectEnemySlot('${displaySlot.id}')" role="button" tabindex="0"`
-    : "";
+  const laneLabel = `Lane ${lane + 1}`;
+  const frontCard = front ? renderEnemyCard(lane, front, selectedEnemyId ?? undefined) : renderEmptySlot("Front");
+  const backCard = back ? renderEnemyCard(lane, back, selectedEnemyId ?? undefined) : renderEmptySlot("Back");
   return `
-    <article class="lane-card ${isSelected ? "is-selected" : ""}" ${selectionAttrs}>
-      <header class="lane-card-header">
-        <span class="lane-card-title">${laneLabel}</span>
-      </header>
-      <div class="lane-card-body">
-        <span class="lane-card-name">${name}</span>
-        <span class="lane-card-line">${hullLine}</span>
-        <span class="lane-card-line">${shieldLine}</span>
-        <span class="lane-card-line lane-intent">Intent: ${intentText}${intentDetails}</span>
-        <span class="lane-card-line lane-positions">${frontLabel} • ${backLabel}</span>
-        <div class="lane-card-statuses">
-          ${statusBadges || '<span class="muted">No status</span>'}
-        </div>
+    <div class="enemy-lane" style="display:flex;flex-direction:column;gap:6px;">
+      <div class="lane-header">
+        <span>${laneLabel}</span>
+        <span class="lane-count">${front || back ? "Targets present" : "Empty lane"}</span>
       </div>
-    </article>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${frontCard}
+        ${backCard}
+      </div>
+    </div>
   `;
 }
 
@@ -171,7 +271,6 @@ function renderCombatActionButton(
       onclick="${entry.action}"
       ${ready ? "" : "disabled"}
     >
-      <span class="action-bullet">•</span>
       <span>${entry.label}</span>
       ${cooldownBadge}
     </button>
@@ -281,7 +380,7 @@ export function CombatScreen(): string {
       const backSlot = c.encounter.enemies.find(
         (slot) => slot.position.lane === lane && slot.position.row === "back" && slot.alive
       );
-      return renderLaneCard(lane, frontSlot, backSlot, selectedEnemyId);
+      return renderLaneStack(lane, frontSlot, backSlot, selectedEnemyId);
     })
     .join("");
 
@@ -305,6 +404,15 @@ export function CombatScreen(): string {
   const comboReadyText = comboReadyLabel
     ? `${comboReadyLabel} ready`
     : "fill meter";
+  const comboReady = Boolean(comboMeterState?.ready);
+  const comboMeterClasses = ["combo-meter"];
+  if (comboReady) {
+    comboMeterClasses.push("combo-meter--ready");
+  }
+  const comboAriaLabel = comboReady ? comboReadyText : "Combo meter charging";
+  const comboMeterAttributes = comboReady
+    ? `type="button" onclick="useComboFinish()" aria-label="${escapeHtml(comboAriaLabel)}"`
+    : `type="button" disabled aria-label="${escapeHtml(comboAriaLabel)}"`;
 
   const moduleAbilities = getActiveModuleAbilities();
   const moduleIcons = moduleAbilities.length
@@ -465,13 +573,19 @@ export function CombatScreen(): string {
             <strong>Status:</strong>
             <span class="status-values">${statusLine}</span>
           </div>
-          <div class="combo-meter">
+          <p
+            class="action-note missile-hint"
+            title="Missile weapons can target any ship in a lane regardless of cover."
+          >
+            Missile weapons ignore lane cover.
+          </p>
+          <button class="${comboMeterClasses.join(" ")}" ${comboMeterAttributes}>
             <span>COMBO METER: ${comboCharge}/${comboMax}</span>
             <div class="combo-meter-bar">
               <div class="combo-meter-fill" style="width:${comboPercent}%;"></div>
             </div>
             <span class="combo-meter-hint">[${comboReadyText}]</span>
-          </div>
+          </button>
         </section>
         <section class="panel combat-action-panel">
           <div class="panel-heading">

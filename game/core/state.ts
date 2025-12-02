@@ -176,6 +176,8 @@ export interface StatusEffect {
   duration: number;
 }
 
+export type EnemyBlockState = "blocking" | "blocked" | "exposed" | "alone" | "none";
+
 export type StanceId = "balanced" | "brace" | "evasive" | "overcharge";
 
 export interface StanceDefinition {
@@ -271,6 +273,7 @@ export interface EnemySlot {
   intentDamageMultiplier?: number;
   cooldowns?: ActionCooldownState[];
   intentCharged?: boolean;
+  blockState?: EnemyBlockState;
 }
 
 export interface ActionCooldownState {
@@ -306,6 +309,7 @@ export interface CombatState {
   enemyStatus: {
     weaponJammedTurns: number;
     accuracyModifier?: number;
+    shieldLockoutTurns: number;
   };
   canEscape: boolean;
   totalRounds: number;
@@ -777,7 +781,7 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
   marketBurstChance: 5,
   marketCrashChance: 5,
   tradeProfitMultiplier: 1,
-  contractPayoutMultiplier: 2.2,
+  contractPayoutMultiplier: 1.7,
   contractDifficultyMultiplier: 1,
   fuelCostMultiplier: 1,
   travelRiskScaling: 100,
@@ -785,8 +789,8 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
   eventDangerMultiplier: 1,
   eventRewardMultiplier: 1,
   progressionSpeedMultiplier: 1,
-  miningEfficiency: 0.35,
-    miningPayoutMultiplier: 0.75,
+  miningEfficiency: 0.8,
+  miningPayoutMultiplier: 0.75,
   drillDamageMultiplier: 1,
   miningThreatMultiplier: 1,
   combat: {
@@ -795,21 +799,21 @@ export const DEFAULT_DEV_TUNE: DevTuneConfig = {
     navyEncounterRateBase: 0,
     maxEncountersPerDay: 10,
     enemyHpMultiplier: 0.6,
-    enemyDamageMultiplier: 0.65,
-    enemyAccuracyMultiplier: 0.9,
+    enemyDamageMultiplier: 0.85,
+    enemyAccuracyMultiplier: 1,
     enemyCountMin: 1,
-    enemyCountMax: 1,
-    difficultyScalePerDay: -0.1,
+    enemyCountMax: 5,
+    difficultyScalePerDay: 0,
     difficultyScalePerShipPower: 0,
-    creditsRewardMultiplier: 1.4,
+    creditsRewardMultiplier: 1.9,
     lootDropChance: 100,
     rareLootChance: 12,
     repGainMultiplier: 1,
     playerDamageTakenMultiplier: 1,
     fleeSuccessBonus: 0,
-    globalIncomeMultiplier: 1.2,
+    globalIncomeMultiplier: 1,
     globalDangerMultiplier: 1,
-    encounterChancePerJump: 56,
+    encounterChancePerJump: 70,
     nonPirateEventWeight: 1,
     showEncounterDebug: 0
   }
@@ -1030,10 +1034,13 @@ export function recordMiningYield(amount: number, rare: boolean): void {
 
 export function addXp(amount: number, trackId: string = "mining"): void {
   if (!gameState || amount <= 0) return;
-  gameState.player.xp += amount;
-  gameState.runStats.xpEarned += amount;
+  const multiplier = devTune.progressionSpeedMultiplier ?? 1;
+  const scaledAmount = Math.max(0, Math.round(amount * multiplier));
+  if (scaledAmount <= 0) return;
+  gameState.player.xp += scaledAmount;
+  gameState.runStats.xpEarned += scaledAmount;
   const xpTracks = gameState.player.xpTracks || {};
-  xpTracks[trackId] = (xpTracks[trackId] ?? 0) + amount;
+  xpTracks[trackId] = (xpTracks[trackId] ?? 0) + scaledAmount;
   gameState.player.xpTracks = xpTracks;
 }
 

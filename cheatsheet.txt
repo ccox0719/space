@@ -11,4 +11,3 @@ npm run export-pages
 
 next edits: 
 
-add a save game button

@@ -400,11 +400,11 @@ export function travelTo(targetSystemId: string): void {
   }
 
   const travelXp = Math.max(
-    5,
+    3,
     Math.round(
-      profile.distance * 2 +
-        scaledProfile.hazardChance * 75 +
-        (scaledProfile.routeType === "wild_jump" ? 10 : 0)
+      profile.distance * 1.25 +
+        scaledProfile.hazardChance * 45 +
+        (scaledProfile.routeType === "wild_jump" ? 6 : 0)
     )
   );
   awardXp(travelXp, "travel");
